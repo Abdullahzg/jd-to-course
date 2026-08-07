@@ -1,0 +1,593 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.988 0.006 240);
+  --foreground: oklch(0.21 0.045 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.12 0.01 60);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0.01 60);
+  --primary: oklch(0.40 0.13 258);
+  --primary-foreground: oklch(0.985 0.002 90);
+  --secondary: oklch(0.96 0.005 90);
+  --secondary-foreground: oklch(0.12 0.01 60);
+  --muted: oklch(0.94 0.005 90);
+  --muted-foreground: oklch(0.48 0.03 250);
+  --accent: oklch(0.92 0.01 90);
+  --accent-foreground: oklch(0.12 0.01 60);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.90 0.015 240);
+  --input: oklch(0.92 0.01 90);
+  --ring: oklch(0.40 0.13 258);
+  --chart-1: oklch(0.12 0.01 60);
+  --chart-2: oklch(0.35 0.02 60);
+  --chart-3: oklch(0.55 0.02 60);
+  --chart-4: oklch(0.70 0.02 60);
+  --chart-5: oklch(0.85 0.01 60);
+  --radius: 0.875rem;
+
+  /* Planner semantics (BUILD_SPEC §10). These are the only colours in the
+     product that mean something. Every one of them encodes state, never
+     decoration — if an element doesn't carry information it doesn't get a
+     colour. Tuned for AA contrast on the Optimus paper ground. */
+  /* Columbia. The light blue is the university's own; the deep blue is what
+     its pages use for anything you can act on. */
+  --blue:        #1d4f91;
+  --blue-deep:   #12356a;
+  --blue-light:  #9bcbeb;
+  --blue-soft:   #eaf3fb;
+  --blue-glow:   rgba(29, 79, 145, 0.16);
+
+  --ink: #10233d;      /* deepest text, board rules */
+  --paper: #f4f8fc;    /* card surface, cool paper */
+  --slate: #5b6b80;    /* secondary text */
+  --amber: #9a6410;    /* locked · needs advisor check · the reflow pulse */
+  --amber-bright: #e0a340; /* the same signal where it sits on a fill, not text */
+  --teal: #15705f;     /* a skill the job asked for, covered */
+  --clay: #a03c31;     /* costs you extra credits or terms */
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  /* No typewriter face anywhere. Course codes get weight and letter-spacing
+     instead, which reads as a code without looking like a terminal. */
+  --font-mono: var(--font-poppins), 'Poppins', system-ui, sans-serif;
+  --font-display: var(--font-poppins), 'Poppins', system-ui, sans-serif;
+  --color-amber: var(--amber);
+  --color-teal: var(--teal);
+  --color-clay: var(--clay);
+  --color-slate: var(--slate);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 14px);
+  --color-blue: var(--blue);
+  --color-blue-light: var(--blue-light);
+  --color-blue-soft: var(--blue-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* §14 quality floor — visible keyboard focus on every interactive element. */
+  :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* §9.1 — respect prefers-reduced-motion: skip the transit, keep the pulse,
+     because the pulse is information (this card changed) and the transit is
+     only delight. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .pulse-changed {
+      animation: none;
+      box-shadow: inset 0 0 0 2px var(--amber-bright);
+    }
+    .reflow-in { animation: none; opacity: 1; transform: none; }
+    .reflow-out { opacity: 1; transform: none; }
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  
+  .text-stroke {
+    -webkit-text-stroke: 1.5px currentColor;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .marquee {
+    animation: marquee 30s linear infinite;
+  }
+  
+  .marquee-reverse {
+    animation: marquee-reverse 25s linear infinite;
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  @keyframes marquee-reverse {
+    0% { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+  }
+  
+  .line-reveal {
+    clip-path: inset(0 100% 0 0);
+    animation: line-reveal 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+  }
+  
+  @keyframes line-reveal {
+    to { clip-path: inset(0 0 0 0); }
+  }
+  
+  .hover-lift {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+  
+  .letter-spin {
+    display: inline-block;
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  .letter-spin:hover {
+    transform: rotateY(360deg);
+  }
+  
+  .animate-char-in {
+    animation: char-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+    filter: blur(40px);
+    transform: translateY(100%);
+  }
+  
+  @keyframes char-in {
+    0% {
+      opacity: 0;
+      filter: blur(40px);
+      transform: translateY(100%);
+    }
+    100% {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0);
+    }
+  }
+
+  .noise-overlay {
+    position: relative;
+  }
+  
+  .noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  /* ── The reflow (BUILD_SPEC §9.1) ────────────────────────────────────────
+     This is the whole demo: constraint propagation made visible. Cards fade
+     and lift while the solver runs, then land in their new terms staggered
+     left to right, and anything that actually changed gets an amber pulse.
+     It is the one bold thing in the interface; everything else stays quiet. */
+
+  .reflow-out {
+    opacity: 0.4;
+    transform: translateY(-2px);
+    transition: opacity 160ms ease-out, transform 160ms ease-out;
+  }
+
+  .reflow-in {
+    animation: reflow-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes reflow-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .pulse-changed {
+    animation: pulse-changed 600ms ease-out 1;
+  }
+
+  @keyframes pulse-changed {
+    0%   { box-shadow: 0 0 0 0 var(--amber-bright), inset 0 0 0 1px var(--amber-bright); }
+    60%  { box-shadow: 0 0 0 4px color-mix(in oklab, var(--amber-bright) 22%, transparent),
+                       inset 0 0 0 1px var(--amber-bright); }
+    100% { box-shadow: 0 0 0 0 transparent, inset 0 0 0 1px transparent; }
+  }
+
+  .rail-fill {
+    transition: width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* A card the solver is holding still while everything moves around it. */
+  .card-locked { border-left: 2px solid var(--amber); }
+  .card-cost   { border-left: 2px solid var(--clay); }
+  .card-ghost  { opacity: 0.3; }
+
+  /* §4.1 — never a confident green check on a rule nobody verified. */
+  .needs-check {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--amber);
+    text-underline-offset: 3px;
+  }
+
+  .board-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 20%, transparent) transparent;
+  }
+  .board-scroll::-webkit-scrollbar { height: 6px; }
+  .board-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 20%, transparent);
+    border-radius: 3px;
+  }
+
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* A course code should look like a serial number without looking typed. */
+  .code {
+    font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground);
+  }
+
+  .label {
+    font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    font-size: 0.78rem;
+  }
+
+  /* Soft depth. Used on anything that is a surface you act on. */
+  .glow {
+    box-shadow: 0 1px 2px rgba(16, 35, 61, 0.04),
+                0 8px 24px -12px var(--blue-glow);
+  }
+  .glow-hover { transition: box-shadow 220ms ease, transform 220ms ease; }
+  .glow-hover:hover {
+    box-shadow: 0 2px 6px rgba(16, 35, 61, 0.06),
+                0 18px 40px -18px var(--blue-glow);
+    transform: translateY(-1px);
+  }
+  .glow-strong {
+    box-shadow: 0 2px 8px rgba(16, 35, 61, 0.06),
+                0 24px 60px -24px rgba(29, 79, 145, 0.34);
+  }
+
+  /* A course that exists in this plan *because of the job posting* looks
+     different from one that is only there to satisfy a degree rule. The glow
+     is the argument the whole product is making, so it is the one place the
+     interface is allowed to be loud. Intensity tracks how much of the job that
+     one course answers. */
+  .match-1 {
+    border-color: color-mix(in oklab, var(--teal) 40%, transparent) !important;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--teal) 20%, transparent),
+                0 6px 20px -10px color-mix(in oklab, var(--teal) 40%, transparent);
+  }
+  .match-2 {
+    border-color: color-mix(in oklab, var(--teal) 55%, transparent) !important;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--teal) 30%, transparent),
+                0 8px 26px -10px color-mix(in oklab, var(--teal) 55%, transparent);
+  }
+  .match-3 {
+    border-color: var(--teal) !important;
+    box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--teal) 42%, transparent),
+                0 10px 34px -10px color-mix(in oklab, var(--teal) 70%, transparent);
+  }
+
+  /* Runs once when the plan lands, so the eye is drawn to the courses the job
+     actually bought you before anything else on the page. */
+  @keyframes match-pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--teal) 55%, transparent); }
+    70%  { box-shadow: 0 0 0 10px color-mix(in oklab, var(--teal) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--teal) 0%, transparent); }
+  }
+  .match-announce { animation: match-pulse 1400ms ease-out 1; }
+
+  /* A timetable ruled over the blue. The subject of this product is a
+     schedule, so the ground it sits on is one. */
+  .timetable-grid {
+    background-image:
+      /* the ruled left margin of a registration card */
+      linear-gradient(90deg, transparent 0 4.5rem, rgba(255,255,255,0.16) 4.5rem calc(4.5rem + 1px), transparent calc(4.5rem + 1px)),
+      /* rows, at the height of a class slot */
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      /* columns, one per weekday */
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 4.25rem, 20% 100%;
+  }
+  @media (max-width: 900px) {
+    .timetable-grid { background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 100% 4.25rem; }
+  }
+
+  /* A field on a form, not a card floating in space. */
+  .card-field {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-left: 2px solid rgba(255, 255, 255, 0.28);
+    border-radius: 0 0.5rem 0.5rem 0;
+    transition: border-color 160ms ease, background 160ms ease;
+  }
+  .card-field[data-on="true"] {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: var(--blue-light);
+    border-left-color: var(--blue-light);
+  }
+  .card-field:hover { background: rgba(255, 255, 255, 0.10); }
+
+  /* Step numbers set like a form reference, 02/05. */
+  .stepno {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+  }
+
+  .rule-tick {
+    background-image: linear-gradient(90deg, rgba(255,255,255,0.28) 0 1px, transparent 1px);
+    background-size: 0.5rem 100%;
+  }
+
+  @keyframes slot-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .slot-in { animation: slot-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* The survey: deep Columbia blue, white type, big. */
+  /*
+   * The survey used three stacked radial gradients on blue, which is the exact
+   * look you get when nobody has decided what a thing should be: soft, centred,
+   * inoffensive, and identical to every other page made that way.
+   *
+   * This product is about university timetables, so the survey is built like
+   * one. A flat ground, a hairline grid at real semester proportions, and a
+   * ruled left margin the way a registration card has. Nothing glows and
+   * nothing fades. The blue is ink, not atmosphere.
+   */
+  .survey-ground {
+    background-color: var(--blue-deep);
+    color: #fff;
+  }
+  .survey-ground ::selection { background: var(--blue-light); color: var(--blue-deep); }
+
+  .on-blue-field {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-left: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    border-radius: 0 0.5rem 0.5rem 0;
+    transition: border-color 180ms ease, background 180ms ease;
+  }
+  .on-blue-field::placeholder { color: rgba(255, 255, 255, 0.55); }
+  .on-blue-field:focus {
+    outline: none;
+    border-color: var(--blue-light);
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .border-sketch {
+    border: 1px solid transparent;
+    background: 
+      linear-gradient(var(--background), var(--background)) padding-box,
+      linear-gradient(135deg, var(--foreground) 25%, transparent 25%, transparent 50%, var(--foreground) 50%, var(--foreground) 75%, transparent 75%) border-box;
+    background-size: 100% 100%, 8px 8px;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Motion and surface separation
+   ───────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Survey steps. Keyed on the step index, so React remounts and this replays. */
+  @keyframes step-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .step-in { animation: step-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .fade-up { animation: fade-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Every plan looked identical, so switching between them read as nothing
+     happening. Each option now owns a tint and an accent, and the whole page
+     picks it up, so A and B are told apart before you read a word. */
+  .plan-a { --accent: var(--blue); --wash: rgba(0, 87, 184, 0.05);  --edge: rgba(0, 87, 184, 0.22); }
+  .plan-b { --accent: var(--teal); --wash: rgba(0, 124, 122, 0.055); --edge: rgba(0, 124, 122, 0.24); }
+  .plan-c { --accent: #7a4bbd;     --wash: rgba(122, 75, 189, 0.05); --edge: rgba(122, 75, 189, 0.22); }
+
+  .plan-wash   { background: var(--wash, transparent); }
+  .plan-accent { color: var(--accent, var(--blue)); }
+  .plan-edge   { border-color: var(--edge, var(--border)); }
+
+  /* A panel that has to sit apart from the one above it without a hard line. */
+  .surface-sunken {
+    background: linear-gradient(180deg, rgba(16, 35, 61, 0.035), rgba(16, 35, 61, 0.012));
+  }
+  .surface-raised {
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(16, 35, 61, 0.05), 0 12px 28px -18px rgba(16, 35, 61, 0.28);
+  }
+}
+
+@layer utilities {
+  /* The proof rail is taller than the screen. Sticky alone just pinned it and
+     left the overflow unreachable until the page bottom, so it scrolls itself. */
+  .rail-scroll { scrollbar-width: thin; scrollbar-color: rgba(16,35,61,0.22) transparent; }
+  .rail-scroll::-webkit-scrollbar { width: 8px; }
+  .rail-scroll::-webkit-scrollbar-thumb {
+    background: rgba(16, 35, 61, 0.18);
+    border-radius: 99px;
+  }
+  .rail-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step-in, .fade-up, .slot-in, .pulse-changed, .match-announce {
+      animation: none !important;
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Phones
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Display sizes set for a laptop overflow a 390px screen. */
+  .font-display { line-height: 1.15; }
+
+  /* The survey is a no-scroll full screen. On a phone the question plus its
+     options genuinely does not fit, so that screen alone may scroll. */
+  .survey-ground { overflow-y: auto; }
+
+  /* Anything wide enough to push the page sideways scrolls inside itself. */
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* Nothing may push the document sideways on any screen. */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+@media (max-width: 640px) {
+  /* A step's own body clipped instead of scrolling, so the second school card
+     was cut in half. The step scrolls; the chrome around it stays put. */
+  .step-body { overflow-y: auto; overflow-x: hidden; }
+}
+
+@layer utilities {
+  /* The posting box. It is the one field in the product that people paste a
+     screenful into, so it gets a focus state you can see from across a room. */
+  .jd-box {
+    transition: box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+  }
+  .jd-box:focus {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28), 0 18px 44px -22px rgba(0, 0, 0, 0.6);
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+  .jd-box::placeholder { color: rgba(255, 255, 255, 0.45); }
+
+  /* Anything arriving as a result of something you did, so a change reads as a
+     change rather than as the page having always looked that way. */
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.995); }
+    to   { opacity: 1; transform: none; }
+  }
+  .rise-in { animation: rise-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Staggered list entry, for semesters and requirement groups. */
+  .stagger > * { animation: rise-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .stagger > *:nth-child(1) { animation-delay: 0.02s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.06s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.10s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.14s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.18s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.22s; }
+  .stagger > *:nth-child(n + 7) { animation-delay: 0.26s; }
+
+  /* Buttons and cards you can act on should acknowledge the pointer. */
+  .glow-hover { transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
+  .glow-hover:hover { box-shadow: 0 10px 30px -18px rgba(16, 35, 61, 0.45); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise-in, .stagger > *, .jd-box { animation: none !important; transition: none !important; }
+  }
+}
+
+@layer utilities {
+  /* A <details> arrow that turns, without the browser's default marker. */
+  details > summary { list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary svg:first-child { transform: rotate(180deg); }
+}
+
+@layer utilities {
+  /* Where you just landed.
+     Scrolling a card into view is not enough on a page of near identical cards:
+     the eye needs telling which one moved. Two pulses, then it stops. */
+  @keyframes landed {
+    0%   { box-shadow: 0 0 0 0 rgba(0, 87, 184, 0.55); }
+    35%  { box-shadow: 0 0 0 7px rgba(0, 87, 184, 0); }
+    55%  { box-shadow: 0 0 0 0 rgba(0, 87, 184, 0.45); }
+    100% { box-shadow: 0 0 0 7px rgba(0, 87, 184, 0); }
+  }
+  .landed { animation: landed 1.4s ease-out 1; }
+  @media (prefers-reduced-motion: reduce) { .landed { animation: none; } }
+}

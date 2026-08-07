@@ -1,0 +1,2559 @@
+[
+ {
+  "code": "APMA E2000",
+  "title": "MULTV. CALC. FOR ENGI \uff06 APP SCI",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Differential and integral calculus of multiple variables. Topics include partial differentiation; optimization of functions of several variables; line, area, volume, and surface integrals; vector functions and vector calculus; theorems of Green, Gauss, and Stokes; applications to selected problems in engineering and applied science",
+  "snapshot": "APMAE2000.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=APMA%20E2000"
+ },
+ {
+  "code": "APMA E2101",
+  "title": "INTRO TO APPLIED MATHEMATICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: MATH V1201",
+  "description": "A unified, single-semester introduction to differential equations and linear algebra with emphases on (1) elementary analytical and numerical technique and (2) discovering the analogs on the continuous and discrete sides of the mathematics of linear operators: superposition, diagonalization, fundamental solutions. Concepts are illustrated with applications using the language of engineering, the natural sciences, and the social sciences. Students execute scripts in Mathematica and MATLAB (or the like) to illustrate and visualize course concepts (programming not required)",
+  "snapshot": "APMAE2101.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=APMA%20E2101"
+ },
+ {
+  "code": "APMA E3101",
+  "title": "APPLIED MATH I: LINEAR ALGEBRA",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Matrix algebra, elementary matrices, inverses, rank, determinants. Computational aspects of solving systems of linear equations: existence-uniqueness of solutions, Gaussian elimination, scaling, ill-conditioned systems, iterative techniques. Vector spaces, bases, dimension. Eigenvalue problems, diagonalization, inner products, unitary matrices",
+  "snapshot": "APMAE3101.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=APMA%20E3101"
+ },
+ {
+  "code": "BIOL W4037",
+  "title": "Bioinformatics of Gene Expression",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Treats a number of topics in the emerging fields of genomics and bioinformatics, such as sequence alignment, genome annotation, and DNA microarray analysis, with an emphasis on the proper use of statistics. Provides a practical introduction to the Perl programming language and utilizes a computer lab.",
+  "snapshot": "BIOLW4037.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=BIOL%20W4037"
+ },
+ {
+  "code": "BMEN E4460",
+  "title": "Deep Learning in Biomedical Imaging",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: APMA E2000 and APMA E2101 and MATH UN1202 Recommended: background in Python programming.",
+  "description": "Introduction to methods in deep learning, with focus on applications to quantitative problems in biomedical imaging and Artificial Intelligence (AI) in medicine. Network models: Deep feedforward networks, convolutional neural networks and recurrent neural networks. Deep autoencoders for denoising. Segmentation and classification of biological tissues and biomarkers of disease. Theory and methods lectures will be accompanied with examples from biomedical image including analysis of neurological images of the brain (MRI), CT images of the lung for cancer and COPD, cardiac ultrasound. Programming assignments will use tensorflow / Pytorch and Jupyter Notebook. Examinations and a final project will also be required.",
+  "snapshot": "BMENE4460.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=BMEN%20E4460"
+ },
+ {
+  "code": "BMEN E4470",
+  "title": "Deep Learning for Biomedical Signal Processing",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Recommended: background in Python programming.",
+  "description": "Introduction to methods in deep learning, focus on applications to biomedical signals and sequences. Review of traditional methods for analysis of signals and sequences. Temporal convolutional neural networks and recurrent neural networks. Long-short term memory (LSTM) models and deep state-space models. Theory and methods lectures accompanied with examples from biomedical signal and sequence analysis, including analysis of electroencephalogram (EEG), electrocardiogram (ECG/EKG), and genomics. Programming assignments use tensorflow/keras. Exams and final project required",
+  "snapshot": "BMENE4470.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=BMEN%20E4470"
+ },
+ {
+  "code": "BMEN E4480",
+  "title": "Statistical machine learning for genomics",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: APMA E2101 and MATH UN1202 and MATH UN2010 Proficiency in Python/R programming, and background in probability/statistics. Recommended: COMS W4771 .",
+  "description": "Introduction to statistical machine learning methods using applications in genomic data and in particular high-dimensional single-cell data. Concepts of molecular biology relevant to genomic technologies, challenges of highdimensional genomic data analysis, bioinformatics preprocessing pipelines, dimensionality reduction, unsupervised learning, clustering, probabilistic modeling, hidden Markov models, Gibbs sampling, deep neural networks, gene regulation. Programming assignments and final project will be required.",
+  "snapshot": "BMENE4480.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=BMEN%20E4480"
+ },
+ {
+  "code": "CBMF W4761",
+  "title": "COMPUTATIONAL GENOMICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Computational techniques for analyzing genomic data including DNA, RNA, protein and gene expression data. Basic concepts in molecular biology relevant to these analyses. Emphasis on techniques from artificial intelligence and machine learning. String-matching algorithms, dynamic programming, hidden Markov models, expectation-maximization, neural networks, clustering algorithms, support vector machines. Students with life sciences backgrounds who satisfy the prerequisites are encouraged to enroll",
+  "snapshot": "CBMFW4761.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CBMF%20W4761"
+ },
+ {
+  "code": "CHEN E4180",
+  "title": "Machine Learning for Biomolecular and Cellular Applications",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Some knowledge of Python, elementary statistics, thermodynamics",
+  "description": "Introduction to machine learning techniques with applications to biological systems, emphasizing cell-biological molecular mechanisms and applications, and computational simulation. Overview of biology. Introduction to biological neurons and neural networks, learning and memory. Parallels between biological and artificial neural networks. Deep neural networks are introduced, hands-on computational experience for students. Big data from experiments or computational simulations: machine learning to extract mechanisms, dimensional reduction. Deep learning applications include drug discovery, protein structure prediction, molecular coarse-graining for simulations, and acceleration of molecular dynamics simulations",
+  "snapshot": "CHENE4180.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CHEN%20E4180"
+ },
+ {
+  "code": "CIEN E4253",
+  "title": "COMP SOLID MECHANICS WITH AI",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( ENME E3332 ) or ENGI E1006 Knowledge of Python. MECE E6422 and COMS W4995 strongly recommended but not required.",
+  "description": "Theoretical, computational, and data-driven/machine learning techniques to derive, test, and validate computer models for solid mechanics (e.g., soil, rubber, and metals). Machine learning and data-driven simulations enabled by deep learning.",
+  "snapshot": "CIENE4253.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CIEN%20E4253"
+ },
+ {
+  "code": "CIEN E4256",
+  "title": "Applied Machine Learning in Civil Engineering",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Basic linear algebra. Basic probability and statistics. Familiarity with python.",
+  "description": "Utilization of data in everyday civil infrastructure. Optimization of decision-making for owners, facility managers, and policy-makers based on predictive results. Provides students with basic understanding of machine learning concepts and methods to formulate civil engineering problems to prediction problems. Introduces students to classic machine learning algorithms, deep learning algorithms, algorithmic thinking, and probabilistic views, and their applications in existing civil engineering problems.",
+  "snapshot": "CIENE4256.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CIEN%20E4256"
+ },
+ {
+  "code": "COMS BC3420",
+  "title": "PRIVACY IN A NETWORKED WORLD",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "The ubiquity of computers and networks in business, government, recreation, and almost all aspects of daily life has led to a proliferation of online sensitive data: data that, if used improperly, can harm the data subjects. As a result, concern about the use, ownership, control, privacy, and accuracy of these data has become a top priority. This seminar course focuses on both the technical challenges of handling sensitive data, the privacy implications of various technologies, and the policy and legal issues facing data subjects, data owners, and data users",
+  "snapshot": "COMSBC3420.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20BC3420"
+ },
+ {
+  "code": "COMS E0001",
+  "title": "FOUND OF COMPUT SCI-TRACK",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE0001.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E0001"
+ },
+ {
+  "code": "COMS E0002",
+  "title": "SOFTWARE SYSTEMS TRACK",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE0002.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E0002"
+ },
+ {
+  "code": "COMS E0003",
+  "title": "INTELLIGENT SYSTEMS TRACK",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE0003.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E0003"
+ },
+ {
+  "code": "COMS E0004",
+  "title": "APPLICATIONS-TRACK",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE0004.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E0004"
+ },
+ {
+  "code": "COMS E0005",
+  "title": "VISION \uff06 GRAPHICS-TRACK",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE0005.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E0005"
+ },
+ {
+  "code": "COMS E0006",
+  "title": "DIGITAL SYSTEMS TRACK",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE0006.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E0006"
+ },
+ {
+  "code": "COMS E3899",
+  "title": "Research Training",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE3899.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E3899"
+ },
+ {
+  "code": "COMS E3999",
+  "title": "Fieldwork",
+  "credits": 1.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "May be repeated for credit, but no more than 3 total points may be used toward the 128-credit degree requirement. Only for SEAS computer science undergraduate students who include relevant off-campus work experience as part of their approved program of study. Final report and letter of evaluation required. May not be used as a technical or non-technical elective. May not be taken for pass/fail credit or audited.",
+  "snapshot": "COMSE3999.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E3999"
+ },
+ {
+  "code": "COMS E4111",
+  "title": "INTRODUCTION TO DATABASES",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE4111.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4111"
+ },
+ {
+  "code": "COMS E4115",
+  "title": "PROGRAMMING LANG \uff06 TRANSL",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE4115.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4115"
+ },
+ {
+  "code": "COMS E4762",
+  "title": "Machine Learning for Functional Genomics",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "This course will introduce modern probabilistic machine learning methods using applications in data analysis tasks from functional genomics, where massively-parallel sequencing is used to measure the state of cells: e.g. what genes are being expressed, what regions of DNA (\u201cchromatin\u201d) are active (\u201copen\u201d) or bound by specific proteins",
+  "snapshot": "COMSE4762.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4762"
+ },
+ {
+  "code": "COMS E4773",
+  "title": "Machine Learning Theory",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Theoretical study of algorithms for machine learning and high-dimensional data analysis. Topics include high-dimensional probability, theory of generalization and statistical learning, online learning and optimization, spectral analysis",
+  "snapshot": "COMSE4773.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4773"
+ },
+ {
+  "code": "COMS E4775",
+  "title": "Causal Inference",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: (COMS4711W) and",
+  "description": "Causal Inference theory and applications. The theoretical topics include the 3-layer causal hierarchy, causal bayesian networks, structural learning, the identification problem and the do-calculus, linear identifiability, bounding, and counterfactual analysis. The applied part includes intersection with statistics, the empirical-data sciences (social and health), and AI and ML.",
+  "snapshot": "COMSE4775.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4775"
+ },
+ {
+  "code": "COMS E4776",
+  "title": "Machine Learning for Data Science",
+  "credits": 3.0,
+  "overlapsWith": [
+   "COMS W4771",
+   "COMS W4776"
+  ],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: SIEO W3600 or W4150 or equivalent.",
+  "description": "Introduction to machine learning, emphasis on data science. Topics include least square methods, Gaussian distributions, linear classification, linear regression, maximum likelihood, exponential family distributions, Bayesian networks, Bayesian inference, mixture models, the EM algorithm, graphical models, hidden Markov models, support vector machines kernel methods. Emphasizes methods and problems relevant to big data. Students may not receive credit for both",
+  "snapshot": "COMSE4776.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4776"
+ },
+ {
+  "code": "COMS E4899",
+  "title": "Research Training",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSE4899.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4899"
+ },
+ {
+  "code": "COMS E4995",
+  "title": "COMPUTER ARTS/VIDEO GAMES",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Special topics arranged as the need and availability arises. Topics are usually offered on a one-time basis. Since the content of this course changes each time it is offered, it may be repeated for credit. Consult the department for section assignment",
+  "snapshot": "COMSE4995.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20E4995"
+ },
+ {
+  "code": "COMS W1001",
+  "title": "INTRO TO INFORMATION SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Basic introduction to concepts and skills in Information Sciences: human-computer interfaces, representing information digitally, organizing and searching information on the internet, principles of algorithmic problem solving, introduction to database concepts, and introduction to programming in Python",
+  "snapshot": "COMSW1001.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1001"
+ },
+ {
+  "code": "COMS W1002",
+  "title": "COMPUTING IN CONTEXT",
+  "credits": 4.0,
+  "overlapsWith": [
+   "ENGI E1006"
+  ],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introduction to elementary computing concepts and Python programming with domain-specific applications. Shared CS concepts and Python programming lectures with track-specific sections. Track themes will vary but may include computing for the social sciences, computing for economics and finance, digital humanities, and more. Intended for nonmajors. Students may only receive credit for one of",
+  "snapshot": "COMSW1002.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1002"
+ },
+ {
+  "code": "COMS W1003",
+  "title": "INTRO-COMPUT SCI/PROGRAM IN C",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW1003.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1003"
+ },
+ {
+  "code": "COMS W1004",
+  "title": "PROGRAMMING IN JAVA",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "A general introduction to computer science for science and engineering students interested in majoring in computer science or engineering. Covers fundamental concepts of computer science, algorithmic problem-solving capabilities, and introductory Java programming skills. Assumes no prior programming background. Columbia University students may receive credit for only one of the following two courses:",
+  "snapshot": "COMSW1004.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1004"
+ },
+ {
+  "code": "COMS W1005",
+  "title": "INTRO-COMPUT SCI/PROG-MATLAB",
+  "credits": 3.0,
+  "overlapsWith": [
+   "COMS W1004"
+  ],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "A general introduction to computer science concepts, algorithmic problem-solving capabilities, and programming skills in MATLAB. Assumes no prior programming background. Columbia University students may receive credit for only one of the following two courses:",
+  "snapshot": "COMSW1005.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1005"
+ },
+ {
+  "code": "COMS W1011",
+  "title": "INTERMED COMPUTER PROGRAMMING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW1011.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1011"
+ },
+ {
+  "code": "COMS W1012",
+  "title": "COMPUTING IN CONTEXT REC",
+  "credits": 0.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW1012.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1012"
+ },
+ {
+  "code": "COMS W1103",
+  "title": "HONORS INTRO COMPUTER SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW1103.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1103"
+ },
+ {
+  "code": "COMS W1404",
+  "title": "EMERGING SCHOLARS PROG SEMINAR",
+  "credits": 1.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Students must be enrolled in an introductory computing course. Corequisites: COMS W1001 , COMS W1002 , COMS W1004 , COMS W1005 , ENGI W1006 ,COMS X1016",
+  "description": "Peer-led weekly seminar intended for first and second year undergraduates considering a major in Computer Science. Pass/fail only. May not be used towards satisfying the major or SEAS credit requirements.",
+  "snapshot": "COMSW1404.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W1404"
+ },
+ {
+  "code": "COMS W2132",
+  "title": "Intermediate Computing in Python",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( ENGI E1006 ) or ( COMS W1002 ) or equivalent prior programming background in Python.",
+  "description": "Essential data structures and algorithms in Python with practical software development skills, applications in a variety of areas including biology, natural language processing, data science and others.",
+  "snapshot": "COMSW2132.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W2132"
+ },
+ {
+  "code": "COMS W2702",
+  "title": "AI in Context",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: STAT UN1201 or equivalent is strongly recommended.",
+  "description": "An interdisciplinary introduction to the history, development and modern application of artificial intelligence in a variety of contexts. Context subjects and teaching staff will vary by semester.",
+  "snapshot": "COMSW2702.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W2702"
+ },
+ {
+  "code": "COMS W3011",
+  "title": "INTERMED COMPUTER PROGRAMMING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3011.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3011"
+ },
+ {
+  "code": "COMS W3101",
+  "title": "PROGRAMMING LANGUAGES",
+  "credits": 1.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Fluency in at least one programming language.",
+  "description": "Introduction to a programming language. Each section is devoted to a specific language. Intended only for those who are already fluent in at least one programming language. Sections may meet for one hour per week for the whole term, for three hours per week for the first third of the term, or for two hours per week for the first six weeks. May be repeated for credit if different languages are involved",
+  "snapshot": "COMSW3101.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3101"
+ },
+ {
+  "code": "COMS W3102",
+  "title": "DEVELOPMENT TECHNOLOGY",
+  "credits": 2.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Fluency in at least one programming language.",
+  "description": "Introduction to software development tools and environments. Each section devoted to a specific tool or environment. One-point sections meet for two hours each week for half a semester, and two point sections include an additional two-hour lab",
+  "snapshot": "COMSW3102.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3102"
+ },
+ {
+  "code": "COMS W3107",
+  "title": "Clean Object-Oriented Design",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: COMS W1004 or permission of instructor. May not take for credit if already received credit for COMS W1007",
+  "description": "A course in designing, documenting, coding, and testing robust computer software, according to object-oriented design patterns and clean coding practices. Taught in Java.Object-oriented design principles include: use cases; CRC; UML; javadoc; patterns (adapter, builder, command, composite, decorator, facade, factory, iterator, lazy evaluation, observer, singleton, strategy, template, visitor); design by contract; loop invariants; interfaces and inheritance hierarchies; anonymous classes and null objects; graphical widgets; events and listeners; Java's Object class; generic types; reflection; timers, threads, and locks.",
+  "snapshot": "COMSW3107.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3107"
+ },
+ {
+  "code": "COMS W3123",
+  "title": "ASSEMBLY LANG AND COMPUT LOGIC",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3123.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3123"
+ },
+ {
+  "code": "COMS W3132",
+  "title": "Intermediate Computing in Python",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ENGI E1006 OR COMS W1002",
+  "description": "Essential data structures and algorithms in Python with practical software development skills, applications in a variety of areas including biology, natural language processing, data science and others",
+  "snapshot": "COMSW3132.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3132"
+ },
+ {
+  "code": "COMS W3134",
+  "title": "Data Structures in Java",
+  "credits": 3.0,
+  "overlapsWith": [
+   "COMS W3136",
+   "COMS W3137"
+  ],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W1004 ) or COMS W1004 ; Knowledge of Java",
+  "description": "Data types and structures: arrays, stacks, singly and doubly linked lists, queues, trees, sets, and graphs. Programming techniques for processing such structures: sorting and searching, hashing, garbage collection. Storage management. Rudiments of the analysis of algorithms. Taught in Java. Note: Due to significant overlap, students may receive credit for only one of the following three courses:",
+  "snapshot": "COMSW3134.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3134"
+ },
+ {
+  "code": "COMS W3136",
+  "title": "ESSENTIAL DATA STRUCTURES",
+  "credits": 4.0,
+  "overlapsWith": [
+   "COMS W3134",
+   "COMS W3137"
+  ],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W1004 ) or ( COMS W1005 ) or (COMS W1007) or ( ENGI E1006 ) COMS W1005 OR COMS W1007 OR ENGI E1006 OR COMS W1004",
+  "description": "A second programming course intended for nonmajors with at least one semester of introductory programming experience. Basic elements of programming in C and C , arraybased data structures, heaps, linked lists, C programming in UNIX environment, object-oriented programming in C , trees, graphs, generic programming, hash tables. Due to significant overlap, students may only receive credit for either",
+  "snapshot": "COMSW3136.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3136"
+ },
+ {
+  "code": "COMS W3137",
+  "title": "HONORS DATA STRUCTURES \uff06 ALGOL",
+  "credits": 4.0,
+  "overlapsWith": [
+   "COMS W3134",
+   "COMS W3136"
+  ],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W1004 ) or (COMS W1007) COMS W1004 OR COMS W1007 Corequisites: COMS W3203",
+  "description": "An honors introduction to data types and structures: arrays, stacks, singly and doubly linked lists, queues, trees, sets, and graphs. Programming techniques for processing such structures: sorting and searching, hashing, garbage collection. Storage management. Design and analysis of algorithms. Taught in Java. Note: Due to significant overlap, students may receive credit for only one of the following three courses:",
+  "snapshot": "COMSW3137.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3137"
+ },
+ {
+  "code": "COMS W3157",
+  "title": "ADVANCED PROGRAMMING",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 ) or ( COMS W3137 ) COMS W3134 OR COMS W3137 C programming language and Unix systems programming. Also covers Git, Make, TCP/IP networking basics, C fundamentals",
+  "description": "C programming language and Unix systems programming. Also covers Git, Make, TCP/IP networking basics, C fundamentals",
+  "snapshot": "COMSW3157.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3157"
+ },
+ {
+  "code": "COMS W3202",
+  "title": "FINITE MATHEMATICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3202.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3202"
+ },
+ {
+  "code": "COMS W3203",
+  "title": "DISCRETE MATHEMATICS",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Any introductory course in computer programming.",
+  "description": "Logic and formal proofs, sequences and summation, mathematical induction, binomial coefficients, elements of finite probability, recurrence relations, equivalence relations and partial orderings, and topics in graph theory (including isomorphism, traversability, planarity, and colorings)",
+  "snapshot": "COMSW3203.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3203"
+ },
+ {
+  "code": "COMS W3204",
+  "title": "FINITE MATHEMATICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3204.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3204"
+ },
+ {
+  "code": "COMS W3205",
+  "title": "INTRO TO DISCRETE STRUCTURES",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3205.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3205"
+ },
+ {
+  "code": "COMS W3210",
+  "title": "SCIENTIFIC COMPUTATION",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: two terms of calculus.",
+  "description": "Introduction to computation on digital computers. Design and analysis of numerical algorithms. Numerical solution of equations, integration, recurrences, chaos, differential equations. Introduction to Monte Carlo methods. Properties of floating point arithmetic. Applications to weather prediction, computational finance, computational science, and computational engineering.",
+  "snapshot": "COMSW3210.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3210"
+ },
+ {
+  "code": "COMS W3240",
+  "title": "ELEMENTARY NUMERICAL ANALYSIS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3240.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3240"
+ },
+ {
+  "code": "COMS W3244",
+  "title": "PROBABILITY AND MATRIX MODELS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3244.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3244"
+ },
+ {
+  "code": "COMS W3251",
+  "title": "COMPUTATIONAL LINEAR ALGEBRA",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "https://bulletin.columbia.edu/columbia-engineering/academic-departments-programs/industrial-engineering-operations-research/undergraduate-programs/quantitative-finance-and-financial-technology-bs/",
+  "snapshot": "COMSW3251.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3251"
+ },
+ {
+  "code": "COMS W3252",
+  "title": "SCIENTIFIC COMPUTATION II",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW3252.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3252"
+ },
+ {
+  "code": "COMS W3261",
+  "title": "COMPUTER SCIENCE THEORY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3203 ) Corequisites: COMS W3134 , COMS W3136 , COMS W3137",
+  "description": "Regular languages: deterministic and non-deterministic finite automata, regular expressions. Context-free languages: context-free grammars, push-down automata. Turing machines, the Chomsky hierarchy, and the Church-Turing thesis. Introduction to Complexity Theory and NP-Completeness.",
+  "snapshot": "COMSW3261.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3261"
+ },
+ {
+  "code": "COMS W3410",
+  "title": "COMPUTERS AND SOCIETY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Broader impact of computers. Social networks and privacy. Employment, intellectual property, and the media. Science and engineering ethics. Suitable for nonmajors",
+  "snapshot": "COMSW3410.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3410"
+ },
+ {
+  "code": "COMS W3770",
+  "title": "Mathematics for Machine Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( MATH UN2010 or MATH UN2015 or APMA E2101 or APMA E3101 or COMS W3251 ) and ( MATH UN1201 or MATH UN1205 or APMA E2000 ) and ( STAT UN1201 or MATH UN2015 or IEOR E3658 ) Familiarity with mathematical proof writing",
+  "description": "Mathematical foundations of machine learning: Linear algebra, multivariable calculus, and probability and statistics. Comprehensive review and additional treatment of relevant topics used in the analysis and design of machine learning models. Preliminary exposure to core algorithms such as linear regression, gradient descent, principal component analysis, low-rank approximations, and kernel methods.",
+  "snapshot": "COMSW3770.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3770"
+ },
+ {
+  "code": "COMS W3902",
+  "title": "UNDERGRADUATE THESIS",
+  "credits": 6.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Agreement by a faculty member to serve as thesis adviser.",
+  "description": "An independent theoretical or experimental investigation by an undergraduate major of an appropriate problem in computer science carried out under the supervision of a faculty member. A formal written report is mandatory and an oral presentation may also be required. May be taken over more than one term, in which case the grade is deferred until all 6 points have been completed. Consult the department for section assignment",
+  "snapshot": "COMSW3902.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3902"
+ },
+ {
+  "code": "COMS W3995",
+  "title": "TOPICS IN COMPUTER SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Consult the department for section assignment. Special topics arranged as the need and availability arise. Topics are usually offered on a one-time basis. Since the content of this course changes each time it is offered, it may be repeated for credit.",
+  "snapshot": "COMSW3995.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3995"
+ },
+ {
+  "code": "COMS W3998",
+  "title": "UNDERGRAD PROJECTS IN COMPUTER SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Approval by a faculty member who agrees to supervise the work.",
+  "description": "Independent project involving laboratory work, computer programming, analytical investigation, or engineering design. May be repeated for credit. Consult the department for section assignment",
+  "snapshot": "COMSW3998.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3998"
+ },
+ {
+  "code": "COMS W3999",
+  "title": "FIELDWORK",
+  "credits": 1.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Obtained internship and approval from faculty advisor",
+  "description": "May be repeated for credit, but no more than 3 total points may be used toward the 128-credit degree requirement. Only for SEAS computer science undergraduate students who include relevant off campus work experience as part of their approved program of study. Final report and letter of evaluation may be required. May not be used as a technical or nontechnical elective or as a GTE (general technical elective). May not be taken for pass/fail credit or audited",
+  "snapshot": "COMSW3999.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W3999"
+ },
+ {
+  "code": "COMS W4111",
+  "title": "INTRODUCTION TO DATABASES",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 ) and ( COMS W3136 ) and ( COMS W3137 ) COMS W3134 , COMS W3136 , or COMS W3136 ; or instructor's permission",
+  "description": "The fundamentals of database design and application development using databases: entity-relationship modeling, logical design of relational databases, relational data definition and manipulation languages, SQL, XML, query processing, physical database tuning, transaction processing, security. Programming projects are required.",
+  "snapshot": "COMSW4111.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4111"
+ },
+ {
+  "code": "COMS W4112",
+  "title": "DATABASE SYSTEM IMPLEMENTATION",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4111 ) and COMS W4111 ; fluency in Java or C++. CSEE W3827 is recommended.",
+  "description": "The principles and practice of building large-scale database management systems. Storage methods and indexing, query processing and optimization, materialized views, transaction processing and recovery, object-relational databases, parallel and distributed databases, performance considerations. Programming projects are required",
+  "snapshot": "COMSW4112.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4112"
+ },
+ {
+  "code": "COMS W4113",
+  "title": "FUND-LARGE-SCALE DIST SYSTEMS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) and ( COMS W3157 or COMS W4118 or CSEE W4119 ) COMS W3134 , W3136 , or W3137 . COMS W3157 or good working knowledge of C and C++. COMS W4118 or CSEE W4119 . Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) and ( COMS W3157 or COMS W4118 or CSEE W4119",
+  "description": ") Design and implementation of large-scale distributed and cloud systems. Teaches abstractions, design and implementation techniques that enable the building of fast, scalable, fault-tolerant distributed systems. Topics include distributed communication models (e.g. sockets, remote procedure calls, distributed shared memory), distributed synchronization (clock synchronization, logical clocks, distributed mutex), distributed file systems, replication, consistency models, fault tolerance, distributed transactions, agreement and commitment, Paxos-based consensus, MapReduce infrastructures, scalable distributed databases. Combines concepts and algorithms with descriptions of real-world implementations at Google, Facebook, Yahoo, Microsoft, LinkedIn, etc",
+  "snapshot": "COMSW4113.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4113"
+ },
+ {
+  "code": "COMS W4114",
+  "title": "ASSEMBLY LANG AND SYSTEMS PROG",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4114.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4114"
+ },
+ {
+  "code": "COMS W4115",
+  "title": "PROGRAMMING LANG \uff06 TRANSLATORS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 ) or ( COMS W3136 ) or ( COMS W3137 ) or ( COMS W3261 and CSEE W3827 ) Or the instructor's permission",
+  "description": "Modern programming languages and compiler design. Imperative, object-oriented, declarative, functional, and scripting languages. Language syntax, control structures, data types, procedures and parameters, binding, scope, run-time organization, and exception handling. Implementation of language translation tools including compilers and interpreters. Lexical, syntactic and semantic analysis; code generation; introduction to code optimization. Teams implement a language and its compiler.",
+  "snapshot": "COMSW4115.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4115"
+ },
+ {
+  "code": "COMS W4118",
+  "title": "OPERATING SYSTEMS I",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( CSEE W3827 ) and CSEE W3827 ; Knowledge of C and programming tools as covered in COMS COMS W3136 , COMS W3157 , or COMS W3101 , or the instructor's permission.",
+  "description": "Design and implementation of operating systems. Topics include process management, process synchronization and interprocess communication, memory management, virtual memory, interrupt handling, processor scheduling, device management, I/O, and file systems. Case study of the UNIX operating system. A programming project is required",
+  "snapshot": "COMSW4118.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4118"
+ },
+ {
+  "code": "COMS W4119",
+  "title": "COMPUTER NETWORKS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Comfort with basic probability and programming fluency in Python, C++, Java, or Ruby.",
+  "description": "Introduction to computer networks and the technical foundations of the internet, including applications, protocols, local area networks, algorithms for routing and congestion control, security, elementary performance evaluation. Several written and programming assignments required",
+  "snapshot": "COMSW4119.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4119"
+ },
+ {
+  "code": "COMS W4121",
+  "title": "COMPUTER SYSTEMS FOR DATA SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: CSOR W4246",
+  "description": "An introduction to computer architecture and distributed systems with an emphasis on warehouse scale computing systems. Topics will include fundamental tradeoffs in computer systems, hardware and software techniques for exploiting instruction-level parallelism, data-level parallelism and task level parallelism, scheduling, caching, prefetching, network and memory architecture, latency and throughput optimizations, specialization, and an introduction to programming data center computers",
+  "snapshot": "COMSW4121.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4121"
+ },
+ {
+  "code": "COMS W4125",
+  "title": "PROGRAMING LANGUAGE SEMANTICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4125.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4125"
+ },
+ {
+  "code": "COMS W4137",
+  "title": "From Algorithmic Thinking to Development",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Algorithmic problem-solving and coding skills needed to devise solutions to interview questions for software engineering positions. Solutions are implemented in Python, Java, C, and C . Approaches include brute-force, hashing, sorting, transform-and-conquer, greedy, and dynamic programming. Focus on experimentation and team work",
+  "snapshot": "COMSW4137.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4137"
+ },
+ {
+  "code": "COMS W4152",
+  "title": "Engineering Software-as-a-Service",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: COMS W3134 AND COMS W3157 AND CSEE W3827",
+  "description": "Modern software engineering concepts and practices including topics such as Software-as-a-Service, Service-oriented Architecture, Agile Development, Behavior-driven Development, Ruby on Rails, and Dev/ops",
+  "snapshot": "COMSW4152.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4152"
+ },
+ {
+  "code": "COMS W4153",
+  "title": "Cloud Computing",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W4111",
+  "description": "Software engineering skills necessary for developing cloud computing and software-as-a-service applications, covering topics such as service-oriented architectures, message-driven applications, and platform integration. Includes theoretical study, practical application, and collaborative project work",
+  "snapshot": "COMSW4153.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4153"
+ },
+ {
+  "code": "COMS W4156",
+  "title": "Advanced Software Engineering",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3157 )",
+  "description": "Software lifecycle using frameworks, libraries and services. Major emphasis on software testing. Centers on a team project.",
+  "snapshot": "COMSW4156.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4156"
+ },
+ {
+  "code": "COMS W4160",
+  "title": "COMPUTER GRAPHICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 ) or ( COMS W3136 ) or ( COMS W3137 ) COMS W3134 OR COMS W3136 OR COMS W3137 ; Strong programming background and some mathematical familiarity including linear algebra is required.",
+  "description": "Introduction to computer graphics. Topics include 3D viewing and projections, geometric modeling using spline curves, graphics systems such as OpenGL, lighting and shading, and global illumination. Significant implementation is required: the final project involves writing an interactive 3D video game in OpenGL. Due to significant overlap in content, only one of COMS 4160 or Barnard COMS 3160BC may be taken for credit",
+  "snapshot": "COMSW4160.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4160"
+ },
+ {
+  "code": "COMS W4162",
+  "title": "ADVANCED COMPUTER GRAPHICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4160 ) or COMS W4160",
+  "description": "A second course in computer graphics covering more advanced topics including image and signal processing, geometric modeling with meshes, advanced image synthesis including ray tracing and global illumination, and other topics as time permits. Emphasis will be placed both on implementation of systems and important mathematical and geometric concepts such as Fourier analysis, mesh algorithms and subdivision, and Monte Carlo sampling for rendering. Note: Course will be taught every two years.",
+  "snapshot": "COMSW4162.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4162"
+ },
+ {
+  "code": "COMS W4165",
+  "title": "COMPUT TECHNIQUES-PIXEL PROCSS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W3137 , COMS W3251 recommended, and a good working knowledge of UNIX and C. Intended for graduate students and advanced undergraduates.",
+  "description": "An intensive introduction to image processing - digital filtering theory, image enhancement, image reconstruction, antialiasing, warping, and the state of the art in special effects. Topics from the basis of high-quality rendering in computer graphics and of low-level processing for computer vision, remote sensing, and medical imaging. Emphasizes computational techniques for implementing useful image-processing functions",
+  "snapshot": "COMSW4165.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4165"
+ },
+ {
+  "code": "COMS W4167",
+  "title": "COMPUTER ANIMATION",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Theory and practice of physics-based animation algorithms, including animated clothing, hair, smoke, water, collisions, impact, and kitchen sinks. Topics covered: Integration of ordinary differential equations, formulation of physical models, treatment of discontinuities including collisions/contact, animation control, constrained Lagrangian Mechanics, friction/dissipation, continuum mechanics, finite elements, rigid bodies, thin shells, discretization of Navier-Stokes equations. General education requirement: quantitative and deductive reasoning (QUA).",
+  "snapshot": "COMSW4167.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4167"
+ },
+ {
+  "code": "COMS W4170",
+  "title": "USER INTERFACE DESIGN",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) COMS W3134 OR COMS W3136 OR COMS W3137",
+  "description": "Introduction to the theory and practice of computer user interface design, emphasizing the software design of graphical user interfaces. Topics include basic interaction devices and techniques, human factors, interaction styles, dialogue design, and software infrastructure. Design and programming projects are required",
+  "snapshot": "COMSW4170.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4170"
+ },
+ {
+  "code": "COMS W4172",
+  "title": "3D UI AND AUGMENTED REALITY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4160 ) or ( COMS W4170 ) or COMS W4160 OR COMS W4170 ; Or instructor's permission",
+  "description": "Design, development, and evaluation of 3D user interfaces. Interaction techniques and metaphors, from desktop to immersive. Selection and manipulation. Travel and navigation. Symbolic, menu, gestural, and multimodal interaction. Dialogue design. 3D software support. 3D interaction devices and displays. Virtual and augmented reality. Tangible user interfaces. Review of relevant 3D math",
+  "snapshot": "COMSW4172.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4172"
+ },
+ {
+  "code": "COMS W4181",
+  "title": "SECURITY I",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: COMS W3157 ; or equivalent.",
+  "description": "Introduction to security. Threat models. Operating system security features. Vulnerabilities and tools. Firewalls, virtual private networks, viruses. Mobile and app security. Usable security. Note: May not earn credit for both W4181 and W4180 or W4187.",
+  "snapshot": "COMSW4181.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4181"
+ },
+ {
+  "code": "COMS W4182",
+  "title": "SECURITY II",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W4118 AND COMS W4181 AND CSEE W4119",
+  "description": "Advanced security. Centralized, distributed, and cloud system security. Cryptographic protocol design choices. Hardware and software security techniques. Security testing and fuzzing. Blockchain. Human security issues. Note: May not earn credit for both W4182 and W4180 or W4187.",
+  "snapshot": "COMSW4182.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4182"
+ },
+ {
+  "code": "COMS W4186",
+  "title": "MALWARE ANALYSIS\uff06REVERSE ENGINEERING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: COMS W3157 AND CSEE W3827 ; or equivalent.",
+  "description": "Hands-on analysis of malware. How hackers package and hide malware and viruses to evade analysis. Disassemblers, debuggers, and other tools for reverse engineering. Deep study of Windows Internals and x86 assembly.",
+  "snapshot": "COMSW4186.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4186"
+ },
+ {
+  "code": "COMS W4203",
+  "title": "GRAPH THEORY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3203 ) COMS W3203",
+  "description": "General introduction to graph theory. Isomorphism testing, algebraic specification, symmetries, spanning trees, traversability, planarity, drawings on higher-order surfaces, colorings, extremal graphs, random graphs, graphical measurement, directed graphs, Burnside-Polya counting, voltage graph theory.",
+  "snapshot": "COMSW4203.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4203"
+ },
+ {
+  "code": "COMS W4205",
+  "title": "Combinatorial Theory",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3203 ) and course in calculus.",
+  "description": "Sequences and recursions, calculus of finite differences and sums, elementary number theory, permutation group structures, binomial coefficients, Stilling numbers, harmonic numbers, generating functions.",
+  "snapshot": "COMSW4205.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4205"
+ },
+ {
+  "code": "COMS W4223",
+  "title": "Networks, Crowds, and the Web",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Introduces fundamental ideas and algorithms on networks of information collected by online services. It covers properties pervasive in large networks, dynamics of individuals that lead to large collective phenomena, mechanisms underlying the web economy, and results and tools informing societal impact of algorithms on privacy, polarization and discrimination",
+  "snapshot": "COMSW4223.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4223"
+ },
+ {
+  "code": "COMS W4231",
+  "title": "ANALYSIS OF ALGORITHMS I",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "https://bulletin.columbia.edu/columbia-engineering/academic-departments-programs/industrial-engineering-operations-research/graduate-programs/business-analytics-ms/",
+  "snapshot": "COMSW4231.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4231"
+ },
+ {
+  "code": "COMS W4232",
+  "title": "Advanced Algorithms",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisite: Analysis of Algorithms (COMS W4231). Prerequisites: see notes re: points COMS W4231",
+  "description": "Introduces classic and modern algorithmic ideas that are central to many areas of Computer Science. The focus is on most powerful paradigms and techniques of how to design algorithms, and how to measure their efficiency. The intent is to be broad, covering a diversity of algorithmic techniques, rather than be deep. The covered topics have all been implemented and are widely used in industry. Topics include: hashing, sketching/streaming, nearest neighbor search, graph algorithms, spectral graph theory, linear programming, models for large-scale computation, and other related topics",
+  "snapshot": "COMSW4232.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4232"
+ },
+ {
+  "code": "COMS W4236",
+  "title": "INTRO-COMPUTATIONAL COMPLEXITY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3261 ) COMS W3261",
+  "description": "Develops a quantitative theory of the computational difficulty of problems in terms of the resources (e.g. time, space) needed to solve them. Classification of problems into complexity classes, reductions, and completeness. Power and limitations of different modes of computation such as nondeterminism, randomization, interaction, and parallelism",
+  "snapshot": "COMSW4236.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4236"
+ },
+ {
+  "code": "COMS W4241",
+  "title": "NUMERICL ALGORITHMS-COMPLEXITY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: knowledge of a programming language. Some knowledge of scientific computation is desirable.",
+  "description": "Modern theory and practice of computation on digital computers. Introduction to concepts of computational complexity. Design and analysis of numerical algorithms. Applications to computational finance, computational science, and computational engineering.",
+  "snapshot": "COMSW4241.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4241"
+ },
+ {
+  "code": "COMS W4242",
+  "title": "NUMRCL ALGORTHMS-COMPLEXITY II",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4242.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4242"
+ },
+ {
+  "code": "COMS W4252",
+  "title": "INTRO-COMPUTATIONAL LEARN THRY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( CSOR W4231 ) or ( COMS W4236 ) or ( COMS W3203 ) or ( COMS W3261 )",
+  "description": "Possibilities and limitations of performing learning by computational agents. Topics include computational models of learning, polynomial time learnability, learning from examples and learning from queries to oracles. Computational and statistical limitations of learning. Applications to Boolean functions, geometric functions, automata.",
+  "snapshot": "COMSW4252.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4252"
+ },
+ {
+  "code": "COMS W4261",
+  "title": "INTRO TO CRYPTOGRAPHY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W3261 OR CSOR W4231 ; Comfort with basic discrete math and probability. Recommended: COMS W3261 or CSOR W4231 .",
+  "description": "An introduction to modern cryptography, focusing on the complexity-theoretic foundations of secure computation and communication in adversarial environments; a rigorous approach, based on precise definitions and provably secure protocols. Topics include private and public key encryption schemes, digital signatures, authentication, pseudorandom generators and functions, one-way functions, trapdoor functions, number theory and computational hardness, identification and zero knowledge protocols",
+  "snapshot": "COMSW4261.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4261"
+ },
+ {
+  "code": "COMS W4281",
+  "title": "INTRO TO QUANTUM COMPUTING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introduction to quantum computing. Shor's factoring algorithm, Grover's database search algorithm, the quantum summation algorithm. Relationship between classical and quantum computing. Potential power of quantum computers.",
+  "snapshot": "COMSW4281.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4281"
+ },
+ {
+  "code": "COMS W4295",
+  "title": "Topics in Theoretical Computer Science",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "Selected topics in theoretical computer science. Content and prerequisites vary between sections and semesters. May be repeated for credit. Check \"topics courses\" webpage on the department website for more information on each section",
+  "snapshot": "COMSW4295.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4295"
+ },
+ {
+  "code": "COMS W4419",
+  "title": "Internet Technology, Economics, and Policy",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: General engineering, economics, law or technology background. Programming background is not required.",
+  "description": "Technology, economic and policy aspects of the Internet. Summarizes how the Internet works technically, including protocols, standards, radio spectrum, global infrastructure and interconnection. Micro-economics with a focus on media and telecommunication economic concerns, including competition and monopolies, platforms, and behavioral economics. US constitution, freedom of speech, administrative procedures act and regulatory process, universal service, role of FCC. Not a substitute for CSEE4119. Suitable for non-majors",
+  "snapshot": "COMSW4419.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4419"
+ },
+ {
+  "code": "COMS W4444",
+  "title": "PROGRAMMING \uff06 PROBLEM SOLVING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 and COMS W3136 ) or ( COMS W3137 and CSEE W3827 )",
+  "description": "Hands-on introduction to solving open-ended computational problems. Emphasis on creativity, cooperation, and collaboration. Projects spanning a variety of areas within computer science, typically requiring the development of computer programs. Generalization of solutions to broader problems, and specialization of complex problems to make them manageable. Team-oriented projects, student presentations, and in-class participation required.",
+  "snapshot": "COMSW4444.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4444"
+ },
+ {
+  "code": "COMS W4460",
+  "title": "PRIN-INNOVATN/ENTREPRENEURSHIP",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) Or instructor's permission",
+  "description": "Team project centered course focused on principles of planning, creating, and growing a technology venture. Topics include: identifying and analyzing opportunities created by technology paradigm shifts, designing innovative products, protecting intellectual property, engineering innovative business models.",
+  "snapshot": "COMSW4460.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4460"
+ },
+ {
+  "code": "COMS W4701",
+  "title": "ARTIFICIAL INTELLIGENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) and COMS W3134 OR COMS W3136 OR COMS W3137 ; Any course on probability",
+  "description": "Prior knowledge of Python is recommended. Provides a broad understanding of the basic techniques for building intelligent computer systems. Topics include state-space problem representations, problem reduction and and-or graphs, game playing and heuristic search, predicate calculus, and resolution theorem proving, AI systems and languages for knowledge representation, machine learning and concept formation and other topics such as natural language processing may be included as time permits",
+  "snapshot": "COMSW4701.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4701"
+ },
+ {
+  "code": "COMS W4705",
+  "title": "NATURAL LANGUAGE PROCESSING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137",
+  "description": "Computational approaches to the analysis, understanding, and generation of natural language text at scale. Emphasis on machine learning techniques for NLP, including deep learning and large language models. Applications may include information extraction, sentiment analysis, question answering, summarization, machine translation, and conversational AI. Discussion of datasets, benchmarking and evaluation, interpretability, and ethical considerations. Due to significant overlap in content, only one of COMS 4705 or Barnard COMS 3705BC may be taken for credit.",
+  "snapshot": "COMSW4705.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4705"
+ },
+ {
+  "code": "COMS W4706",
+  "title": "Spoken Language Processing",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) or COMS W3134 , W3136 , or W3137 ; or the instructor's permission.",
+  "description": "Computational approaches to speech generation and understanding. Topics include speech recognition and understanding, speech analysis for computational linguistics research, and speech synthesis. Speech applications including dialogue systems, data mining, summarization, and translation. Exercises involve data analysis and building a small text-to-speech system.",
+  "snapshot": "COMSW4706.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4706"
+ },
+ {
+  "code": "COMS W4710",
+  "title": "Ethical and Responsible AI",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W2132 ) or ( COMS W3134 ) or ( COMS W3136 ) or ( COMS W3137 ) or ( IEOR E2000",
+  "description": "Principles of Ethical Artificial Intelligence across technical and societal dimensions. Combines technical AI and machine learning implementations and ethical analysis. Students will learn to build, audit, and mitigate ethical risks in AI systems using tools like fairness libraries, explainability frameworks, and privacy-preserving techniques. Emphasizes coding, algorithmic critique, and real-world cases. Topics include: foundations of AI ethics, fairness, interpretability, explainability, accountability, privacy, robustness, alignment, safety, and societal benefit. Assessments include coding projects, bias auditing assignments, and ethical analysis papers.",
+  "snapshot": "COMSW4710.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4710"
+ },
+ {
+  "code": "COMS W4721",
+  "title": "MACHINE LEARNING FOR DATA SCI",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4721.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4721"
+ },
+ {
+  "code": "COMS W4725",
+  "title": "Knowledge representation and reasoning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4701 )",
+  "description": "General aspects of knowledge representation (KR). The two fundamental paradigms (semantic networks and frames) and illustrative systems. Topics include hybrid systems, time, action/plans, defaults, abduction, and case-based reasoning. Throughout the course particular attention is paid to design trade-offs between language expressiveness and reasoning complexity, and issues relating to the use of KR systems in larger applications.",
+  "snapshot": "COMSW4725.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4725"
+ },
+ {
+  "code": "COMS W4726",
+  "title": "Deep Learning for Data Science",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introductory course in deep learning covering core architectures (perceptrons, MLPs, CNNs, U-Nets, RNNs, transformers), training methods (supervised/adversarial loss, autoencoders, diffusion, RL), and key topics (regularization, optimization); includes hands-on implementation in PyTorch with coding, experiments, and paper reviews; students learn to design, build, train, and evaluate deep networks and engage with current research.",
+  "snapshot": "COMSW4726.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4726"
+ },
+ {
+  "code": "COMS W4731",
+  "title": "Computer Vision I: First Principles",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introductory course in computer vision. Topics include image formation and optics, image sensing, binary images, image processing and filtering, edge extraction and boundary detection, region growing and segmentation, pattern classification methods, brightness and reflectance, shape from shading and photometric stereo, texture, binocular stereo, optical flow and motion, 2D and 3D object representation, object recognition, vision systems and applications",
+  "snapshot": "COMSW4731.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4731"
+ },
+ {
+  "code": "COMS W4732",
+  "title": "Computer Vision II: Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W4731",
+  "description": "Advanced course in computer vision. Topics include convolutional networks and back-propagation, object and action recognition, self-supervised and few-shot learning, image synthesis and generative models, object tracking, vision and language, vision and audio, 3D representations, interpretability, and bias, ethics, and media deception",
+  "snapshot": "COMSW4732.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4732"
+ },
+ {
+  "code": "COMS W4733",
+  "title": "COMPUTATIONAL ASPECTS OF ROBOTICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) and ( COMS W3251 or MATH UN2010 or APMA E2101 or APMA E3101 or MATH UN2015 ) and ( STAT GU4001 or IEOR E3658 or STAT UN1201 or MATH UN2015 ) Proficiency in Python or a similar programming language.",
+  "description": "Introduction to fundamental problems and algorithms in robotics. Topics include configuration spaces, motion and sensor models, search and sampling-based planning, state estimation, localization and mapping, perception, and learning.",
+  "snapshot": "COMSW4733.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4733"
+ },
+ {
+  "code": "COMS W4735",
+  "title": "VISUAL INTERFACES TO COMPUTERS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136 or COMS W3137 ) COMS W3134 OR COMS W3136 OR COMS W3137",
+  "description": "Visual input as data and for control of computer systems. Survey and analysis of architecture, algorithms, and underlying assumptions of commercial and research systems that recognize and interpret human gestures, analyze imagery such as fingerprint or iris patterns, generate natural language descriptions of medical or map imagery. Explores foundations in human psychophysics, cognitive science, and artificial intelligence",
+  "snapshot": "COMSW4735.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4735"
+ },
+ {
+  "code": "COMS W4737",
+  "title": "BIOMETRICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: a background at the sophomore level in computer science, engineering, or like discipline.",
+  "description": "In this course. we will explore the latest advances in biometrics as well as the machine learning techniques behind them. Students will learn how these technologies work and how they are sometimes defeated. Grading will be based on homework assignments and a final project. There will be no midterm or final exam. This course shares lectures with",
+  "snapshot": "COMSW4737.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4737"
+ },
+ {
+  "code": "COMS W4762",
+  "title": "Machine Learning for Functional Genomics",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "This course will introduce modern probabilistic machine learning methods using applications in data analysis tasks from functional genomics, where massively-parallel sequencing is used to measure the state of cells: e.g. what genes are being expressed, what regions of DNA (\u201cchromatin\u201d) are active (\u201copen\u201d) or bound by specific proteins.",
+  "snapshot": "COMSW4762.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4762"
+ },
+ {
+  "code": "COMS W4771",
+  "title": "MACHINE LEARNING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( MATH UN1201 or MATH UN1205 or APMA E2000 ) and ( COMS W3251 or MATH UN2010 or MATH UN2015 ) and ( STAT UN1201 or STAT GU4001 or IEOR E3658 or MATH UN2015 ) and COMS W3203 and COMS W3134 General mathematical maturity. COMS W3770 is recommended for students who wish to refresh their math background.",
+  "description": "Basic statistical principles and algorithmic paradigms of supervised machine learning. Prerequisites: Multivariable calculus (e.g. MATH1201 or MATH1205 or APMA2000), linear algebra (e.g. COMS3251 or MATH2010 or MATH2015), probability (e.g. STAT1201 or STAT4001 or IEOR3658 or MATH2015), discrete math (COMS3203), and general mathematical maturity. Programming and algorithm analysis (e.g. COMS 3134). COMS 3770 is recommended for students who wish to refresh their math background.",
+  "snapshot": "COMSW4771.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4771"
+ },
+ {
+  "code": "COMS W4772",
+  "title": "ADVANCED MACHINE LEARNING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4771 ) or COMS W4771 ; Instructor's permission; knowledge of linear algebra introductory probability or statistics is required.",
+  "description": "An exploration of advanced machine learning tools for perception and behavior learning. How can machines perceive, learn from, and classify human activity computationally? Topics include appearance-based models, principal and independent components analysis, dimensionality reduction, kernel methods, manifold learning, latent models, regression, classification, Bayesian methods, maximum entropy methods, real-time tracking, extended Kalman filters, time series prediction, hidden Markov models, factorial HMMS, input-output HMMs, Markov random fields, variational methods, dynamic Bayesian networks, and Gaussian/Dirichlet processes. Links to cognitive science",
+  "snapshot": "COMSW4772.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4772"
+ },
+ {
+  "code": "COMS W4773",
+  "title": "Machine Learning Theory",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W4771",
+  "description": "Core topics from unsupervised learning such as clustering, dimensionality reduction and density estimation will be studied in detail. Topics in clustering: k-means clustering, hierarchical clustering, spectral clustering, clustering with various forms of feedback, good initialization techniques and convergence analysis of various clustering procedures. Topics in dimensionality reduction: linear techniques such as PCA, ICA, Factor Analysis, Random Projections, non-linear techniques such as LLE, IsoMap, Laplacian Eigenmaps, tSNE, and study of embeddings of general metric spaces, what sorts of theoretical guarantees can one provide about such techniques. Miscellaneous topics: design and analysis of data structures for fast Nearest Neighbor search such as Cover Trees and LSH. Algorithms will be implemented in either Matlab or Python.",
+  "snapshot": "COMSW4773.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4773"
+ },
+ {
+  "code": "COMS W4774",
+  "title": "Unsupervised Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W4771",
+  "description": "Core topics from unsupervised learning such as clustering, dimensionality reduction and density estimation will be studied in detail. Topics in clustering: k-means clustering, hierarchical clustering, spectral clustering, clustering with various forms of feedback, good initialization techniques and convergence analysis of various clustering procedures. Topics in dimensionality reduction: linear techniques such as PCA, ICA, Factor Analysis, Random Projections, non-linear techniques such as LLE, IsoMap, Laplacian Eigenmaps, tSNE, and study of embeddings of general metric spaces, what sorts of theoretical guarantees can one provide about such techniques. Miscellaneous topics: design and analysis of datastructures for fast Nearest Neighbor search such as Cover Trees and LSH. Algorithms will be implemented in either Matlab or Python.",
+  "snapshot": "COMSW4774.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4774"
+ },
+ {
+  "code": "COMS W4775",
+  "title": "Causal Inference",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: COMS W4771 Discrete Math, Calculus, Statistics basic probability, modeling, experimental design, Some programming experience",
+  "description": "Causal Inference theory and applications. The theoretical topics include the 3-layer causal hierarchy, causal bayesian networks, structural learning, the identification problem and the do-calculus, linear identifiability, bounding, and counterfactual analysis. The applied part includes intersection with statistics, the empirical-data sciences (social and health), and AI and ML.",
+  "snapshot": "COMSW4775.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4775"
+ },
+ {
+  "code": "COMS W4776",
+  "title": "Neural Networks \uff06 Deep Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4771 ) and ( COMS W3251 or MATH UN2010 or MATH UN2015 ) and ( STAT UN1201 or STAT GU4001 or STAT GU4203 or IEOR E3658 or MATH UN2015 ) Foundational concepts, methods, applications, and recent advances in neural network algorithms",
+  "description": "",
+  "snapshot": "COMSW4776.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4776"
+ },
+ {
+  "code": "COMS W4824",
+  "title": "COMPUTER ARCHITECTURE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4824.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4824"
+ },
+ {
+  "code": "COMS W4835",
+  "title": "COMPUTER ORGANIZATION II",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4835.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4835"
+ },
+ {
+  "code": "COMS W4841",
+  "title": "INTRO TO VLSI SYSTEMS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4841.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4841"
+ },
+ {
+  "code": "COMS W4901",
+  "title": "Projects in Computer Science",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Approval by a faculty member who agrees to supervise the work.",
+  "description": "A second-level independent project involving laboratory work, computer programming, analytical investigation, or engineering design. May be repeated for credit, but not for a total of more than 3 points of degree credit. Consult the department for section assignment.",
+  "snapshot": "COMSW4901.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4901"
+ },
+ {
+  "code": "COMS W4910",
+  "title": "CURRICULAR PRACTICAL TRAINING",
+  "credits": 1.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "COMSW4910.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4910"
+ },
+ {
+  "code": "COMS W4975",
+  "title": "Topics in Natural Language Processing",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W4705 )",
+  "description": "Selected topics in Natural Language Processing. Content and prerequisites vary between sections and semesters. May be repeated for credit. Check the \"topics courses\" webpage on the department website for more information on each section.",
+  "snapshot": "COMSW4975.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4975"
+ },
+ {
+  "code": "COMS W4995",
+  "title": "TOPICS IN COMPUTER SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Selected topics in computer science. Content and prerequisites vary between sections and semesters. May be repeated for credit. Check \u201ctopics course\u201d webpage on the department website for more information on each section",
+  "snapshot": "COMSW4995.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4995"
+ },
+ {
+  "code": "COMS W4996",
+  "title": "Special topics in computer science, II",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Instructor's permission. A continuation of COMS W4995 when the special topic extends over two terms. 116th Street and Broadway, New York, NY 10027 \u00a9 2014 Columbia University Contact Us Computing Employment Visiting Columbia Accessibility Facebook Twitter Google+ iTunes RSS YouTube Back to Top",
+  "description": "",
+  "snapshot": "COMSW4996.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=COMS%20W4996"
+ },
+ {
+  "code": "CSEE W3826",
+  "title": "FUNDAMENTALS OF COMPUTER ORG",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "CSEEW3826.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W3826"
+ },
+ {
+  "code": "CSEE W3827",
+  "title": "FUNDAMENTALS OF COMPUTER SYSTS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: An introductory programming course.",
+  "description": "Fundamentals of computer organization and digital logic. Boolean algebra, Karnaugh maps, basic gates and components, flipflops and latches, counters and state machines, basics of combinational and sequential digital design. Assembly language, instruction sets, ALU\u2019s, single-cycle and multi-cycle processor design, introduction to pipelined processors, caches, and virtual memory.",
+  "snapshot": "CSEEW3827.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W3827"
+ },
+ {
+  "code": "CSEE W4119",
+  "title": "COMPUTER NETWORKS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introduction to computer networks and the technical foundations of the Internet, including applications, protocols, local area networks, algorithms for routing and congestion control, security, elementary performance evaluation. Several written and programming assignments required",
+  "snapshot": "CSEEW4119.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4119"
+ },
+ {
+  "code": "CSEE W4121",
+  "title": "COMPUTER SYSTEMS FOR DATA SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: Background in Computer System Organization and good working knowledge of C/C++. CSOR W4246 Algorithms for Data Science, STAT W4203 Probability Theory, or equivalent as approved by faculty advisor.",
+  "description": "An introduction to computer architecture and distributed systems with an emphasis on warehouse scale computing systems. Topics will include fundamental tradeoffs in computer systems, hardware and software techniques for exploiting instruction-level parallelism, data-level parallelism and task level parallelism, scheduling, caching, prefetching, network and memory architecture, latency and throughput optimizations, specialization, and an introduction to programming data center computers",
+  "snapshot": "CSEEW4121.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4121"
+ },
+ {
+  "code": "CSEE W4140",
+  "title": "NETWORKING LABORATORY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( CSEE W4119 ) or CSEE W4119 ; or equivalent.",
+  "description": "In this course, students will learn how to put principles into practice, in a hands-on-networking lab course. The course will cover the technologies and protocols of the Internet using equipment currently available to large internet service providers such as CISCO routers and end systems. A set of laboratory experiments will provide hands-on experience with engineering wide-area networks and will familiarize students with the Internet Protocol (IP), Address Resolution Protocol (ARP), Internet Control Message Protocol (ICMP), User Datagram Protocol (UDP) and Transmission Control Protocol (TCP), the Domain Name System (DNS), routing protocols (RIP, OSPF, BGP), network management protocols (SNMP, and application-level protocols (FTP, TELNET, SMTP)",
+  "snapshot": "CSEEW4140.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4140"
+ },
+ {
+  "code": "CSEE W4823",
+  "title": "Advanced Logic Design",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( CSEE W3827 ) or CSEE W3827 ; Or a half semester introduction to digital logic, or the equivalent.",
+  "description": "An introduction to modern digital system design. Advanced topics in digital logic: controller synthesis (Mealy and Moore machines); adders and multipliers; structured logic blocks (PLDs, PALs, ROMs); iterative circuits. Modern design methodology: register transfer level modelling (RTL); algorithmic state machines (ASMs); introduction to hardware description languages (VHDL or Verilog); system-level modelling and simulation; design examples.",
+  "snapshot": "CSEEW4823.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4823"
+ },
+ {
+  "code": "CSEE W4824",
+  "title": "COMPUTER ARCHITECTURE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( CSEE W3827 ) or CSEE W3827",
+  "description": "Focuses on advanced topics in computer architecture, illustrated by case studies from classic and modern processors. Fundamentals of quantitative analysis. Pipelining. Memory hierarchy design. Instruction-level and thread-level parallelism. Data-level parallelism and graphics processing units. Multiprocessors. Cache coherence. Interconnection networks. Multi-core processors and systems-on-chip. Platform architectures for embedded, mobile, and cloud computing",
+  "snapshot": "CSEEW4824.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4824"
+ },
+ {
+  "code": "CSEE W4840",
+  "title": "EMBEDDED SYSTEMS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( CSEE W4823 ) CSEE W4823",
+  "description": "Embedded system design and implementation combining hardware and software. I/O, interfacing, and peripherals. Weekly laboratory sessions and term project on design of a microprocessor-based embedded system including at least one custom peripheral. Knowledge of C programming and digital logic required",
+  "snapshot": "CSEEW4840.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4840"
+ },
+ {
+  "code": "CSEE W4868",
+  "title": "SYSTEM-ON-CHIP PLATFORMS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3157 ) and ( CSEE W3827 ) COMS W3157 AND CSEE W3827",
+  "description": "Design and programming of System-on-Chip (SoC) platforms. Topics include: overview of technology and economic trends, methodologies and supporting CAD tools for system-level design, models of computation, the SystemC language, transaction-level modeling, software simulation and virtual platforms, hardware-software partitioning, high-level synthesis, system programming and device drivers, on-chip communication, memory organization, power management and optimization, integration of programmable processor cores and specialized accelerators. Case studies of modern SoC platforms for various classes of applications",
+  "snapshot": "CSEEW4868.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSEE%20W4868"
+ },
+ {
+  "code": "CSOR E4231",
+  "title": "ANALYSIS OF ALGORITHMS I",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 and COMS W3136 ) or ( COMS W3137 and COMS W3203 )",
+  "description": "Introduction to the design and analysis of efficient algorithms. Topics include models of computation, efficient sorting and searching, algorithms for algebraic problems, graph algorithms, dynamic programming, probabilistic methods, approximation algorithms, and NP-completeness.",
+  "snapshot": "CSORE4231.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSOR%20E4231"
+ },
+ {
+  "code": "CSOR W4231",
+  "title": "ANALYSIS OF ALGORITHMS I",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( COMS W3134 or COMS W3136COMS W3137) and ( COMS W3203 )",
+  "description": "Introduction to the design and analysis of efficient algorithms. Topics include models of computation, efficient sorting and searching, algorithms for algebraic problems, graph algorithms, dynamic programming, probabilistic methods, approximation algorithms, and NP-completeness.",
+  "snapshot": "CSORW4231.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSOR%20W4231"
+ },
+ {
+  "code": "CSOR W4246",
+  "title": "ALGORITHMS FOR DATA SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Methods for organizing data, e.g. hashing, trees, queues, lists,priority queues. Streaming algorithms for computing statistics on the data. Sorting and searching. Basic graph models and algorithms for searching, shortest paths, and matching. Dynamic programming. Linear and convex programming. Floating point arithmetic, stability of numerical algorithms, Eigenvalues, singular values, PCA, gradient descent, stochastic gradient descent, and block coordinate descent. Conjugate gradient, Newton and quasi-Newton methods. Large scale applications from signal processing, collaborative filtering, recommendations systems, etc.",
+  "snapshot": "CSORW4246.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=CSOR%20W4246"
+ },
+ {
+  "code": "EAEE E4000",
+  "title": "Machine learning for environmental engineering and science",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Computer language Python or Julia, some linear algebra and machine learning.",
+  "description": "Aimed at understanding and testing state-of?the-art methods in machine learning applied to environmental sciences and engineering problems. Potential applications include but are not limited to remote sensing, and environmental and geophysical fluid dynamics. Includes testing \"vanilla\" ML algorithms, feedforward neural networks, random forests, shallow vs deep networks, and the details of machine learning techniques",
+  "snapshot": "EAEEE4000.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=EAEE%20E4000"
+ },
+ {
+  "code": "ECBM E4040",
+  "title": "NEURAL NETWRKS \uff06 DEEP LEARNING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( BMEB W4020 ) or ( BMEE E4030 ) or ( ECBM E4090 ) or ( EECS E4750 ) or ( COMS W4771 ) or BMEB W4020 OR BMEE E4030 OR ECBM E4090 OR EECS E4750 OR COMS W4771 ; or equivalent.",
+  "description": "Developing features - internal representations of the world, artificial neural networks, classifying handwritten digits with logistics regression, feedforward deep networks, back propagation in multilayer perceptrons, regularization of deep or distributed models, optimization for training deep models, convolutional neural networks, recurrent and recursive neural networks, deep learning in speech and object recognition",
+  "snapshot": "ECBME4040.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ECBM%20E4040"
+ },
+ {
+  "code": "ECON UN3025",
+  "title": "FINANCIAL ECONOMICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ECON UN3211 and ECON UN3213 and STAT UN1201 ECON W3211, W3213 and STAT 1201 . Prerequisites: ECON UN3211 and ECON UN3213 and STAT UN1201",
+  "description": "Institutional nature and economic function of financial markets. Emphasis on both domestic and international markets (debt, stock, foreign exchange, eurobond, eurocurrency, futures, options, and others). Principles of security pricing and portfolio management; the Capital Asset Pricing Model and the Efficient Markets Hypothesis",
+  "snapshot": "ECONUN3025.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ECON%20UN3025"
+ },
+ {
+  "code": "ECON UN3265",
+  "title": "MONEY AND BANKING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ECON UN3211 and ECON UN3213",
+  "description": "or the equivalent. Introduction to the principles of money and banking. The intermediary institutions of the American economy and their historical developments, current issues in monetary and financial reform",
+  "snapshot": "ECONUN3265.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ECON%20UN3265"
+ },
+ {
+  "code": "ECON UN3412",
+  "title": "INTRODUCTION TO ECONOMETRICS",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( ECON UN3211 or ECON UN3213 ) and ( MATH UN1201 or MATH UN1207 ) and STAT UN1201 ECON W3211 or W3213 ; STAT 1201 or SIEO 3001 ; and MATH V1201 or V1207. Prerequisites: ( ECON UN3211 or ECON UN3213 ) and ( MATH UN1201 or MATH UN1207 ) and STAT UN1201",
+  "description": "Modern econometric methods; the general linear statistical model and its extensions; simultaneous equations and the identification problem; time series problems; forecasting methods; extensive practice with the analysis of different types of data",
+  "snapshot": "ECONUN3412.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ECON%20UN3412"
+ },
+ {
+  "code": "EECS E4764",
+  "title": "Artificial Intelligence of Things (AIoT)",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Knowledge of programming or instructor's permission. Suggested preparation: ELEN E4703 , CSEE W4119 , CSEE W4840 , or related courses.",
+  "description": "Artificial Intelligence of Things (AIoT), Internet of Things (IoT), and Cyber-Physical Systems (CPS). Embedded and mobile platforms. Embedded programming. Sensors, actuators, and interfaces. Wireless networking, web services, and databases. Edge and cloud computing. Large language models (LLMs) for AIoT. Time-series data visualization and analytics. Group projects to build end-to-end AIoT systems and applications",
+  "snapshot": "EECSE4764.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=EECS%20E4764"
+ },
+ {
+  "code": "ELEN E4720",
+  "title": "Machine Learning for Signals, Information and Data",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "ELENE4720.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ELEN%20E4720"
+ },
+ {
+  "code": "ELEN E4730",
+  "title": "Quantum Optimization and Machine Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: probability theory, linear algebra",
+  "description": "An introduction to the recent development in quantum optimization and quantum machine learning using gate-based Noisy Intermediate Scale Quantum (NISQ) computers. IBM\u2019s quantum programming framework Qiskit is utilized. Qbits, quantum gates and quantum measurements, quantum algorithms (Grover\u2019s search, Simon\u2019s algorithm, quantum Fourier transform, quantum phase estimation) quantum optimization (quantum annealing, QAOA, variational quantum eigensolver), quantum machine learning (quantum support vector machine, quantum neural networks)",
+  "snapshot": "ELENE4730.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ELEN%20E4730"
+ },
+ {
+  "code": "ENGI E1006",
+  "title": "INTRO TO COMP FOR ENG/APP SCI",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "An interdisciplinary course in computing intended for first year SEAS students. Introduces computational thinking, algorithmic problem solving and Python programming with applications in science and engineering. Assumes no prior programming background",
+  "snapshot": "ENGIE1006.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ENGI%20E1006"
+ },
+ {
+  "code": "ENGI W1006",
+  "title": "INTRO TO COMP FOR ENG/APP SCI",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "An interdisciplinary course in computing intended for first year SEAS students. Introduces computational thinking, algorithmic problem solving and Python programming with applications in science and engineering. Assumes no prior programming background",
+  "snapshot": "ENGIW1006.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ENGI%20W1006"
+ },
+ {
+  "code": "IEOR E2000",
+  "title": "Data Engineering with Python",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: ENGI E1006 ; Or competency in Python.",
+  "description": "Introduction to essential data engineering methods. Potential topics include Arrays, Linked Lists, Stacks and Queues, Trees and Graphs, Hash Tables, Search Algorithms and Efficiency, Relational databases, SQL, NoSQL, and Data Wrangling. Practice both theory and applications using Python programming",
+  "snapshot": "IEORE2000.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=IEOR%20E2000"
+ },
+ {
+  "code": "IEOR E3658",
+  "title": "PROBABILITY FOR ENGINEERS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introductory course to probability theory and does not assume any prior knowledge of subject. Teaches foundations required to use probability in applications, but course itself is theoretical in nature. Basic definitions and axioms of probability and notions of independence and conditional probability introduced. Focus on random variables, both continuous and discrete, and covers topics of expectation, variance, conditional distributions, conditional expectation and variance, and moment generating functions. Also Central Limit Theorem for sums of random variables. Consists of lectures, recitations, weekly homework, and in-class exams.",
+  "snapshot": "IEORE3658.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=IEOR%20E3658"
+ },
+ {
+  "code": "IEOR E4212",
+  "title": "Data Analytics \uff06 Machine Learning for OR",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Surveys tools available in Python for getting (web scraping and APIs) and visualizing data (charts and maps). Introduction to analytics through machine learning (ML algorithms, model evaluation, text analytics, network algorithms, deep learning)",
+  "snapshot": "IEORE4212.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=IEOR%20E4212"
+ },
+ {
+  "code": "IEOR E4540",
+  "title": "DATA MINING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Linear Algebra, Calculus, Probability, and some basic programming.",
+  "description": "Course covers major statistical learning methods for data mining under both supervised and unsupervised settings. Topics covered include linear regression and classification, model selection and regularization, tree-based methods, support vector machines, and unsupervised learning. Students learn about principles underlying each method, how to determine which methods are most suited to applied settings, concepts behind model fitting and parameter tuning, and how to apply methods in practice and assess their performance. Emphasizes roles of statistical modeling and optimization in data mining",
+  "snapshot": "IEORE4540.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=IEOR%20E4540"
+ },
+ {
+  "code": "MATH UN1101",
+  "title": "CALCULUS I",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: see Courses for First-Year Students. Functions, limits, derivatives, introduction to integrals.",
+  "description": "",
+  "snapshot": "MATHUN1101.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN1101"
+ },
+ {
+  "code": "MATH UN1102",
+  "title": "CALCULUS II",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: MATH UN1101 MATH V1101 or the equivalent. Prerequisites: MATH UN1101 or the equivalent. Methods of integration, applications of the integral, Taylors theorem, infinite series. (SC)",
+  "description": "or the equivalent. Methods of integration, applications of the integral, Taylors theorem, infinite series. (SC)",
+  "snapshot": "MATHUN1102.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN1102"
+ },
+ {
+  "code": "MATH UN1201",
+  "title": "CALCULUS III",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: MATH UN1101 MATH V1101 or the equivalent. Prerequisites: MATH UN1101",
+  "description": "or the equivalent Vectors in dimensions 2 and 3, complex numbers and the complex exponential function with applications to differential equations, Cramers rule, vector-valued functions of one variable, scalar-valued functions of several variables, partial derivatives, gradients, surfaces, optimization, the method of Lagrange multipliers. (SC)",
+  "snapshot": "MATHUN1201.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN1201"
+ },
+ {
+  "code": "MATH UN1205",
+  "title": "ACCELERATED MULTIVARIABLE CALC",
+  "credits": 4.0,
+  "overlapsWith": [
+   "MATH UN1201",
+   "MATH UN1202"
+  ],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: ( MATH UN1101 and MATH UN1102 ) Prerequisites: ( MATH UN1101 and MATH UN1102",
+  "description": "). Vectors in dimensions 2 and 3, vector-valued functions of one variable, scalar-valued functions of several variables, partial derivatives, gradients, optimization, Lagrange multipliers, double and triple integrals, line and surface integrals, vector calculus. This course is an accelerated version of",
+  "snapshot": "MATHUN1205.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN1205"
+ },
+ {
+  "code": "MATH UN2010",
+  "title": "LINEAR ALGEBRA",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: MATH V1201 , or the equivalent. Matrices, vector spaces, linear transformations, eigenvalues and eigenvectors, canonical forms, applications. (SC)",
+  "description": "Matrices, vector spaces, linear transformations, eigenvalues and eigenvectors, canonical forms, applications. (SC)",
+  "snapshot": "MATHUN2010.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN2010"
+ },
+ {
+  "code": "MATH UN2015",
+  "title": "Linear Algebra and Probability",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Linear algebra with a focus on probability and statistics. The course covers the standard linear algebra topics: systems of linear equations, matrices, determinants, vector spaces, bases, dimension, eigenvalues and eigenvectors, the Spectral Theorem and singular value decompositions. It also teaches applications of linear algebra to probability, statistics and dynamical systems giving a background sufficient for higher level courses in probability and statistics. The topics covered in the probability theory part include conditional probability, discrete and continuous random variables, probability distributions and the limit theorems, as well as Markov chains, curve fitting, regression, and pattern analysis. The course contains applications to life sciences, chemistry, and environmental life sciences. No a priori background in the life sciences is assumed. This course is best suited for students who wish to focus on applications and practical approaches to problem solving. It is recommended to students majoring in engineering, technology, life sciences, social sciences, and economics. Math majors, joint majors, and math concentrators must take",
+  "snapshot": "MATHUN2015.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN2015"
+ },
+ {
+  "code": "MATH UN2020",
+  "title": "Honors Linear Algebra",
+  "credits": 3.0,
+  "overlapsWith": [
+   "MATH UN2010",
+   "MATH UN1207",
+   "MATH UN1208"
+  ],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: MATH UN1201 . A more extensive treatment of the material in MATH UN2010 , with increased emphasis on proof. Not to be taken in addition to MATH UN2010 or MATH UN1207 - MATH UN1208 . 116th Street and Broadway, New York, NY 10027 \u00a9 2014 Columbia University Contact Us Computing Employment Visiting Columbia Accessibility Facebook Twitter Google+ iTunes RSS YouTube Back to Top",
+  "description": "",
+  "snapshot": "MATHUN2020.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20UN2020"
+ },
+ {
+  "code": "MATH V2020",
+  "title": "Honors Linear Algebra",
+  "credits": 3.0,
+  "overlapsWith": [
+   "MATH V2010",
+   "MATH V1207",
+   "MATH V1208"
+  ],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: MATH V1201 .",
+  "description": "A more extensive treatment of the material in Math V2010, with increased emphasis on proof. Not to be taken in addition to Math V2010 or Math V1207-Math V1208.",
+  "snapshot": "MATHV2020.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MATH%20V2020"
+ },
+ {
+  "code": "MECE E4520",
+  "title": "DATA SCIENCE FOR MECHANICAL SYSTEMS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "Prerequisites: Knowledge of basic computer programming e.g. Java, MATLAB, Python, or Instructor\u2019s permission",
+  "description": "Introduction to the practical application of data science, machine learning, and artificial intelligence and their application in Mechanical Engineering. A review of relevant programming tools necessary for applying data science is provided, as well as a detailed review of data infrastructure and database construction for data science. A series of industry case studies from experts in the field of data science will be presented",
+  "snapshot": "MECEE4520.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MECE%20E4520"
+ },
+ {
+  "code": "MECE E4602",
+  "title": "INTRODUCTION TO ROBOTICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Overview of robot applications and capabilities. Linear algebra, kinematics, statics, and dynamics of robot manipulators. Survey of sensor technology: force, proximity, vision, compliant manipulators. Motion planning and artificial intelligence; manipulator programming requirements and languages",
+  "snapshot": "MECEE4602.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=MECE%20E4602"
+ },
+ {
+  "code": "ORCS E4200",
+  "title": "Data-driven Decision Modeling",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introduction to modeling, estimating, and solving decision-making problems in the context of artificial intelligence and analytics. Potential topics include choice models, quantity models, online learning using multi-armed bandits, dynamic decision modeling, dynamic games, and Bayesian learning theory. Practice both theory and applications using Python programming",
+  "snapshot": "ORCSE4200.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ORCS%20E4200"
+ },
+ {
+  "code": "ORCS E4201",
+  "title": "Policy for Privacy Technologies",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Introduction to privacy technologies, their use in practice, and privacy regulations. Potential topics include anonymization, differential privacy, cryptography, secure multi-party computation, and legislation. Course material will be abased in real-world use cases of these tools",
+  "snapshot": "ORCSE4201.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ORCS%20E4201"
+ },
+ {
+  "code": "ORCS E4529",
+  "title": "Reinforcement Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Markov Decision Processes (MDP) and Reinforcement Learning (RL) problems. Reinforcement Learning algorithms including Q-learning, policy gradient methods, actor-critic method. Reinforcement learning while doing exploration-exploitation dilemma, multi-armed bandit problem. Monte Carlo Tree Search methods, Distributional, Multi-agent, and Causal Reinforcement Learning",
+  "snapshot": "ORCSE4529.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=ORCS%20E4529"
+ },
+ {
+  "code": "POLS GU4728",
+  "title": "Machine Learning \uff06 AI for the Social Sciences",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "This course serves as a modern, applied introduction to machine learning. Students will learn how to evaluate machine learning models and learn specific methods in supervised and unsupervised learning, including regression, ensembles, and neural networks. Other frontier topics with social science relevance will be presented. Topics will be of interest to researchers who are interested in prediction, causal inference, text analysis, and more. Students may use Python, R, or any coding language that requires only free software. Lectures and lecture notes will only include Python. Students should have prior experience with regression models, be comfortable with matrix algebra notation, and have experience with basic coding (R or Python, ideally). Learning goals: \u2022 Understand common machine learning models and be able to implement them. \u2022 Gain familiarity with the use of machine learning models in modern social science research. \u2022 Be able to identify research settings where different models might be appropriate. \u2022 Be able to read and interpret technical research papers, extracting the key methodological choices, assumptions, and results",
+  "snapshot": "POLSGU4728.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=POLS%20GU4728"
+ },
+ {
+  "code": "PSYC GU4836",
+  "title": "Machine Intelligence",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "This seminar will survey historical and modern developments in machine intelligence from fields such as psychology, neuroscience, and computer science, and from approaches such as cybernetics, artificial intelligence, machine learning, robotics, connectionism, neural networks, and deep learning. The emphasis is on the conceptual understanding of topics. The course does not include, nor require a background in, computer programming and statistics. The overall goal is for students to become informed consumers of applications of artificial intelligence",
+  "snapshot": "PSYCGU4836.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=PSYC%20GU4836"
+ },
+ {
+  "code": "SIEO W3600",
+  "title": "INTRO PROBABILITY/STATISTICS",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "https://bulletin.columbia.edu/columbia-engineering/academic-departments-programs/computer-engineering-program/undergraduate-programs/computer-engineering-bs/",
+  "snapshot": "SIEOW3600.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=SIEO%20W3600"
+ },
+ {
+  "code": "SOCI UN3010",
+  "title": "METHODS FOR SOCIAL RESEARCH",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: SOCI W1000 The Social World or Instructor Permission Prerequisites: SOCI UN1000",
+  "description": "The Social World or Instructor Permission Required for all Sociology majors. Introductory course in social scientific research methods. Provides a general overview of the ways sociologists collect information about social phenomena, focusing on how to collect data that are reliable and applicable to our research questions",
+  "snapshot": "SOCIUN3010.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=SOCI%20UN3010"
+ },
+ {
+  "code": "SOCI UN3960",
+  "title": "SEMINAR - PROBLEMS OF LAW \uff06 SOCIETY",
+  "credits": 4.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "",
+  "description": "This course addresses basic contemporary social issues from several angles of vision: from the perspective of scientists, social scientists, legal scholars, and judges. Through the use of case studies, students will examine the nature of theories, evidence, facts, proof, and argument as found in the work of scientists and scholars who have engaged the substantive issues presented in the course",
+  "snapshot": "SOCIUN3960.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=SOCI%20UN3960"
+ },
+ {
+  "code": "STAT GU4001",
+  "title": "INTRODUCTION TO PROBABILITY AND STATISTICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "STATGU4001.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4001"
+ },
+ {
+  "code": "STAT GU4203",
+  "title": "PROBABILITY THEORY",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": ", preferably) is strongly recommended. A calculus-based introduction to probability theory. A quick review of multivariate calculus is provided. Topics covered include random variables, conditional probability, expectation, independence, Bayes\u2019 rule, important distributions, joint distributions, moment generating functions, central limit theorem, laws of large numbers and Markov\u2019s inequality",
+  "snapshot": "STATGU4203.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4203"
+ },
+ {
+  "code": "STAT GU4204",
+  "title": "STATISTICAL INFERENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: STAT GU4203",
+  "description": ". At least one semester of calculus is required; two or three semesters are strongly recommended. Calculus-based introduction to the theory of statistics. Useful distributions, law of large numbers and central limit theorem, point estimation, hypothesis testing, confidence intervals maximum likelihood, likelihood ratio tests, nonparametric procedures, theory of least squares and analysis of variance",
+  "snapshot": "STATGU4204.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4204"
+ },
+ {
+  "code": "STAT GU4205",
+  "title": "LINEAR REGRESSION MODELS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: STAT GU4204",
+  "description": "or the equivalent, and a course in linear algebra. Theory and practice of regression analysis. Simple and multiple regression, testing, estimation, prediction, and confidence procedures, modeling, regression diagnostics and plots, polynomial regression, colinearity and confounding, model selection, geometry of least squares. Extensive use of the computer to analyse data",
+  "snapshot": "STATGU4205.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4205"
+ },
+ {
+  "code": "STAT GU4206",
+  "title": "STAT COMP \uff06 INTRO DATA SCIENCE",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: STAT GU4204 and GU4205 or the equivalent.",
+  "description": "Course Overview: This course introduces Python programming, covering data structures, control-flow, objects, and functions, along with libraries like re, requests, numpy, pandas, scikit-learn, scipy, and more. These skills are applied to real-world data science tasks, including AB testing, data manipulation, modeling, optimization, simulations, and data visualization. Students will develop computational thinking abilities, including problem decomposition, pattern recognition, data representation, abstraction, and algorithm design, through practical exercises",
+  "snapshot": "STATGU4206.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4206"
+ },
+ {
+  "code": "STAT GU4224",
+  "title": "BAYESIAN STATISTICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP"
+  ],
+  "prereqText": "Prerequisites: STAT GU4204 or the equivalent.",
+  "description": "This course introduces the Bayesian paradigm for statistical inference. Topics covered include prior and posterior distributions: conjugate priors, informative and non-informative priors; one- and two-sample problems; models for normal data, models for binary data, Bayesian linear models; Bayesian computation: MCMC algorithms, the Gibbs sampler; hierarchical models; hypothesis testing, Bayes factors, model selection; use of statistical software. Prerequisites: A course in the theory of statistical inference, such as",
+  "snapshot": "STATGU4224.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4224"
+ },
+ {
+  "code": "STAT GU4241",
+  "title": "STATISTICAL MACHINE LEARNING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: STAT GU4206 . Prerequisites: STAT GU4206",
+  "description": ". The course will provide an introduction to Machine Learning and its core models and algorithms. The aim of the course is to provide students of statistics with detailed knowledge of how Machine Learning methods work and how statistical models can be brought to bear in computer systems - not only to analyze large data sets, but to let computers perform tasks that traditional methods of computer science are unable to address. Examples range from speech recognition and text analysis through bioinformatics and medical diagnosis. This course provides a first introduction to the statistical methods and mathematical concepts which make such technologies possible",
+  "snapshot": "STATGU4241.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4241"
+ },
+ {
+  "code": "STAT GU4242",
+  "title": "ADVANCED MACHINE LEARNING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "This course covers various topics in advanced machine learning. Topics may include optimization algorithms, Python libraries for ML, principles for applied supervised and unsupervised learning, hyperparameter selection, computational trade-offs, modern neural network architectures such as ConvNets, LSTMs, and transformers for computer vision and natural language processing, and deep learning for LLMs",
+  "snapshot": "STATGU4242.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4242"
+ },
+ {
+  "code": "STAT GU4244",
+  "title": "Unsupervised Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "Description. Unsupervised Learning is a masters level course on foundations, methods, practice, and applications in machine learning from data without associated labels or outcomes. This course will focus on dimension reduction and clustering techniques while also covering graphical models, missing data imputation, anomaly detection, generative models, and others. The course will also emphasize conceptual understanding and practical applications of unsupervised learning in data visualization, exploratory data analysis, data pre-processing, and data-driven discovery",
+  "snapshot": "STATGU4244.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20GU4244"
+ },
+ {
+  "code": "STAT Q4242",
+  "title": "Advanced Machine Learning",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "FA",
+   "SP"
+  ],
+  "prereqText": "Prerequisites: STAT GU4241",
+  "description": "his course covers some advanced topics in machine learning and has an emphasis on applications to real world data. A major part of this course is a course project which consists of an in-class presentation and a written project report.",
+  "snapshot": "STATQ4242.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20Q4242"
+ },
+ {
+  "code": "STAT UN1201",
+  "title": "CALC-BASED INTRO TO STATISTICS",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "",
+  "description": "",
+  "snapshot": "STATUN1201.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20UN1201"
+ },
+ {
+  "code": "STAT UN3106",
+  "title": "APPLIED MACHINE LEARNING",
+  "credits": 3.0,
+  "overlapsWith": [],
+  "termsOffered": [
+   "SP",
+   "FA"
+  ],
+  "prereqText": "Prerequisites: STAT UN2103 . Students without programming experience in R might find STAT UN2102 very helpful. Prerequisites: STAT UN2103 . Students without programming experience in R might find STAT UN2102",
+  "description": "very helpful. This course is a machine learning class from an application perspective. We will cover topics including data-based prediction, classification, specific classification methods (such as logistic regression and random forests), and basics of neural networks. Programming in homeworks will require R",
+  "snapshot": "STATUN3106.html",
+  "sourceUrl": "https://bulletin.columbia.edu/search/?P=STAT%20UN3106"
+ }
+]

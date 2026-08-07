@@ -1,0 +1,46 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+# The catalog snapshots under /data/snapshots ARE committed on purpose (§6.0):
+# a citation that stops resolving when the university edits its page is not a
+# citation. Do not add them here.
+!/data/snapshots/
+
+# ...but the example file is documentation, not a secret.
+!.env.example
+
+# agent scratch files. Background agents probing the solver write throwaway
+# scripts, and one left at the repo root breaks the typecheck for everyone.
+/*_probe*.ts
+/*_plan*.ts
+/probe*.ts
+/shot*.mjs
+
+# scratch output from background agents and screenshot runs
+/shot*.mjs
+/flow.mjs
+/*.output
