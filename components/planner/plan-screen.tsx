@@ -341,7 +341,26 @@ export function PlanScreen() {
     }).map((f) => [f.term, f]),
   );
   const cov = result.coverage;
-  const cannot = cov?.courseworkCannotGive ?? [];
+
+  /**
+   * A part of the job answered by a free elective is still answered.
+   *
+   * `plan.skillsCovered` is the solver's bitmask over the courses it chose for
+   * the degree's named requirements. The filler runs afterwards and commits
+   * real courses to the open credits, and the board draws those exactly like
+   * any other course. Reading coverage off the bitmask alone told a student
+   * that nothing here does a thing while the course doing it sat two rows below
+   * in their own timetable.
+   */
+  const coveredByFiller = new Set(
+    [...filledByTerm.values()].flatMap((f) => f.picks).flatMap((o) => o.teaches),
+  );
+  const answered = (name: string) =>
+    plan.skillsCovered.includes(name) || coveredByFiller.has(name);
+
+  // Same reason: a heading saying no class teaches this must not name something
+  // a class in the plan is teaching.
+  const cannot = (cov?.courseworkCannotGive ?? []).filter((c) => !answered(c.skill));
 
   return (
     <div className={`${planTint} mx-auto max-w-[1500px] px-4 py-5 lg:px-8 lg:py-6`}>
@@ -355,8 +374,8 @@ export function PlanScreen() {
         // unreachable and a computer science degree was told it was the wrong
         // preparation for a backend engineering internship.
         const core = facets.filter((f) => f.weight === "core");
-        const coveredCore = core.filter((f) => plan.skillsCovered.includes(f.name)).length;
-        const coveredAll = facets.filter((f) => plan.skillsCovered.includes(f.name)).length;
+        const coveredCore = core.filter((f) => answered(f.name)).length;
+        const coveredAll = facets.filter((f) => answered(f.name)).length;
         const gatedNames = Object.keys(ev).filter((k) => ev[k]?.kind === "credential");
 
         // Only two things are worth interrupting for. A credential no degree
@@ -472,7 +491,7 @@ export function PlanScreen() {
             */}
             <ul className="mt-2.5 flex flex-wrap gap-1.5">
               {(state.facets ?? []).map((f) => {
-                const got = plan.skillsCovered.includes(f.name);
+                const got = answered(f.name);
                 const elsewhere = !got ? (teachableSomewhere.get(f.name) ?? []) : [];
                 const on = openQuote === f.name;
                 return (
@@ -520,7 +539,7 @@ export function PlanScreen() {
                   Click any one to see the line of your posting it came from.
                 </p>
               );
-              const got = plan.skillsCovered.includes(f.name);
+              const got = answered(f.name);
               const elsewhere = !got ? (teachableSomewhere.get(f.name) ?? []) : [];
               // Counted only the solver's placements and ignored the free
               // electives, so the panel said "1 course does this" while the
@@ -843,9 +862,26 @@ export function PlanScreen() {
                       <span className="mt-1.5 block text-xs leading-snug">
                         {d?.swaps.slice(0, 2).map((sw, k) => (
                           <span key={k} className="mb-0.5 block text-muted-foreground">
-                            {sw.in && <span className="font-medium text-foreground">{sw.in.title}</span>}
-                            {sw.in && sw.out && " instead of "}
-                            {sw.out && <span>{sw.out.title}</span>}
+                            {sw.in && sw.out ? (
+                              <>
+                                <span className="font-medium text-foreground">{sw.in.title}</span>
+                                {" instead of "}
+                                <span>{sw.out.title}</span>
+                              </>
+                            ) : sw.in ? (
+                              <>
+                                {"adds "}
+                                <span className="font-medium text-foreground">{sw.in.title}</span>
+                              </>
+                            ) : (
+                              // Not a substitution. Saying "instead of" here was
+                              // how the page came to claim a course had replaced
+                              // one it never touched.
+                              <>
+                                {"drops "}
+                                <span>{sw.out!.title}</span>
+                              </>
+                            )}
                           </span>
                         ))}
                         {(d?.swaps.length ?? 0) > 2 && (

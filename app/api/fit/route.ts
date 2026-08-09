@@ -819,7 +819,20 @@ export async function POST(req: Request) {
       if (kept.length) survivors.push({ ...f, aspects: kept });
     });
     fits.length = 0;
-    fits.push(...survivors);
+    // Sorted, by course and then by aspect within each course.
+    //
+    // The batches resolve in a fixed order, but the model can name the same
+    // course's aspects in a different order between two identical requests, and
+    // everything downstream reads this array in sequence: the solver's skill
+    // bitmask, the symmetry classes, the tiebreaks. One reordering is enough to
+    // hand back a different plan for the same posting. This does not stop the
+    // provider returning different content at temperature zero, which it does,
+    // but it stops identical content producing different plans.
+    fits.push(
+      ...survivors
+        .map((f) => ({ ...f, aspects: [...f.aspects].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)) }))
+        .sort((a, b) => (a.courseId < b.courseId ? -1 : a.courseId > b.courseId ? 1 : 0)),
+    );
 
     // Fold the freely written aspects together so the solver can see which
     // courses are alternatives for the same part of the job.

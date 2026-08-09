@@ -5,6 +5,7 @@ import React, {
 } from "react";
 import type { Course, Plan, School, SolveResponse, StudentState, Term } from "@/lib/types";
 import { prereqSatisfied } from "@/lib/solver/core";
+import { fillOpenCredits } from "@/lib/solver";
 import { termKindsFor } from "@/lib/verify";
 
 /**
@@ -598,6 +599,52 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     try {
       const names = semesterLabels(st.student.startTerm as Term, plan.termCredits.length);
       const cat = coursesRef.current;
+
+      // What the plan puts in front of the student is the solver's placements
+      // PLUS whatever the filler committed to the open credits, and the board
+      // draws both. Reading the placements alone is how a part of the job
+      // answered by a course sitting in semester three got written up as one
+      // the plan had no room for.
+      const filledTitles = new Map<string, string[]>();
+      try {
+        const filled = fillOpenCredits({
+          catalog: [...cat.values()],
+          plan,
+          completed: st.student.completed,
+          excluded: st.student.excluded,
+          termKinds: termKindsFor(st.student.startTerm as Term, plan.termCredits.length),
+          relevance: st.relevance,
+          targetSkills: st.targetSkills,
+        });
+        for (const term of filled) {
+          for (const pick of term.picks) {
+            for (const skill of pick.teaches) {
+              const list = filledTitles.get(skill) ?? [];
+              if (!list.includes(pick.title)) list.push(pick.title);
+              filledTitles.set(skill, list);
+            }
+          }
+        }
+      } catch { /* the write up is better without this than absent */ }
+
+      // What this catalog teaches at all, whatever the timetable had room for,
+      // read off the same relevance map the chips beside the write up use, so
+      // the two cannot disagree. Courses the student took off the table are
+      // dropped: naming one back at them as the thing they are missing is not
+      // an answer they can use.
+      const dropped = new Set(st.student.excluded);
+      const taughtSomewhere = new Map<string, string[]>();
+      for (const [courseId, hits] of Object.entries(st.relevance ?? {})) {
+        if (dropped.has(courseId)) continue;
+        const title = cat.get(courseId)?.title;
+        if (!title) continue;
+        for (const h of hits) {
+          const list = taughtSomewhere.get(h.skill) ?? [];
+          if (!list.includes(title)) list.push(title);
+          taughtSomewhere.set(h.skill, list);
+        }
+      }
+
       const r = await fetch("/api/summary", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -625,16 +672,34 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
             // about "Java" and "C++" while the page showed "Building data
             // integration features", and answeredByThisPlan was false for every
             // one of them because the two lists share no vocabulary.
-            partsOfTheJob: (st.facets ?? []).map((f) => ({
-              part: f.name,
-              importance: f.weight,
-              quotedFromPosting: f.quote,
-              answeredByThisPlan: plan.skillsCovered.includes(f.name),
-              coursesThatDoIt: plan.placements
+            partsOfTheJob: (st.facets ?? []).map((f) => {
+              // Three states, not two.
+              //
+              // The write up used to be told only whether the plan answers a
+              // part, so a gap arrived with no reason attached and it invented
+              // one: it wrote that gathering customer feedback is "not
+              // teachable in a classroom" while User Interface Design, which
+              // teaches evaluation and user studies, sat in this same catalog.
+              // The state now travels with the fact.
+              const fromPlacements = plan.placements
                 .filter((p) => p.covers.some((c) => c.skill === f.name))
                 .map((p) => cat.get(p.courseId)?.title)
-                .filter(Boolean),
-            })),
+                .filter((t): t is string => Boolean(t));
+              const doIt = [...new Set([...fromPlacements, ...(filledTitles.get(f.name) ?? [])])];
+              const elsewhere = doIt.length ? [] : (taughtSomewhere.get(f.name) ?? []);
+              return {
+                part: f.name,
+                importance: f.weight,
+                quotedFromPosting: f.quote,
+                status: doIt.length
+                  ? "inPlan"
+                  : elsewhere.length
+                    ? "inCatalogNotInPlan"
+                    : "nothingHereTeachesIt",
+                coursesThatDoIt: doIt,
+                couldBeTaughtBy: elsewhere.slice(0, 3),
+              };
+            }),
             // Kept separate, and clearly labelled, because these are not what
             // the plan is scored on.
             alsoWantedButNotPlannedAgainst: Object.entries(st.skillEvidence ?? {})
@@ -646,7 +711,11 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
                   : "a class can teach the subject, the posting also wants it practised",
               })),
             roleSummary: st.roleSummary,
-            cannotTeach: res.coverage.courseworkCannotGive.map((c) => c.skill),
+            // `cannotTeach` used to be sent alongside the parts and said the
+            // opposite of what the status field says, because it is read off
+            // the solver's bucket pools only and 48 of this catalog's courses
+            // are in none of them. Two contradictory lists in one payload is
+            // how the write up ended up contradicting the chip beside it.
             totalCredits: plan.totalCredits,
           },
         }),

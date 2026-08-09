@@ -27,7 +27,7 @@ type Turn = { role: "you" | "it"; text: string; patch?: Patch | null };
  * it hands a constraint to the solver and the page shows the solver's answer.
  */
 export function AskPanel({ plan }: { plan: Plan }) {
-  const { state, courses, solveWith } = usePlanner();
+  const { state, courses, solveWith, result } = usePlanner();
   const { refresh, noteSpend } = useBudget();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -99,6 +99,28 @@ export function AskPanel({ plan }: { plan: Plan }) {
               label: b.label, have: b.fromCompleted + b.fromPlan, need: b.need, done: b.satisfied,
             })),
             teaches: plan.skillsCovered,
+            // Why something is MISSING is a question about the courses that
+            // were read and not chosen, and this payload carried only the ones
+            // that were. Asked "why isn't product management here", the model
+            // had no fact in front of it that even named the missing part, so
+            // the only honest thing it could say was that it did not know.
+            //
+            // Placed before the course list because the route truncates the
+            // JSON, and a reason that gets cut off is a reason nobody has.
+            partsOfTheJobWithNoCourse: (state.facets ?? [])
+              .filter((f) => !plan.skillsCovered.includes(f.name))
+              .map((f) => {
+                const swap = result?.coverage?.availableIfYouSwap?.find((s) => s.skill === f.name);
+                const none = result?.coverage?.courseworkCannotGive?.find((c) => c.skill === f.name);
+                return {
+                  partOfTheJob: f.name,
+                  thePostingSaid: f.quote,
+                  aCourseThatWouldCoverIt: swap
+                    ? { code: swap.courseCode, title: courses.get(swap.courseId)?.title ?? swap.courseCode, inPlaceOf: swap.replacesCode, extraCredits: swap.extraCredits }
+                    : null,
+                  whyNoCourseCovers: none?.reason ?? null,
+                };
+              }),
             totalCredits: plan.totalCredits,
           },
         }),

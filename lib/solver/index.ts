@@ -1180,16 +1180,35 @@ export function describeDiff(baseline: Plan, other: Plan, catalog: Map<string, C
     return c ? { code: c.code, title: c.title } : { code: id, title: id };
   };
 
-  // Pair each addition with a removal so the change reads as a substitution,
-  // which is what it almost always is: one slot, two candidates.
+  // Pair an addition with the removal it actually replaced.
+  //
+  // This used to pair them by array index, `added[i]` against `removed[i]`, and
+  // the two lists have no relationship to each other at all: they are whatever
+  // order two Sets happened to iterate in. So the page announced substitutions
+  // that never happened, telling a student a course had replaced Computer
+  // Vision II when it had replaced something else entirely, or nothing.
+  //
+  // A real substitution is one requirement slot with two candidates, so that is
+  // what is matched on: the same requirement, preferring the same semester.
+  // Anything left over is reported as an addition or a removal on its own,
+  // because that is what it is.
+  const slotOf = (plan: Plan, id: string) => plan.placements.find((p) => p.courseId === id);
   const swaps: PlanDiff["swaps"] = [];
-  const n = Math.max(added.length, removed.length);
-  for (let i = 0; i < n; i++) {
-    swaps.push({
-      out: removed[i] ? nameOf(removed[i]) : null,
-      in: added[i] ? nameOf(added[i]) : null,
-    });
+  const unmatched = new Set(added);
+
+  for (const out of removed) {
+    const from = slotOf(baseline, out);
+    const sameBucket = [...unmatched].filter((x) => slotOf(other, x)?.bucketId === from?.bucketId);
+    const pick =
+      sameBucket.find((x) => slotOf(other, x)?.term === from?.term) ?? sameBucket[0];
+    if (pick) {
+      unmatched.delete(pick);
+      swaps.push({ out: nameOf(out), in: nameOf(pick) });
+    } else {
+      swaps.push({ out: nameOf(out), in: null });
+    }
   }
+  for (const id of unmatched) swaps.push({ out: null, in: nameOf(id) });
 
   const baseSkills = new Set(baseline.skillsCovered);
   const otherSkills = new Set(other.skillsCovered);
