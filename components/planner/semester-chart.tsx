@@ -53,7 +53,10 @@ export function SemesterChart({
   // ── prerequisite arrows ───────────────────────────────────────────────────
   // Off by default. The board is a timetable first, and the reason a course
   // sits where it sits is a second question, asked only when you want it.
-  const [arrowsOn, setArrowsOn] = useState(false);
+  // On by default. Off, the feature answered a question nobody had asked yet;
+  // on, pointing at any course shows its chain with no setup step, which is
+  // what was asked for in the first place.
+  const [arrowsOn, setArrowsOn] = useState(true);
   /**
    * Which course the arrows are about.
    *
@@ -314,7 +317,7 @@ export function SemesterChart({
                           {c.title}
                         </button>
                         <span className="flex shrink-0 items-center gap-1 self-center">
-                          <WhatIsIt course={c} align="right" />
+                          <WhatIsIt course={c} align="right" reason={p.covers.map((x) => x.skill)} />
                           {(alternatives.get(p.courseId) ?? 0) > 0 && (
                             <span
                               className="tabular rounded px-1 text-[9px] font-semibold plan-accent"
@@ -348,7 +351,7 @@ export function SemesterChart({
                           <span className="ml-1 text-[9px] opacity-60">fills credits</span>
                         )}
                       </button>
-                      <WhatIsIt course={courses.get(e.courseId)} align="right" />
+                      <WhatIsIt course={courses.get(e.courseId)} align="right" reason={e.teaches} />
                     </li>
                   ))}
                   {!major.length && !extra.length && (

@@ -382,6 +382,13 @@ Return FALSE if any of these apply:
   prepares them for THAT.
 - The proof is a topic list fragment, or a hedged sentence like "topics may
   include", or evidence that the course USES something rather than teaches it.
+- The person in the posting does not DO the technique. A product manager
+  posting says the team improves detection systems; the manager defines
+  roadmaps and metrics for that work. "Unsupervised Learning: dimension
+  reduction and clustering techniques" is training for the engineer next to
+  them, not for them, so against a product facet like "building product
+  capabilities for content analysis" it is keep: false. The question is always
+  whose hands are on the thing the course teaches.
 - The course teaches a technique AS PRACTISED IN ANOTHER FIELD. The giveaway is
   a field in the title or the description: for the social sciences, for
   operations research, for biology, for civil engineering, for finance, for
@@ -787,7 +794,14 @@ export async function POST(req: Request) {
         wave.push(claims.slice(j, j + REFUTE_PER_CALL));
       }
       const out = await Promise.all(wave.map(async (group) => {
-        const listing = group.map((c, n) => {
+        // The practitioner test needs a practitioner. Judging "Building
+        // product capabilities" against a clustering course went KEEP when the
+        // refuter had no idea whose job this is, because clustering does build
+        // an analysis capability, for an engineer. Told the role is a product
+        // manager, the same claim fails the "is this where you learn that part
+        // of MY job" question, which is the whole test.
+        const roleLine = `THE JOB, in the posting's own words: "${jd.slice(0, 400).replace(/\s+/g, " ")}"\n\n`;
+        const listing = roleLine + group.map((c, n) => {
           const facetQuote = facets.find((f) => aspectKey(f.name) === aspectKey(c.aspect))?.quote ?? "";
           return `${n + 1}. PART OF THE JOB: ${c.aspect}`
             + (facetQuote ? `\n   THE POSTING SAID: "${facetQuote}"` : "")

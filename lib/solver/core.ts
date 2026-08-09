@@ -298,6 +298,8 @@ export type SymClass = {
 };
 
 export type Model = {
+  /** ids of courses that answer at least one part of this posting */
+  jobRelevant: Set<string>;
   program: Program;
   catalog: Map<string, Course>;
   completed: Set<string>;
@@ -549,7 +551,15 @@ export function buildModel(
     Math.min(T, Math.ceil(remainingDegreeCredits / Math.max(1, program.maxCreditsPerTerm))),
   );
 
+  // Which courses answer this posting at all. The k-best cuts compare plans on
+  // this subset: two plans that differ only in which linear algebra variant
+  // fills a math slot are one plan wearing two hats, and offering the second as
+  // "Option 2" told a student it was a choice worth weighing.
+  const jobRelevant = new Set<string>();
+  for (const c of school.courses) if (maskOf(c) !== 0) jobRelevant.add(c.id);
+
   return {
+    jobRelevant,
     program,
     catalog,
     completed,
@@ -1058,7 +1068,16 @@ export function search(
     const all = new Set<string>([...chosenCore, ...support]);
 
     // No-good cut (§7.2): this exact course set has already been returned.
-    for (const f of forbidden) if (sameSet(f, all)) return;
+    // Compared on the job answering subset when there is one. Cutting on the
+    // full course set let the next best plan differ by a symmetric math course
+    // and nothing else, which produced "Honors Linear Algebra instead of
+    // Linear Algebra" as a serious option on a product management posting.
+    // With no posting at all every subset is empty, so the full set is the
+    // only thing left to compare.
+    const cutSet = m.jobRelevant.size
+      ? new Set([...all].filter((id) => m.jobRelevant.has(id)))
+      : all;
+    for (const f of forbidden) if (sameSet(f, cutSet)) return;
 
     // Locked courses must appear in the plan (constraint 8).
     for (const id of m.lockedByCourse.keys()) if (!all.has(id)) return;

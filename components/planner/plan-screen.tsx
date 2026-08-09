@@ -417,8 +417,8 @@ export function PlanScreen() {
       <header className="rounded-2xl border plan-edge bg-card glow overflow-hidden">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b plan-edge plan-wash px-4 py-2.5 lg:px-5">
           <div className="min-w-0">
-            <h1 className="font-display text-base font-semibold leading-tight sm:text-lg">Your course path</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <h1 className="font-display text-sm font-semibold leading-tight">Your course path</h1>
+            <p className="text-xs text-muted-foreground">
               {plan.placements.length} courses across {plan.termCredits.length} semesters.{" "}
               <strong className="plan-accent">
                 {plan.placements.filter((p) => p.covers.length > 0).length}
@@ -672,7 +672,7 @@ export function PlanScreen() {
           </div>
 
           {/* and what the plan does about it */}
-          <div className="p-5 lg:p-7">
+          <div className="p-3 lg:p-4">
             <p className="label flex items-center gap-2 plan-accent">
               <Sparkles className="h-3.5 w-3.5" /> What this plan does about it
             </p>
@@ -681,7 +681,7 @@ export function PlanScreen() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> writing it out
               </p>
             ) : summary ? (
-              <RichText text={summary} className="mt-2.5 text-sm leading-relaxed" />
+              <RichText text={summary} className="mt-2 text-xs leading-relaxed" />
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">
                 The written summary needs an API key. Everything below is the plan itself and does not.

@@ -68,7 +68,10 @@ export type PlannerState = {
  * at "No plan fits in 8 terms" through three separate fixes, because the
  * failure had been frozen into their session and every reload replayed it.
  */
-const STORAGE = "slack.planner.v3";
+// v4: the fit prompts changed, and a cached result computed with the old ones
+// replays forever for an unchanged posting. A student re-testing the same job
+// description was seeing matches the current prompts already reject.
+const STORAGE = "slack.planner.v4";
 
 /** "Fall 2026", "Spring 2027", and so on from a start term. */
 function semesterLabels(startTerm: Term, n: number): string[] {
@@ -250,7 +253,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     try {
       // Sweep the keys older builds used, so a stale plan cannot linger in a
       // tab that was open across a deploy.
-      for (const old of ["slack.planner.v1", "slack.planner.v2"]) {
+      for (const old of ["slack.planner.v1", "slack.planner.v2", "slack.planner.v3"]) {
         try { sessionStorage.removeItem(old); } catch { /* fine */ }
       }
       const raw = sessionStorage.getItem(STORAGE);

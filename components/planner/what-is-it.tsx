@@ -28,7 +28,18 @@ const WIDTH = 360;
 
 type Spot = { left: number; width: number; top?: number; bottom?: number; maxHeight: number };
 
-export function WhatIsIt({ course, align = "left" }: { course?: Course; align?: "left" | "right" }) {
+export function WhatIsIt({ course, align = "left", reason }: {
+  course?: Course;
+  align?: "left" | "right";
+  /**
+   * Why the plan holds this course, stated before what the course is.
+   *
+   * On the board a student's first question is not "what is Unsupervised
+   * Learning", it is "why is it in my plan". The description alone answered
+   * the wrong question first.
+   */
+  reason?: string[];
+}) {
   const [open, setOpen] = useState(false);
   const [spot, setSpot] = useState<Spot | null>(null);
   const anchor = useRef<HTMLButtonElement>(null);
@@ -120,6 +131,11 @@ export function WhatIsIt({ course, align = "left" }: { course?: Course; align?: 
             <span className="code text-[11px]">{course.code}</span>
             <span className="tabular text-[11px] text-muted-foreground">{course.credits} cr</span>
           </p>
+          {reason && reason.length > 0 && (
+            <p className="mt-1.5 text-xs leading-snug" style={{ color: "var(--teal)" }}>
+              Picked because the catalog says it teaches {reason.join(", ")}.
+            </p>
+          )}
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             {course.description || "The bulletin publishes no description for this course."}
           </p>

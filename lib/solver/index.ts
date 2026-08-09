@@ -55,7 +55,12 @@ export function solve(req: SolveRequest, budgetMs = DEFAULT_BUDGET_MS): SolveRes
     if (i === 0) provedOptimal = r.provedOptimal;
     if (!r.best) break;
     selections.push(r.best);
-    forbidden.push(new Set([...r.best.assignment.keys(), ...r.best.support]));
+    // The cut has to match what search() compares against: the job answering
+    // subset when the posting names one, the whole set otherwise.
+    const chosenAll = [...r.best.assignment.keys(), ...r.best.support];
+    forbidden.push(new Set(
+      model.jobRelevant.size ? chosenAll.filter((id) => model.jobRelevant.has(id)) : chosenAll,
+    ));
     if (Date.now() > deadline) break;
   }
 
