@@ -626,3 +626,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .no-print, nav, [role="dialog"] { display: none !important; }
   body { background: white; }
 }
+
+/* On paper the board cannot scroll, so it wraps. Fixed width columns overflow
+   the page edge otherwise and whole semesters simply vanish from the printout. */
+@media print {
+  .chart-scroll { overflow: visible !important; }
+  .chart-track { flex-wrap: wrap !important; min-width: 0 !important; }
+  .chart-track > div { border: 1px solid #ddd; page-break-inside: avoid; }
+}

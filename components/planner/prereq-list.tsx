@@ -100,9 +100,9 @@ export function PrereqList({
         }
         className={`code rounded px-1.5 py-0.5 text-[10px] transition-colors ${
           using
-            ? "bg-[color-mix(in_oklab,var(--green,#15803d)_14%,transparent)] font-semibold"
+            ? "bg-[color-mix(in_oklab,var(--green,#15803d)_14%,transparent)] font-semibold underline decoration-dotted underline-offset-2 hover:decoration-solid"
             : here
-              ? "bg-foreground/5 hover:bg-[var(--blue-soft)]"
+              ? "bg-foreground/5 underline decoration-dotted underline-offset-2 hover:bg-[var(--blue-soft)] hover:decoration-solid"
               : "cursor-default text-muted-foreground line-through"
         }`}
       >

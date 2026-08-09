@@ -34,6 +34,8 @@ export type SkillEvidence = {
   skill: string;
   /** verbatim sentence from the course description. No sentence -> no skill. */
   evidence: string;
+  /** The ranking pass's one line: why THIS course for this part, next to its rivals. */
+  why?: string;
 };
 
 export type Course = {
@@ -126,7 +128,7 @@ export type SolveRequest = {
    * present it REPLACES the catalog's hand written skill lists, because it was
    * derived by reading the description against this specific job.
    */
-  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential" }[]>;
+  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
   /**
    * How much each part of the work matters to this job: core, supporting or
    * incidental. Multiplied by how rare the part is in the catalog to decide

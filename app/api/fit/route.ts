@@ -361,6 +361,93 @@ const TRIAGE_CHARS = 4000;
 // is shown one claim at a time, with both quotes, and asked to break it.
 // ─────────────────────────────────────────────────────────────────────────────
 
+const ONE_SYSTEM = `You are reading one job posting and an entire university catalog in one sitting, to find which courses actually prepare someone for that job.
+
+You see every course at once, and that is the point: judge them against each
+other, not one at a time. Ten courses will look plausible for the same part of
+the job; only the one or two a student would genuinely learn it from deserve
+the claim, and the rest are noise that buries the signal.
+
+Return ONLY the courses that help, each with:
+- aspects: which parts of the job it answers, using the given part names
+  exactly. For each, a reason: one plain sentence naming what in THIS course
+  earns the claim and, where it matters, why it beats the neighbouring
+  candidates. Every reason must be distinct. If you catch yourself writing the
+  same sentence for two courses, you have stopped comparing.
+- strength: "central" if a hiring manager would call it direct preparation,
+  "useful" if it genuinely helps, "tangential" only if still worth naming.
+  At most TWO courses may be central for any one part of the job.
+- courseQuote: a verbatim sentence from the course description.
+- jobQuote: a verbatim phrase from the posting. Both will be checked against
+  the source text, and a claim whose quote is not found is discarded.
+
+Tests every claim must pass:
+- SAME SENSE: the shared word must mean the same thing on both sides.
+  "Environment" in reinforcement learning is not a workplace environment.
+- WHOSE HANDS: the course must teach what the PERSON IN THE POSTING does, not
+  what the team around them does. A product manager defines roadmaps and
+  metrics; the engineer beside them does the clustering. "Unsupervised
+  Learning" is not training for that manager.
+- NOT ANOTHER FIELD: a technique taught as practised in another field, for the
+  social sciences, for operations research, for biology, teaches that field's
+  problems. It counts only when the posting is in that field.
+- STORAGE IS NOT ANALYSIS: a course about keeping and querying data is not a
+  course about analysing content, however close the two sit in a pipeline.
+  Introduction to Databases does not teach content analysis.
+
+A worked example of the comparative habit. The posting asks for "content
+understanding and classification". Candidates include Natural Language
+Processing ("text classification, tagging, information extraction"), Machine
+Learning ("supervised learning, model selection"), Introduction to Databases
+("data models, SQL"). NLP is central, its whole subject is the ask. Machine
+Learning is useful, it is the layer underneath. Databases is not returned at
+all, storage is not understanding, and next to NLP the claim collapses.
+
+One more duty. If a part of the job has NO course that truly teaches it, do
+not stretch a wrong course onto it, but do look once more for the closest
+genuine preparation and return it at strength "tangential" with a reason that
+says plainly it is the nearest thing, not the thing. A part left with nothing
+should mean the catalog has nothing, not that you stopped looking.
+
+Plain words. Never use an em dash or an en dash.`;
+
+const ONE_SCHEMA = {
+  name: "fits",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      fits: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            course: { type: "string" },
+            strength: { type: "string", enum: ["central", "useful", "tangential"] },
+            aspects: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  part: { type: "string" },
+                  reason: { type: "string" },
+                },
+                required: ["part", "reason"],
+              },
+            },
+            courseQuote: { type: "string" },
+            jobQuote: { type: "string" },
+          },
+          required: ["course", "strength", "aspects", "courseQuote", "jobQuote"],
+        },
+      },
+    },
+    required: ["fits"],
+  },
+} as const;
+
 const REFUTE_SYSTEM = `You are checking claims that a university course helps someone do a specific job, and your job is to knock down the ones that do not hold up.
 
 Each claim gives you: the PART OF THE JOB, the sentence from the posting that
@@ -529,6 +616,8 @@ export interface CourseFit {
   /** Every part of the job this course speaks to. */
   aspects: string[];
   why: string;
+  /** aspect -> the one line reason the ranking pass gave for THIS course. */
+  aspectWhy?: Record<string, string>;
   courseQuote: string;
   jobQuote: string;
 }
@@ -591,9 +680,15 @@ export async function POST(req: Request) {
   // reduced to exactly the bits a course has to be judged against, with the
   // opening paragraphs kept for context. Fewer tokens per call, and less for
   // the model to wade through before it gets to the question.
+  // The whole posting, not the first 1200 characters of it. The TikTok
+  // posting that exposed this is 2600 characters and its actual
+  // responsibilities start around character 1100, so the deep read was judging
+  // courses against the company introduction and whatever fraction of the real
+  // work fit under the cut. Postings are one or two thousand tokens; the cap
+  // here is a guard against a pasted novel, not a budget.
   const brief = facetBlock
-    ? `THE JOB\n${jd.slice(0, 1200)}\n\nPARTS OF THE JOB, each with the line of the posting it came from\n${facetBlock}`
-    : `JOB POSTING\n${jd}`;
+    ? `THE JOB\n${jd.slice(0, 6000)}\n\nPARTS OF THE JOB, each with the line of the posting it came from\n${facetBlock}`
+    : `JOB POSTING\n${jd.slice(0, 6000)}`;
 
   const byCode = new Map<string, (typeof targets)[number]>();
   for (const c of targets) {
@@ -604,181 +699,93 @@ export async function POST(req: Request) {
 
   type Progress = { read: number; total: number; found: CourseFit[]; phase: "triage" | "reading" };
 
-  async function run(onProgress?: (p: Progress) => void) {
-    // ── pass one: which of these could plausibly matter ──────────────────
-    const triageBatches: (typeof targets)[] = [];
-    for (let i = 0; i < targets.length; i += TRIAGE_PER_CALL) {
-      triageBatches.push(targets.slice(i, i + TRIAGE_PER_CALL));
-    }
-    let triaged = 0;
-    /**
-     * Held per batch and stitched together afterwards, rather than appended to
-     * one array as the calls land.
-     *
-     * Appending from inside Promise.all put the shortlist in network completion
-     * order, which is different every run. The same posting kept the same 22
-     * courses twice and returned 5 helpful courses on one run and 8 on the
-     * next, because those 22 were sliced into different groups of PER_CALL and
-     * a course judged alongside different neighbours comes back differently.
-     * Nothing above this line is random, so nothing below it should be either.
-     *
-     * The cost is summed the same way for the same reason: floating point
-     * addition is not associative, so accumulating it in completion order made
-     * the reported figure wobble in its last digits.
-     */
-    const triageOut: { kept: typeof targets; cost: number }[] =
-      triageBatches.map(() => ({ kept: [], cost: 0 }));
-
-    await Promise.all(triageBatches.map(async (batch, bi) => {
-      const listing = batch
-        .map((c) => `${c.code} | ${c.title} | ${c.description.slice(0, TRIAGE_CHARS)}`)
-        .join("\n");
-      try {
-        const { content, costUsd } = await haiku<{ keep: string[] }>({
-          key,
-          purpose: `triage ${batch.length} courses`,
-          system: TRIAGE_SYSTEM,
-          user: `${brief}\n\nCOURSES\n${listing}`,
-          schema: TRIAGE_SCHEMA as never,
-          maxTokens: 600,
-          // Stated here rather than left to the default in lib/ai/haiku.ts,
-          // because this endpoint is expected to answer the same question the
-          // same way twice and that should not depend on another file.
-          temperature: 0,
-        });
-        const keep = new Set((content.keep ?? []).map((k) => codeKey(String(k))));
-        triageOut[bi] = { kept: batch.filter((c) => keep.has(codeKey(c.code))), cost: costUsd };
-      } catch {
-        // A triage call that fails must not silently delete a quarter of the
-        // catalog, so its whole batch goes through to the careful pass.
-        triageOut[bi] = { kept: [...batch], cost: 0 };
-      }
-      triaged += batch.length;
-      onProgress?.({ read: triaged, total: targets.length, found: [], phase: "triage" });
-    }));
-
-    // Catalog order, because triageBatches are consecutive slices of targets.
-    const shortlist = triageOut.flatMap((t) => t.kept);
-    const triageCost = triageOut.reduce((sum, t) => sum + t.cost, 0);
-
-    // Nothing survived, which is a real answer for a job a CS catalog cannot
-    // serve, but read everything rather than trust it if it looks like a fault.
+  const run = async (onProgress?: (p: Progress) => void) => {
+    // ── one read, the whole catalog at once ─────────────────────────────
     //
-    // The cap is a backstop on wall clock, not on quality: if triage keeps most
-    // of the catalog it has misunderstood the job, and reading a hundred
-    // borderline courses in full would cost two minutes to arrive at the same
-    // answer. It is reported, because a truncation nobody mentions is a lie.
-    // Callers asking about a single subject can cap this far lower: the first
-    // pass has already ruled out everything unrelated, and reading fourteen
-    // descriptions in full answers "which courses teach cryptography" as well
-    // as reading seventy does, in a fifth of the time.
-    const DEEP_CAP = deepCap > 0 ? deepCap : 72;
-    const survived = shortlist.length ? shortlist : targets;
-    // Whatever falls off the cap is now the tail of the catalog rather than
-    // whichever triage call happened to answer last, so two identical requests
-    // read the same courses in full. It is still an arbitrary place to cut, and
-    // notFullyRead below is what says so.
-    const deep = survived.slice(0, DEEP_CAP);
-    const notRead = survived.length - deep.length;
-
+    // This used to be a funnel: a cheap triage over twenty course batches, a
+    // careful read over eight course batches, then a ranking pass to compare
+    // what the batches could never see side by side. Every layer existed to
+    // work around a context window this model does not have. The entire
+    // catalog is fifteen thousand tokens; the model takes two hundred
+    // thousand. So it reads the posting and every course in one sitting, and
+    // the comparisons the ranking pass tried to bolt on happen the only place
+    // they can honestly happen: with everything on the table at once. That is
+    // also what ended the copy pasted reasons, because one writer describing
+    // ten courses in one breath does not hand them the same sentence.
     const fits: CourseFit[] = [];
     let costUsd = 0;
     let unread = 0;
-    let read = 0;
     let dropped = 0;
-    const batches: (typeof targets)[] = [];
-    for (let i = 0; i < deep.length; i += PER_CALL) batches.push(deep.slice(i, i + PER_CALL));
     const allMisses: { code: string; side: string; quote: string }[] = [];
+    const deep = targets;
+    const notRead = 0;
+    const triageCost = 0;
 
-    for (let i = 0; i < batches.length; i += CONCURRENCY) {
-      const wave = batches.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(wave.map(async (batch) => {
-        const courseText = batch
-          .map((c) => `### ${c.code}: ${c.title} (${c.credits} credits)\n${c.description}`)
-          .join("\n\n");
+    const catalogText = targets
+      .map((c) => `### ${c.code}: ${c.title} (${c.credits} credits)\n${c.description}`)
+      .join("\n\n");
 
-        // Four attempts, backing off further each time. A batch that never
-        // lands is not a batch of courses that teach nothing, it is a hole in
-        // the answer, and the page has no way to tell the difference.
-        for (let attempt = 0; attempt < 4; attempt++) {
-          try {
-            const { content, costUsd: cost } = await haiku<{
-              fits: {
-                course: string; helps: boolean; strength: string; aspects: string[];
-                why: string; courseQuote: string; jobQuote: string;
-              }[];
-            }>({
-              key,
-              purpose: `fit: ${batch.length} courses`,
-              system: SYSTEM,
-              user: `${brief}\n\nCOURSES\n${courseText}`,
-              schema: SCHEMA as never,
-              maxTokens: 1800,
-              temperature: 0,
-            });
+    onProgress?.({ read: 0, total: targets.length, found: [], phase: "reading" });
 
-            const kept: CourseFit[] = [];
-            const misses: { code: string; side: string; quote: string }[] = [];
-            let bad = 0;
-            for (const f of content.fits ?? []) {
-              if (!f.helps) continue;
-              const raw = String(f.course ?? "").trim();
-              const c = byCode.get(codeKey(raw)) ?? byCode.get(raw.toLowerCase());
-              if (!c) {
-                bad++;
-                misses.push({ code: raw.slice(0, 60), side: "unknown course", quote: "" });
-                continue;
-              }
-              const cq = String(f.courseQuote ?? "").trim();
-              const jq = String(f.jobQuote ?? "").trim();
-              // Neither side gets to be asserted. Both have to be shown.
-              const okCourse = quoted(c.description, cq);
-              const okJob = quoted(jd, jq);
-              if (!okCourse || !okJob) {
-                bad++;
-                misses.push({ code: c.code, side: !okCourse ? "course" : "job", quote: (!okCourse ? cq : jq).slice(0, 120) });
-                continue;
-              }
-              const strength = (["central", "useful", "tangential"].includes(f.strength)
-                ? f.strength : "useful") as CourseFit["strength"];
-              // Snap each aspect back onto the canonical facet. Anything that is
-              // not one of them answered a part of the job nobody asked about.
-              const named = (Array.isArray(f.aspects) ? f.aspects : [f.aspects])
-                .map((a) => String(a ?? "").trim())
-                .map((a) => facetByKey.get(aspectKey(a)) ?? (facets.length ? "" : a.slice(0, 80)))
-                .filter(Boolean);
-              const aspects = [...new Set(named)];
-              if (!aspects.length) { bad++; misses.push({ code: c.code, side: "no aspect matched the job's parts", quote: String(f.aspects).slice(0, 80) }); continue; }
-              kept.push({
-                courseId: c.id, code: c.code, title: c.title,
-                strength, aspects,
-                why: String(f.why ?? "").trim().slice(0, 220),
-                courseQuote: cq, jobQuote: jq,
-              });
-            }
-            // Reported here, as this batch lands. Reporting after the whole
-            // wave meant a wide wave was one silent block: the counter sat at
-            // zero for the entire read and then jumped to the end.
-            read += batch.length;
-            onProgress?.({ read, total: deep.length, found: kept, phase: "reading" });
-            return { kept, cost, unread: 0, n: 0, bad, misses };
-          } catch {
-            if (attempt < 3) await new Promise((r) => setTimeout(r, 900 * (attempt + 1)));
+    // Four attempts, backing off further each time. A read that never lands is
+    // not a catalog that teaches nothing, it is a hole in the answer.
+    let landed = false;
+    for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+      try {
+        const { content, costUsd: cost } = await haiku<{
+          fits: {
+            course: string; strength: string;
+            aspects: { part: string; reason: string }[];
+            courseQuote: string; jobQuote: string;
+          }[];
+        }>({
+          key,
+          purpose: `read all ${targets.length} courses against the posting`,
+          system: ONE_SYSTEM,
+          user: `${brief}\n\nTHE WHOLE CATALOG\n${catalogText}`,
+          schema: ONE_SCHEMA as never,
+          maxTokens: 3400,
+          temperature: 0,
+        });
+        costUsd += cost;
+        for (const f of content.fits ?? []) {
+          const raw = String(f.course ?? "").trim();
+          const c = byCode.get(codeKey(raw)) ?? byCode.get(raw.toLowerCase());
+          if (!c) { dropped++; allMisses.push({ code: raw.slice(0, 60), side: "unknown course", quote: "" }); continue; }
+          const cq = String(f.courseQuote ?? "").trim();
+          const jq = String(f.jobQuote ?? "").trim();
+          // Neither side gets to be asserted. Both have to be shown.
+          if (!quoted(c.description, cq) || !quoted(jd, jq)) {
+            dropped++;
+            allMisses.push({ code: c.code, side: !quoted(c.description, cq) ? "course" : "job", quote: cq.slice(0, 120) });
+            continue;
           }
+          const aspectWhy: Record<string, string> = {};
+          const named: string[] = [];
+          for (const a of Array.isArray(f.aspects) ? f.aspects : []) {
+            const label = facetByKey.get(aspectKey(String(a?.part ?? ""))) ?? (facets.length ? "" : String(a?.part ?? "").slice(0, 80));
+            if (!label || named.includes(label)) continue;
+            named.push(label);
+            const r = String(a?.reason ?? "").trim();
+            if (r) aspectWhy[label] = r.slice(0, 220);
+          }
+          if (!named.length) { dropped++; allMisses.push({ code: c.code, side: "no aspect matched the job's parts", quote: "" }); continue; }
+          fits.push({
+            courseId: c.id, code: c.code, title: c.title,
+            strength: (["central", "useful", "tangential"].includes(f.strength) ? f.strength : "useful") as CourseFit["strength"],
+            aspects: named,
+            why: Object.values(aspectWhy)[0] ?? "",
+            aspectWhy,
+            courseQuote: cq, jobQuote: jq,
+          });
         }
-        read += batch.length;
-        onProgress?.({ read, total: deep.length, found: [], phase: "reading" });
-        return { kept: [] as CourseFit[], cost: 0, unread: batch.length, n: 0, bad: 0, misses: [] as { code: string; side: string; quote: string }[] };
-      }));
-
-      for (const r of results) {
-        costUsd += r.cost;
-        unread += r.unread;
-        dropped += r.bad;
-        allMisses.push(...r.misses);
-        fits.push(...r.kept);
+        landed = true;
+      } catch {
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
       }
     }
+    if (!landed) unread = targets.length;
+    onProgress?.({ read: targets.length, total: targets.length, found: fits, phase: "reading" });
 
     // ── second pass: try to break every claim the first pass made ────────
     const claims: { fitIdx: number; aspect: string; fit: CourseFit }[] = [];
@@ -800,7 +807,7 @@ export async function POST(req: Request) {
         // an analysis capability, for an engineer. Told the role is a product
         // manager, the same claim fails the "is this where you learn that part
         // of MY job" question, which is the whole test.
-        const roleLine = `THE JOB, in the posting's own words: "${jd.slice(0, 400).replace(/\s+/g, " ")}"\n\n`;
+        const roleLine = `THE JOB, in the posting's own words: "${jd.slice(0, 1500).replace(/\s+/g, " ")}"\n\n`;
         const listing = roleLine + group.map((c, n) => {
           const facetQuote = facets.find((f) => aspectKey(f.name) === aspectKey(c.aspect))?.quote ?? "";
           return `${n + 1}. PART OF THE JOB: ${c.aspect}`
@@ -889,7 +896,7 @@ export async function POST(req: Request) {
        * pass with quotes. Every course was read; only the survivors were read
        * a second time and asked to prove themselves.
        */
-      ruledOutEarly: targets.length - survived.length,
+      ruledOutEarly: 0,
       /** Survived the first pass but fell outside the cap. */
       notFullyRead: notRead,
       coursesUnread: unread,
@@ -897,13 +904,13 @@ export async function POST(req: Request) {
       unquotable: dropped,
       /** A sample of what failed verification, so a zero result is never a mystery. */
       unquotableSample: allMisses.slice(0, 8),
-      calls: batches.length,
+      calls: 1,
       refuteCalls,
       claimsMade: claims.length,
       claimsRefuted,
       costUsd: costUsd + triageCost,
     };
-  }
+  };
 
   if (!stream) {
     try {

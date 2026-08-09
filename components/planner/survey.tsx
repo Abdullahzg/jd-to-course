@@ -160,7 +160,7 @@ export function Survey({
       ok?: boolean;
       fits?: {
         courseId: string; aspects: string[]; courseQuote: string; jobQuote: string;
-        why: string; strength: string; title: string; code: string;
+        why: string; aspectWhy?: Record<string, string>; strength: string; title: string; code: string;
       }[];
       aspects?: { key: string; label: string; courses: string[] }[];
       costUsd?: number; coursesRead?: number; coursesUnread?: number; unquotable?: number;
@@ -222,10 +222,10 @@ export function Survey({
     // The solver still thinks in terms of "this course covers that". What
     // changed is what "that" is: no longer a keyword lifted out of the posting,
     // but a named part of the work the posting describes.
-    const relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential" }[]> = {};
+    const relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]> = {};
     const fits = (rl.fits ?? []) as {
       courseId: string; aspects: string[]; courseQuote: string; jobQuote: string;
-      why: string; strength: string; title: string; code: string;
+      why: string; aspectWhy?: Record<string, string>; strength: string; title: string; code: string;
     }[];
     for (const f of fits) {
       for (const a of f.aspects ?? []) {
@@ -233,6 +233,7 @@ export function Survey({
           skill: a,
           evidence: f.courseQuote,
           strength: f.strength as "central" | "useful" | "tangential",
+          why: f.aspectWhy?.[a],
         });
       }
     }

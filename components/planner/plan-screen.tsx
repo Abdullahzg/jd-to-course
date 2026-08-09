@@ -416,7 +416,7 @@ export function PlanScreen() {
 
       {/* ── the brief: what the job wants, then what this plan answers ─────── */}
       <header className="rounded-2xl border plan-edge bg-card glow overflow-hidden">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b plan-edge plan-wash px-4 py-2.5 lg:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-b plan-edge plan-wash px-4 py-2 lg:px-5">
           <div className="min-w-0">
             <h1 className="font-display text-sm font-semibold leading-tight">Your course path</h1>
             <p className="text-xs text-muted-foreground">
@@ -430,6 +430,7 @@ export function PlanScreen() {
               a course could answer.
             </p>
           </div>
+          <TakeIt plan={plan} courses={courses} names={names} fill={filledByTerm} />
           <div className="flex items-center gap-2">
             {solving && (
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -592,6 +593,58 @@ export function PlanScreen() {
                       Nothing in this catalog does this part of the job.
                     </p>
                   )}
+                  {(() => {
+                    // The choice the page never offered. Every course the
+                    // reader matched to this part, in its ranking order, each
+                    // one a button: jump to it if it is already planned, add
+                    // it by name if it is not. The plan chose for you before;
+                    // now it shows its shortlist and lets you overrule it.
+                    const ranked = Object.entries(state.relevance ?? {})
+                      .flatMap(([cid, hits]) => hits
+                        .filter((h) => h.skill === f.name)
+                        .map((h) => ({ cid, why: h.why, strength: h.strength ?? "useful" })))
+                      .sort((a, b) =>
+                        ["central", "useful", "tangential"].indexOf(a.strength) -
+                        ["central", "useful", "tangential"].indexOf(b.strength))
+                      .slice(0, 5);
+                    if (ranked.length < 2) return null;
+                    return (
+                      <div className="mt-2 border-t border-border pt-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground">
+                          Every course that teaches this, in the reader&rsquo;s order. Your call.
+                        </p>
+                        <ul className="mt-1 space-y-1">
+                          {ranked.map((r, i) => {
+                            const c = courses.get(r.cid);
+                            if (!c) return null;
+                            const planned = plannedIds.has(r.cid);
+                            return (
+                              <li key={r.cid} className="flex items-start gap-1.5 text-[11px]">
+                                <span className="tabular shrink-0 text-muted-foreground">{i + 1}.</span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="font-medium">{c.title}</span>{" "}
+                                  <span className="code text-[10px]">{c.code}</span>
+                                  {r.why && <span className="block text-muted-foreground">{r.why}</span>}
+                                </span>
+                                {planned ? (
+                                  <button onClick={() => jumpToCourse(0, r.cid)}
+                                          className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] hover:bg-[var(--blue-soft)]">
+                                    in your plan
+                                  </button>
+                                ) : (
+                                  <button onClick={() => keepInPlan(r.cid, c.title)}
+                                          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                                          style={{ background: "var(--blue)" }}>
+                                    Add instead
+                                  </button>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -764,7 +817,6 @@ export function PlanScreen() {
           />
       </div>
 
-      <TakeIt plan={plan} courses={courses} names={names} fill={filledByTerm} />
 
       {/* The board shows what the solver reached for. This is how you ask for
           something it never offered, which for a whole degree is most of it.
@@ -920,7 +972,18 @@ export function PlanScreen() {
                         )}
                         {quiet && (
                           <span className="block text-muted-foreground">
-                            Answers the job just as well, for the same credits.
+                            {(() => {
+                              // "Answers the job just as well" is true and
+                              // useless: it gives no reason to ever click. The
+                              // incoming course carries the reader's own one
+                              // line reason, so the card borrows it.
+                              const firstIn = d?.swaps.find((sw) => sw.in);
+                              const inId = firstIn && [...courses.values()].find((c) => c.code === firstIn.in!.code)?.id;
+                              const why = inId ? state.relevance?.[inId]?.[0]?.why : null;
+                              return why
+                                ? `Same coverage by a different route. ${why}`
+                                : "Same job coverage, same credits, a different set of courses. Pick by which subjects you would rather sit through.";
+                            })()}
                           </span>
                         )}
                       </span>
@@ -1393,7 +1456,7 @@ function CourseRow({
                 key={c.skill}
                 className="rounded-full px-1.5 py-0.5 text-[11px]"
                 style={{ background: "color-mix(in oklab, var(--teal) 12%, transparent)", color: "var(--teal)" }}
-                title={`The catalog says: "${c.evidence}"`}
+                title={c.why ? `${c.why} The catalog says: "${c.evidence}"` : `The catalog says: "${c.evidence}"`}
               >
                 {c.skill}
               </span>

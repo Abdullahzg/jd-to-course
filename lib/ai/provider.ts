@@ -24,9 +24,20 @@ export type Provider = "openrouter" | "anthropic";
 export const HAIKU_PRICING = { inputPerMTok: 1.0, outputPerMTok: 5.0 };
 
 /** The model id differs per provider even though it is the same model. */
-export const HAIKU_MODEL: Record<Provider, string> = {
+const DEFAULT_MODEL: Record<Provider, string> = {
   openrouter: "anthropic/claude-haiku-4.5",
   anthropic: "claude-haiku-4-5",
+};
+
+/**
+ * Overridable for measurement only. The app ships on Haiku; MODEL_OVERRIDE
+ * exists so the same pipeline can be run on another model and the two outputs
+ * compared side by side, which is how the matcher gets audited rather than
+ * argued about.
+ */
+export const HAIKU_MODEL: Record<Provider, string> = {
+  openrouter: process.env.MODEL_OVERRIDE || DEFAULT_MODEL.openrouter,
+  anthropic: process.env.MODEL_OVERRIDE_ANTHROPIC || DEFAULT_MODEL.anthropic,
 };
 
 export function detectProvider(key: string): Provider | null {

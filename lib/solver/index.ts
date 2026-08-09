@@ -474,7 +474,7 @@ function buildCoverage(m: Model, plan: Plan, targetSkills: string[]): CoverageRe
 
   for (const target of m.skills) {
     // 1. Something in the plan already teaches it.
-    let hit: { courseId: string; ev: { skill: string; evidence: string; strength?: "central" | "useful" | "tangential" } } | null = null;
+    let hit: { courseId: string; ev: { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string } } | null = null;
     for (const p of plan.placements) {
       const ev = teaches(p.courseId, target);
       if (ev) { hit = { courseId: p.courseId, ev }; break; }
@@ -778,7 +778,7 @@ export function electiveOptions(args: {
   term: number;
   /** Which season that semester is, so a spring-only course is not suggested for a fall. */
   season: Term;
-  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential" }[]>;
+  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
   /** What the posting asks for, used when there is no relevance pass to lean on. */
   targetSkills?: string[];
   /** Filler already committed to earlier semesters, so prerequisites chain through it. */
@@ -888,7 +888,7 @@ export function fillOpenCredits(args: {
   completed: string[];
   excluded?: string[];
   termKinds: Term[];
-  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential" }[]>;
+  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
   targetSkills?: string[];
 }): FilledTerm[] {
   const { catalog, plan, termKinds } = args;

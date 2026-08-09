@@ -258,10 +258,10 @@ export function SemesterChart({
         )}
       </div>
 
-      <div className="scroll-x overflow-x-auto">
+      <div className="scroll-x chart-scroll overflow-x-auto">
         {/* The overlay lives inside the track, so it scrolls with the columns
             instead of hanging over a fixed viewport while they move. */}
-        <div ref={trackRef} className="relative flex min-w-max divide-x divide-[color:var(--border)]">
+        <div ref={trackRef} className="chart-track relative flex min-w-max divide-x divide-[color:var(--border)]">
           {names.map((name, t) => {
             const major = plan.placements.filter((p) => p.term === t);
             const extra = fill.get(t)?.picks ?? [];

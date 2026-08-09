@@ -33,7 +33,7 @@ export type PlannerState = {
   /** targetSkill -> catalog wording, from /api/match */
   skillMatches: Record<string, string[]>;
   /** courseId -> what it teaches for THIS job, with the catalog's own sentence */
-  relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential" }[]>;
+  relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
   /**
    * skill -> the sentence in the posting that asked for it, and whether a class
    * can actually supply it. This is what makes the requirement list checkable
