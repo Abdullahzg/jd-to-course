@@ -210,7 +210,7 @@ export function AskPanel({ plan }: { plan: Plan }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 rounded-full bg-[var(--blue)] px-6 py-4 text-white glow-strong transition-transform hover:scale-[1.04]"
+        className="no-print fixed bottom-6 right-6 z-40 flex items-center gap-2.5 rounded-full bg-[var(--blue)] px-6 py-4 text-white glow-strong transition-transform hover:scale-[1.04]"
       >
         <MessageCircle className="h-5 w-5" />
         Ask about this plan

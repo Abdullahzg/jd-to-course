@@ -267,6 +267,13 @@ export function SemesterChart({
             const extra = fill.get(t)?.picks ?? [];
             const forJob = major.filter((p) => p.covers.length).length + extra.filter((e) => e.teaches.length).length;
             const credits = (plan.termCredits[t] ?? 0) + (plan.openCreditsNeeded[t] ?? 0);
+            // Three or more 4000 level courses in one term is a semester
+            // advisors warn people about, and nothing on the board said so. A
+            // count, not a judgement: the student decides if they are that
+            // student, the board just refuses to hide it.
+            const heavy = [...major.map((p) => p.courseId), ...extra.map((e) => e.courseId)]
+              .map((id) => parseInt(courses.get(id)?.code.replace(/[^0-9]/g, "") ?? "0", 10))
+              .filter((n) => n >= 4000).length;
             const on = open === t;
             return (
               <div
@@ -286,6 +293,12 @@ export function SemesterChart({
                   <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
                         style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}>
                     <Sparkles className="h-2.5 w-2.5" />{forJob} for this job
+                  </span>
+                )}
+                {heavy >= 3 && (
+                  <span className="mt-1 block text-[10px]" style={{ color: "var(--amber)" }}
+                        title="Advanced courses carry heavier reading and project loads. Spreading them out is usually kinder">
+                    {heavy} courses at the 4000 level
                   </span>
                 )}
 

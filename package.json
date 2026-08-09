@@ -9,7 +9,9 @@
     "start": "next start",
     "solver:test": "tsx scripts/solver-test.ts",
     "ingest:validate": "tsx ingest/validate.ts",
-    "verify": "tsx ingest/validate.ts --check && tsx scripts/solver-test.ts"
+    "verify": "tsx ingest/validate.ts --check && tsx scripts/solver-test.ts",
+    "predev": "node scripts/gen-pipeline-version.mjs",
+    "prebuild": "node scripts/gen-pipeline-version.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -7,6 +7,7 @@ import type { Course, Plan, School, SolveResponse, StudentState, Term } from "@/
 import { prereqSatisfied } from "@/lib/solver/core";
 import { fillOpenCredits } from "@/lib/solver";
 import { termKindsFor } from "@/lib/verify";
+import { PIPELINE_VERSION } from "@/lib/pipeline-version";
 
 /**
  * Every change the student makes gets recorded with what they did, why the
@@ -68,10 +69,11 @@ export type PlannerState = {
  * at "No plan fits in 8 terms" through three separate fixes, because the
  * failure had been frozen into their session and every reload replayed it.
  */
-// v4: the fit prompts changed, and a cached result computed with the old ones
-// replays forever for an unchanged posting. A student re-testing the same job
-// description was seeing matches the current prompts already reject.
-const STORAGE = "slack.planner.v4";
+// Keyed by a content hash of the prompts, the solver and the catalog, so a
+// cached result cannot outlive the pipeline that produced it. The previous
+// hand bumped version sat unbumped through five prompt fixes, and a student
+// re-testing the same posting saw matches the current prompts already reject.
+const STORAGE = `slack.planner.${PIPELINE_VERSION}`;
 
 /** "Fall 2026", "Spring 2027", and so on from a start term. */
 function semesterLabels(startTerm: Term, n: number): string[] {
@@ -251,10 +253,14 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   // Restore across the Setup → Board → Coverage hop.
   useEffect(() => {
     try {
-      // Sweep the keys older builds used, so a stale plan cannot linger in a
-      // tab that was open across a deploy.
-      for (const old of ["slack.planner.v1", "slack.planner.v2", "slack.planner.v3"]) {
-        try { sessionStorage.removeItem(old); } catch { /* fine */ }
+      // Sweep every stale generation, whatever it was called. A fixed list
+      // has to be maintained, and unmaintained lists are how the last stale
+      // cache survived.
+      for (let k = sessionStorage.length - 1; k >= 0; k--) {
+        const key = sessionStorage.key(k);
+        if (key && key.startsWith("slack.planner.") && key !== STORAGE) {
+          try { sessionStorage.removeItem(key); } catch { /* fine */ }
+        }
       }
       const raw = sessionStorage.getItem(STORAGE);
       if (raw) {

@@ -77,7 +77,7 @@ export function BudgetBar() {
   const dim = onBlue ? "text-white/55" : "text-muted-foreground";
 
   return (
-    <div className={`relative z-50 shrink-0 border-b backdrop-blur ${
+    <div className={`no-print relative z-50 shrink-0 border-b backdrop-blur ${
       onBlue ? "border-white/15 bg-[var(--blue-deep)] text-white"
              : "border-border bg-background/95 supports-[backdrop-filter]:bg-background/80"
     }`}>

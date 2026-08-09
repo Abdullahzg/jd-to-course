@@ -20,6 +20,7 @@ import { SemesterChart } from "./semester-chart";
 import { WhatIsIt } from "./what-is-it";
 import { PrereqList } from "./prereq-list";
 import { CourseFinder } from "./course-finder";
+import { TakeIt } from "./take-it";
 
 const BASE_YEAR = 2026;
 
@@ -452,6 +453,16 @@ export function PlanScreen() {
           </div>
         </div>
 
+        {/* The details, on demand.
+            This block is the posting's facets, the add a skill box, the write
+            up and the alumni, and open it filled the whole first screen. What
+            a student checks daily is the verdict line and the timetable, so
+            those come first and this opens when the why is wanted. */}
+        <details className="group border-t plan-edge">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground lg:px-5">
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
+            What this job asks for, what the plan does about it, and graduates you could ask
+          </summary>
         <div className={`grid items-start gap-0 ${summary || summaryBusy ? "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]" : ""}`}>
           {/* what the posting asks for, in the posting's own words, with the
               posting's own sentence behind every one of them */}
@@ -739,6 +750,7 @@ export function PlanScreen() {
             )}
           </div>
         </div>
+        </details>
       </header>
 
       <div className="mt-3">
@@ -751,6 +763,8 @@ export function PlanScreen() {
             onJump={jumpToCourse}
           />
       </div>
+
+      <TakeIt plan={plan} courses={courses} names={names} fill={filledByTerm} />
 
       {/* The board shows what the solver reached for. This is how you ask for
           something it never offered, which for a whole degree is most of it.

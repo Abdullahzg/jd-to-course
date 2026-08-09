@@ -620,3 +620,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
     min-height: 2.75rem;
   }
 }
+
+/* Paper gets the plan, not the controls. */
+@media print {
+  .no-print, nav, [role="dialog"] { display: none !important; }
+  body { background: white; }
+}
