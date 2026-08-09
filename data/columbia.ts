@@ -172,9 +172,9 @@ const courses: Course[] = [
     false),
 
   C("MATH UN2020", "Honors Linear Algebra", 3,
-    "A more extensive treatment of the material in MATH UN2010 with an emphasis on proofs: vector spaces, linear transformations, eigenvalues, inner product spaces, and canonical forms.",
+    "A more extensive treatment of the material in MATH UN2010, with increased emphasis on proof. Not to be taken in addition to MATH UN2010 or MATH UN1207 - MATH UN1208.",
     UNVER("MATH UN1201 or the equivalent; honors section"), ["SP"],
-    [{ skill: "Linear algebra", evidence: "vector spaces, linear transformations, eigenvalues, inner product spaces, and canonical forms." }],
+    [{ skill: "Linear algebra", evidence: "A more extensive treatment of the material in MATH UN2010, with increased emphasis on proof." }],
     false, ["Honors section"]),
 
   C("APMA E2101", "Introduction to Applied Mathematics", 3,
@@ -191,20 +191,20 @@ const courses: Course[] = [
 
   // ── Math: probability / statistics ─────────────────────────────────────────
   C("STAT UN1201", "Calculus-Based Introduction to Statistics", 3,
-    "A calculus-based introduction to statistical inference: probability, random variables, expectation, sampling distributions, estimation, confidence intervals, hypothesis testing, and linear regression, with computing in R.",
+    "Designed for students who desire a strong grounding in statistical concepts with a greater degree of mathematical rigor than in STAT W1111. Random variables, probability distributions, pdf, cdf, mean, variance, correlation, conditional distribution, conditional mean and conditional variance, law of iterated expectations, normal, chi-square, F and t distributions, law of large numbers, central limit theorem, parameter estimation, unbiasedness, consistency, efficiency, hypothesis testing, p-value, confidence intervals, maximum likelihood estimation.",
     UNVER("One term of calculus"), ["FA", "SP", "SU"],
     [
-      { skill: "Statistics", evidence: "probability, random variables, expectation, sampling distributions, estimation, confidence intervals, hypothesis testing, and linear regression, with computing in R." },
-      { skill: "Probability", evidence: "probability, random variables, expectation, sampling distributions, estimation, confidence intervals, hypothesis testing, and linear regression, with computing in R." },
+      { skill: "Statistics", evidence: "parameter estimation, unbiasedness, consistency, efficiency, hypothesis testing, p-value, confidence intervals, maximum likelihood estimation." },
+      { skill: "Probability", evidence: "Random variables, probability distributions, pdf, cdf, mean, variance, correlation, conditional distribution, conditional mean and conditional variance, law of iterated expectations, normal, chi-square, F and t distributions, law of large numbers, central limit theorem" },
     ],
     true),
 
   C("STAT GU4001", "Introduction to Probability and Statistics", 3,
-    "A calculus-based introduction to probability theory and statistical inference: random variables, distributions, expectation, limit theorems, estimation, and hypothesis testing.",
+    "A calculus-based tour of the fundamentals of probability theory and statistical inference. Probability models, random variables, useful distributions, conditioning, expectations, law of large numbers, central limit theorem, point and confidence interval estimation, hypothesis tests, linear regression.",
     UNVER("Calculus through multivariable"), ["FA", "SP"],
     [
-      { skill: "Probability", evidence: "A calculus-based introduction to probability theory and statistical inference: random variables, distributions, expectation, limit theorems, estimation, and hypothesis testing." },
-      { skill: "Statistics", evidence: "A calculus-based introduction to probability theory and statistical inference: random variables, distributions, expectation, limit theorems, estimation, and hypothesis testing." },
+      { skill: "Probability", evidence: "Probability models, random variables, useful distributions, conditioning, expectations, law of large numbers, central limit theorem" },
+      { skill: "Statistics", evidence: "point and confidence interval estimation, hypothesis tests, linear regression." },
     ],
     false),
 
@@ -509,14 +509,36 @@ const merged: Course[] = [...courses];
 const rewrite = new Map<string, string>();
 for (const c of COLUMBIA_EXTRA) {
   if (byId.has(c.id)) {
-    // The hand-checked record wins on everything it states, but it cannot win
-    // on a fact it does not carry. The bulletin says Honors Linear Algebra is
-    // "not to be taken in addition to MATH UN2010"; the parser reads that off
-    // the page and the hand-written entry never mentioned it, so dropping the
-    // whole generated row put both courses in one plan. Take the rule.
+    // ── The page wins over the hand-written entry. ──────────────────────────
+    //
+    // These entries were written out by hand and they are not quotations, they
+    // are paraphrases from memory, which the interface then presented as the
+    // catalog's own words under the sentence "Every sentence above is copied
+    // from that page". It was not true for 38 courses. COMS W4152 was shown
+    // quoting "monitoring, and A/B testing" as proof it teaches product
+    // metrics; Columbia's page for that course contains neither phrase.
+    //
+    // The prerequisites were wrong too, in the dangerous direction. The
+    // bulletin gives COMS W4152 three prerequisites, "COMS W3134 AND COMS
+    // W3157 AND CSEE W3827", and the hand-written entry listed one. A planner
+    // that under-states a prerequisite hands a student a schedule they cannot
+    // register for.
+    //
+    // So description, prerequisites, credits, terms and evidence all come from
+    // the committed snapshot, which is the only version anybody can check. What
+    // the hand entry still contributes is the things a page cannot state about
+    // itself: a human's confirmation of the parse, and any restriction or
+    // overlap rule written by a person.
     const hand = courses.find((h) => h.id === c.id);
-    if (hand && !hand.overlapsWith?.length && c.overlapsWith?.length) {
-      hand.overlapsWith = c.overlapsWith;
+    if (hand) {
+      const idx = merged.findIndex((m) => m.id === c.id);
+      merged[idx] = {
+        ...c,
+        overlapsWith: hand.overlapsWith?.length ? hand.overlapsWith : c.overlapsWith,
+        restrictions: [...new Set([...hand.restrictions, ...c.restrictions])],
+        // Honest: nobody has checked the ingested parse for these either.
+        verified: false,
+      };
     }
     continue;
   }
@@ -554,6 +576,41 @@ const allCourses: Course[] = merged.map((c) =>
 );
 
 /**
+ * An "and" between courses that cannot both count is an "or".
+ *
+ * CourseLeaf prints alternatives joined by the word and. Columbia's page for
+ * COMS W4111 reads "Prerequisites: ( COMS W3134 ) and ( COMS W3136 ) and
+ * ( COMS W3137 )", and the same bulletin says a student may receive credit for
+ * only one of those three. Read literally it demands all three, which no
+ * student can ever satisfy, so the course became unreachable: prerequisite
+ * resolution rejected 399,982 of 400,000 candidate plans and the page reported
+ * that no plan fits.
+ *
+ * The rewrite is not a guess. The overlap rules are quoted from the bulletin
+ * itself, and they are what proves the conjunction cannot mean what it says.
+ */
+function orIfMutuallyExclusive(
+  n: Course["prereq"],
+  clash: Map<string, Set<string>>,
+): Course["prereq"] {
+  if (!n) return null;
+  if (n.op !== "AND" && n.op !== "OR") return n;
+  const children = n.children.map((c) => orIfMutuallyExclusive(c, clash)).filter(Boolean) as NonNullable<Course["prereq"]>[];
+  if (n.op === "AND") {
+    const ids = children.filter((c) => c.op === "COURSE").map((c) => (c as { courseId: string }).courseId);
+    const exclusive =
+      ids.length > 1 &&
+      ids.every((a) => ids.every((b) => a === b || clash.get(a)?.has(b)));
+    if (exclusive) {
+      const rest = children.filter((c) => c.op !== "COURSE");
+      const asOr = { op: "OR" as const, children: children.filter((c) => c.op === "COURSE") };
+      return rest.length ? { op: "AND", children: [asOr, ...rest] } : asOr;
+    }
+  }
+  return { op: n.op, children };
+}
+
+/**
  * Apply the bulletin's "cannot both count" rules over the merged catalog.
  *
  * Done here rather than on the rows themselves for two reasons. A rule survives
@@ -582,6 +639,9 @@ const allCourses: Course[] = merged.map((c) =>
       }
     }
   }
+
+  const clash = new Map(allCourses.map((c) => [c.id, new Set(c.overlapsWith ?? [])]));
+  for (const c of allCourses) c.prereq = orIfMutuallyExclusive(c.prereq, clash);
 }
 
 // "Any three COMS courses ... at least 3 points and are at the 3000 level or above."

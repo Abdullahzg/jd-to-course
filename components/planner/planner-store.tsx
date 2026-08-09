@@ -4,6 +4,8 @@ import React, {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
 import type { Course, Plan, School, SolveResponse, StudentState, Term } from "@/lib/types";
+import { prereqSatisfied } from "@/lib/solver/core";
+import { termKindsFor } from "@/lib/verify";
 
 /**
  * Every change the student makes gets recorded with what they did, why the
@@ -137,8 +139,60 @@ type Ctx = {
   exclude: (courseId: string, label?: string) => void;
   unexclude: (courseId: string, label?: string) => void;
   chooseSlot: (bucketId: string, replace: string, withCourse: string, replaceLabel?: string, withLabel?: string) => void;
+  keepInPlan: (courseId: string, label?: string) => void;
   reset: () => void;
 };
+
+/**
+ * Which semester to pin a course to when the student asks for it by name.
+ *
+ * `StudentState.locked` demands a term, and the wrong term is not a nudge, it is
+ * a plan that does not exist. Pinning COMS W4113 to semester 3 returns nothing
+ * at all, because that course is taught in Fall only and semester 3 of a Fall
+ * start is a Spring. So the term is picked the way the scheduler itself would:
+ * the first semester whose season the course is actually taught in, whose
+ * prerequisites are behind it, and which still has room under the credit cap.
+ *
+ * Exported so a solver harness can check the choice against the real solver
+ * rather than against a copy of this rule that can drift away from it.
+ */
+export function pickTermForKeep(
+  course: Course | undefined,
+  plan: Plan | null,
+  student: StudentState,
+  maxCreditsPerTerm: number,
+): number {
+  if (!course) return 0;
+  // Already on the board: pinning it anywhere else would move it for no reason.
+  const already = plan?.placements.find((p) => p.courseId === course.id);
+  if (already) return already.term;
+
+  const kinds = termKindsFor(student.startTerm as Term, student.horizonTerms);
+  const inSeason: number[] = [];
+  for (let t = 0; t < kinds.length; t++) {
+    if (course.termsOffered.includes(kinds[t])) inSeason.push(t);
+  }
+  if (!inSeason.length) return 0;
+
+  const placements = plan?.placements ?? [];
+  const ready = (t: number) => {
+    const have = new Set<string>(student.completed);
+    for (const p of placements) if (p.term < t) have.add(p.courseId);
+    return prereqSatisfied(course.prereq, have);
+  };
+  const room = (t: number) => (plan?.termCredits[t] ?? 0) + course.credits <= maxCreditsPerTerm;
+
+  return (
+    inSeason.find((t) => ready(t) && room(t))
+    // Nothing satisfies both. The cap is the softer of the two: the solver may
+    // move any unpinned course out of the semester it is told to use, while a
+    // prerequisite that has not happened yet is a flat no.
+    ?? inSeason.find((t) => ready(t))
+    // No semester has the prerequisites behind it either, so give them as much
+    // room as the horizon has and let the solver say whether that works.
+    ?? inSeason[inSeason.length - 1]
+  );
+}
 
 const PlannerCtx = createContext<Ctx | null>(null);
 
@@ -181,6 +235,9 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
    *  ref; the closure copy is the empty map from before the fetch landed, and
    *  that is why the change log printed raw ids instead of course codes. */
   const coursesRef = useRef<Map<string, Course>>(new Map());
+  /** same reason: the credit cap lives on the program, and keepInPlan needs it
+   *  from inside a stable callback that cannot see the memo above. */
+  const programRef = useRef<School["programs"][number] | null>(null);
   /** the plan as first solved, so undo can walk all the way back to it */
   const baseline = useRef<{ state: PlannerState; result: SolveResponse | null } | null>(null);
 
@@ -286,6 +343,8 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     () => school?.programs.find((p) => p.id === state.programId) ?? null,
     [school, state.programId],
   );
+
+  useEffect(() => { programRef.current = program; }, [program]);
 
   const solveWith = useCallback(async (
     next: PlannerState,
@@ -457,6 +516,43 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     });
   }, [mutateAndSolve]);
 
+  /**
+   * "Put this exact course in the plan."
+   *
+   * Not the same move as picking an alternative for a slot, and the difference
+   * was measured. chooseSlot rules out the course it is replacing, and for a
+   * course asked for by name that is the wrong mechanism: excluding COMS W4121
+   * to make room for COMS W4113 returns no plan at all, because W4113 is taught
+   * in Fall only and the slot it was aimed at is a Spring. Adding it and letting
+   * the solver work out what has to leave reaches plans exclusion cannot:
+   * COMS W4156 displaces COMS W4118 by itself, and COMS W4731 arrives while
+   * COMS W4771 stays, which no exclusion can produce because excluding W4771 has
+   * no solution at all.
+   */
+  const keepInPlan = useCallback((courseId: string, label = courseId) => {
+    const term = pickTermForKeep(
+      coursesRef.current.get(courseId),
+      resultRef.current?.plans?.[0] ?? null,
+      stateRef.current.student,
+      programRef.current?.maxCreditsPerTerm ?? Infinity,
+    );
+    mutateAndSolve((s) => ({
+      ...s,
+      student: {
+        ...s.student,
+        locked: [...s.student.locked.filter((l) => l.courseId !== courseId), { courseId, term }],
+        // Asking for a course by name and having removed it earlier are the same
+        // question answered two ways, and the solver drops every excluded course
+        // from its pools, so a pin on one can only ever come back as "no plan
+        // fits". The ask wins. Nothing else on the list is touched.
+        excluded: s.student.excluded.filter((x) => x !== courseId),
+      },
+    }), courseId, {
+      action: `Added ${label}`,
+      reason: "You asked for this course by name, so the plan was worked out again with it held in place. Anything that had to leave to make room for it is listed here.",
+    });
+  }, [mutateAndSolve]);
+
   const jumpTo = useCallback((i: number) => {
     const rec = history[i];
     if (!rec) return;
@@ -614,7 +710,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     undo, redo,
     lastChange: historyIndex >= 0 ? history[historyIndex] ?? null : null,
     summary, summaryBusy,
-    solveWith, runSolve, toggleLock, exclude, unexclude, chooseSlot, reset,
+    solveWith, runSolve, toggleLock, exclude, unexclude, chooseSlot, keepInPlan, reset,
   };
 
   return <PlannerCtx.Provider value={value}>{children}</PlannerCtx.Provider>;

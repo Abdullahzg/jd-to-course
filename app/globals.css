@@ -3,6 +3,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * One knob for how much of the page a student has to take in.
+ *
+ * Every size on the page is in rem, so shrinking the root shrinks the whole
+ * interface together: type, padding, gaps, radii. The page carries a lot of
+ * genuine detail, a whole degree with its evidence, and at the browser default
+ * of 16px that detail overflowed the screen and read as noise. This buys back
+ * roughly a fifth of the vertical space without dropping anything or making any
+ * one thing disproportionately small.
+ *
+ * Touch targets are exempt below, because a smaller page must not mean a page
+ * that is harder to hit.
+ */
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 1536px) {
+  html { font-size: 15px; }
+}
+
 :root {
   --background: oklch(0.988 0.006 240);
   --foreground: oklch(0.21 0.045 250);
@@ -590,4 +611,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
   }
   .landed { animation: landed 1.4s ease-out 1; }
   @media (prefers-reduced-motion: reduce) { .landed { animation: none; } }
+}
+
+
+/* A smaller page must not mean smaller things to press. */
+@media (pointer: coarse) {
+  button, a, summary, input, select {
+    min-height: 2.75rem;
+  }
 }

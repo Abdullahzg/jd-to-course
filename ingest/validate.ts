@@ -23,6 +23,54 @@ const fail = (m: string) => problems.push(m);
 const warn = (m: string) => warnings.push(m);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Every sentence the page attributes to the catalog must be ON the catalog page.
+//
+// The plan page prints, under each course's evidence, "Every sentence above is
+// copied from that page. If one is not there, this claim is wrong and should be
+// reported." That promise was false for 38 courses. The hand written entries in
+// data/columbia.ts were paraphrases written from memory, not quotations, and
+// they override the ingested rows that really are verbatim. COMS W4152 was
+// shown quoting "monitoring, and A/B testing" as the catalog's words; Columbia's
+// page for that course does not contain either phrase.
+//
+// Checked against the committed HTML, not against anything derived from it,
+// because the derived data is what was wrong.
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const dir = join(process.cwd(), "data/snapshots/courses");
+  const flat = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+  for (const school of SCHOOLS) {
+    for (const c of school.courses) {
+      const f = join(dir, `${c.code.replace(/\s+/g, "")}.html`);
+      if (!existsSync(f)) continue;
+      const page = flat(
+        readFileSync(f, "utf8").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " "),
+      );
+      // A prefix rather than the whole string: the bulletin wraps lines and the
+      // parser normalises punctuation, so an exact match would fail on
+      // formatting rather than on substance.
+      const head = (s: string, n: number) => flat(s).slice(0, n);
+      if (c.description && head(c.description, 60) && !page.includes(head(c.description, 60))) {
+        fail(
+          `${school.shortName} ${c.code}: the description shown to students is not on its own ` +
+          `catalog page. Ours starts "${c.description.slice(0, 60)}"`,
+        );
+      }
+      for (const s of c.skills ?? []) {
+        if (s.evidence && !page.includes(head(s.evidence, 45))) {
+          fail(
+            `${school.shortName} ${c.code}: quotes "${s.evidence.slice(0, 60)}" as proof it ` +
+            `teaches ${s.skill}, and that sentence is not on the page`,
+          );
+        }
+      }
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Every "cannot both count" rule the snapshots state must be encoded.
 //
 // This is checked against the committed HTML rather than against the catalog,

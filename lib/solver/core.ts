@@ -49,6 +49,122 @@ export function prereqSatisfied(
   }
 }
 
+/** One prerequisite the plan actually leans on, and what it leaned on instead. */
+export type PrereqStep = {
+  /** courses already held that satisfy this step */
+  via: string[];
+  /** other courses that would have satisfied the same step */
+  alternatives: string[];
+  /** catalog wording relied on that names no course this catalog has */
+  assumed: string[];
+};
+
+/**
+ * WHICH branch of a prerequisite tree is carrying the weight.
+ *
+ * prereqSatisfied answers yes or no, and its OR case is `.some(...)`, so the one
+ * fact a reader wants is thrown away: the rule says one of three courses, and
+ * nothing anywhere says which one the plan is using. This returns that, per
+ * step, along with the courses it passed over.
+ *
+ * It also stops UNVERIFIABLE passing in silence. prereqSatisfied treats catalog
+ * wording as satisfied, which means a plan can rest entirely on the words "or
+ * knowledge of Java" with nothing on screen telling the student they are the
+ * ones who have to make that true. Here such a branch comes back with an empty
+ * `via` and the wording in `assumed`, and it loses to any branch a real course
+ * backs.
+ *
+ * Returns null when nothing in the tree is satisfied. An empty array means the
+ * course has no prerequisites to report, which is not the same answer.
+ */
+export function prereqSteps(node: PrereqNode | null, have: Set<string>): PrereqStep[] | null {
+  if (!node) return [];
+  switch (node.op) {
+    case "COURSE":
+      return have.has(node.courseId)
+        ? [{ via: [node.courseId], alternatives: [], assumed: [] }]
+        : null;
+    case "UNVERIFIABLE":
+      return [{ via: [], alternatives: [], assumed: [node.text] }];
+    case "AND": {
+      const out: PrereqStep[] = [];
+      const seen = new Set<string>();
+      for (const child of node.children) {
+        const steps = prereqSteps(child, have);
+        if (steps === null) return null;
+        for (const s of steps) {
+          // The parsed catalog repeats children (CSEE W4140's rule is
+          // OR(W4119, W4119)), and a repeat is one requirement, not two.
+          const key = `${s.via.join("+")}|${s.assumed.join("+")}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push(s);
+        }
+      }
+      return out;
+    }
+    case "OR": {
+      // The branch is the unit of choice, so an OR reports one step even when
+      // the winning branch is an AND of two courses. COMS W4444's rule is
+      // OR(AND(W3134, W3136), AND(W3137, CSEE W3827)): reporting four separate
+      // steps would say each course is individually optional, which is false.
+      const branches = node.children.map((child) => collapseSteps(prereqSteps(child, have)));
+      let winner = -1;
+      for (let i = 0; i < branches.length; i++) {
+        const b = branches[i];
+        if (!b) continue;
+        if (winner < 0 || preferStep(b, branches[winner]!) < 0) winner = i;
+      }
+      if (winner < 0) return null;
+
+      const chosen = branches[winner]!;
+      const alternatives = [...chosen.alternatives];
+      node.children.forEach((child, i) => {
+        if (i === winner) return;
+        for (const id of coursesIn(child)) if (!alternatives.includes(id)) alternatives.push(id);
+      });
+      return [{
+        via: chosen.via,
+        assumed: chosen.assumed,
+        alternatives: alternatives.filter((id) => !chosen.via.includes(id)),
+      }];
+    }
+  }
+}
+
+/** Fold a branch's steps into the single step an OR is choosing between. */
+function collapseSteps(steps: PrereqStep[] | null): PrereqStep | null {
+  if (steps === null) return null;
+  const via: string[] = [];
+  const alternatives: string[] = [];
+  const assumed: string[] = [];
+  for (const s of steps) {
+    for (const id of s.via) if (!via.includes(id)) via.push(id);
+    for (const id of s.alternatives) if (!alternatives.includes(id)) alternatives.push(id);
+    for (const t of s.assumed) if (!assumed.includes(t)) assumed.push(t);
+  }
+  return { via, alternatives: alternatives.filter((id) => !via.includes(id)), assumed };
+}
+
+/**
+ * Which satisfied branch to report. Coursework beats wording, because "carried
+ * by COMS W3134" is a fact the student can check against their transcript and
+ * "carried by the words or knowledge of Java" is work they still have to do.
+ * Among equals, the branch that spends the fewest courses.
+ */
+function preferStep(a: PrereqStep, b: PrereqStep): number {
+  const rank = (s: PrereqStep) => (s.via.length ? (s.assumed.length ? 1 : 0) : 2);
+  return rank(a) - rank(b) || a.via.length - b.via.length || a.assumed.length - b.assumed.length;
+}
+
+/** Every course id named anywhere in a subtree, deduped, in reading order. */
+function coursesIn(node: PrereqNode | null, out: string[] = []): string[] {
+  if (!node) return out;
+  if (node.op === "COURSE") { if (!out.includes(node.courseId)) out.push(node.courseId); }
+  else if (node.op === "AND" || node.op === "OR") node.children.forEach((c) => coursesIn(c, out));
+  return out;
+}
+
 export function collectUnverifiable(node: PrereqNode | null, out: string[] = []): string[] {
   if (!node) return out;
   if (node.op === "UNVERIFIABLE") out.push(node.text);
@@ -67,6 +183,20 @@ export function neededFor(
   have: Set<string>,
   catalog: Map<string, Course>,
   depth = 0,
+  /**
+   * Courses that cannot be used: taken off the table by the student, or ruled
+   * out because the bulletin forbids counting them with something already
+   * passed.
+   *
+   * This used to be missing, and an OR was resolved to its cheapest branch
+   * without regard for whether that branch was reachable. resolveSupport then
+   * saw an unusable course and threw the whole plan away, even though another
+   * branch of the same OR was fine. It stayed hidden while nothing was ever
+   * excluded. The moment a student's completed Data Structures ruled out the
+   * other two versions of it, the search rejected 399,982 of 400,000 candidate
+   * plans and the page said no plan fits.
+   */
+  excluded: Set<string> = new Set(),
 ): Set<string> | null {
   if (!node || depth > 12) return new Set();
   switch (node.op) {
@@ -75,12 +205,13 @@ export function neededFor(
     case "COURSE": {
       if (have.has(node.courseId)) return new Set();
       if (!catalog.has(node.courseId)) return null; // not in the committed catalog
+      if (excluded.has(node.courseId)) return null;
       return new Set([node.courseId]);
     }
     case "AND": {
       const acc = new Set<string>();
       for (const child of node.children) {
-        const r = neededFor(child, have, catalog, depth + 1);
+        const r = neededFor(child, have, catalog, depth + 1, excluded);
         if (r === null) return null;
         r.forEach((x) => acc.add(x));
       }
@@ -90,7 +221,7 @@ export function neededFor(
       let best: Set<string> | null = null;
       let bestCost = Infinity;
       for (const child of node.children) {
-        const r = neededFor(child, have, catalog, depth + 1);
+        const r = neededFor(child, have, catalog, depth + 1, excluded);
         if (r === null) continue;
         const cost = [...r].reduce((s, id) => s + (catalog.get(id)?.credits ?? 3), 0);
         if (cost < bestCost) { bestCost = cost; best = r; }
@@ -120,7 +251,7 @@ export function resolveSupport(
     if (!course) return null;
     const have = new Set<string>([...completed, ...chosen, ...support]);
     if (prereqSatisfied(course.prereq, have)) continue;
-    const need = neededFor(course.prereq, have, catalog);
+    const need = neededFor(course.prereq, have, catalog, 0, excluded);
     if (need === null) return null;
     let added = false;
     for (const n of need) {
@@ -223,6 +354,18 @@ export function buildModel(
   const catalog = new Map(school.courses.map((c) => [c.id, c]));
   const completed = new Set(student.completed);
   const excluded = new Set(student.excluded);
+
+  // A course the bulletin will not let you count alongside one you have already
+  // passed is not a candidate.
+  //
+  // The overlap rules were enforced only in the elective filler, never in the
+  // search itself, so the solver could and did put COMS W3136 and COMS W3137 in
+  // one plan. Columbia's page for each of them says you may receive credit for
+  // only one. Charging a student for a course that cannot count is the exact
+  // failure this whole catalog exists to prevent.
+  for (const id of completed) {
+    for (const other of catalog.get(id)?.overlapsWith ?? []) excluded.add(other);
+  }
 
   // Dedup target skills, cap at the bitmask width.
   const seen = new Set<string>();
@@ -920,6 +1063,18 @@ export function search(
     // Locked courses must appear in the plan (constraint 8).
     for (const id of m.lockedByCourse.keys()) if (!all.has(id)) return;
 
+    // Nothing the bulletin forbids counting together.
+    //
+    // This was enforced only in the elective filler, so the search itself
+    // returned plans holding COMS W3136 and COMS W3137 at once, which
+    // Columbia's page for each of them rules out. Checked on the whole course
+    // set rather than per bucket, because the two halves of a forbidden pair
+    // can be credited to different requirements.
+    for (const id of all) {
+      const clash = m.catalog.get(id)?.overlapsWith;
+      if (clash) for (const other of clash) if (all.has(other)) return;
+    }
+
     let mask = 0;
     let credits = 0;
     for (const id of all) {
@@ -1014,7 +1169,24 @@ export function search(
       if (!NO_PRUNE && innerUpper <= bestObj) return;
 
       const klass = bucket.classes[ci];
-      const available = klass.members.filter((id) => !assignment.has(id));
+      // Courses that can actually be taken together, in order.
+      //
+      // Two things are being avoided. A member that clashes with something
+      // already committed on this branch, and a member that clashes with an
+      // earlier member of this same list. The second one matters more than it
+      // looks: with no job description every course has an empty skill mask, so
+      // a symmetry class can hold COMS W3134, W3136 and W3137 at once, and
+      // taking the first two off the front produced a pair the bulletin
+      // forbids on every single branch. The set was thrown out at the end each
+      // time, so the search burned two million nodes and reported that a
+      // perfectly ordinary four term plan was impossible.
+      const available: string[] = [];
+      for (const id of klass.members) {
+        if (assignment.has(id)) continue;
+        const clash = m.catalog.get(id)?.overlapsWith;
+        if (clash && clash.some((o) => assignment.has(o) || available.includes(o))) continue;
+        available.push(id);
+      }
       const unitSize = bucket.unit === "credits" ? klass.credits : 1;
       const maxTake = Math.min(available.length, Math.ceil(left / unitSize));
 
@@ -1028,7 +1200,10 @@ export function search(
           maskAcc | (take > 0 ? klass.skillMask : 0),
         );
         chosenIds.forEach((id) => { assignment.delete(id); picked.pop(); });
-        if (Date.now() > deadline || nodes > nodeLimit) return;
+        // The two sibling checks above both record that the search was cut
+        // short. This one did not, so hitting the node cap here reported "no
+        // plan fits in 4 terms" for a plan that fits perfectly well.
+        if (Date.now() > deadline || nodes > nodeLimit) { exhausted = false; return; }
       }
     };
 

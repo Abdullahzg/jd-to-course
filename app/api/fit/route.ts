@@ -107,6 +107,22 @@ The rules that matter:
 - Read what the job is actually for. A posting about content moderation systems
   and a posting about payments both mention scale, and they need different
   things. The aspect you write must be recognisably about THIS posting.
+- THE SAME WORD IN TWO TRADES IS TWO WORDS. Before you match on a term, say to
+  yourself what it refers to in the posting and what it refers to in the course
+  description, and check they are the same thing. "Environment" is a room full
+  of people in a customer posting and a simulator in reinforcement learning.
+  "Agent" is a support rep and a policy learner. "Vision" is a product direction
+  and a camera pipeline. "Network" is a room of contacts and a stack of
+  protocols. "Pipeline" is a list of deals and a sequence of data jobs. "Scale"
+  is more customers and more machines. "Memory" is what a person forgets and
+  what a process allocates. "Model" is a spreadsheet of the business and a set
+  of learned weights. Same spelling, different trade, helps:false.
+- WOULD A PRACTITIONER CALL THIS TRAINING. Picture someone who already does this
+  job well, reading this course description. Do they say "yes, that is where you
+  learn that part of my job", or do they say "that is a different profession"?
+  A content policy manager does not learn their job from convolutional neural
+  networks, however much both deal with images. This test catches what the word
+  test misses, so apply both.
 - helps:false is the common answer. Most of a university catalog has nothing to
   do with any given job, and saying so is the useful part. A planner that finds
   every course relevant has told the student nothing.
@@ -162,7 +178,44 @@ EXAMPLE 6, one course serving two parts.
   user studies, accessibility, and implementation of interactive systems."
   ANSWER: helps true, aspects BOTH parts.
   WHY: the sentence names accessibility and names design methods with user
-  studies. List every part a course genuinely serves, not just the first.`;
+  studies. List every part a course genuinely serves, not just the first.
+
+EXAMPLE 7, the posting is not a technical posting at all.
+  PART OF THE JOB: "Testing and optimizing content governance approaches"
+  COURSE: Computer Vision I. "image formation, feature detection, and object
+  recognition with convolutional neural networks."
+  ANSWER: helps false.
+  WHY: this job is written for someone who drafts policy and reads data about
+  how it behaves once live, not someone who builds detectors. "Content" and
+  "detection" exist in both worlds and mean different work in each. A content
+  policy manager would not call this description training for their job. A
+  posting being non technical does not mean any technical course will do, it
+  means most of this catalog is the wrong answer and saying so is the useful
+  part.
+
+EXAMPLE 8, the domain in the title decides what the course is about.
+  PART OF THE JOB: "Training and evaluating machine learning models"
+  COURSE: Machine Learning for Biomolecular Applications. "machine learning
+  methods applied to protein structure, sequence alignment, and molecular
+  property prediction."
+  ANSWER: helps false.
+  WHY: the posting is a software company, not a lab. Someone finishing this
+  course can predict molecular properties, and the worked examples, the data and
+  the assumptions are all biology. A domain word in the title, biomedical,
+  biomolecular, clinical, genomic, civil, environmental, is enough on its own
+  unless the description says the material is general.
+
+EXAMPLE 9, the same part of the job, answered properly.
+  PART OF THE JOB: "Training and evaluating machine learning models"
+  COURSE: Machine Learning. "supervised and unsupervised learning, model
+  selection, generalisation and evaluation of learned models."
+  ANSWER: helps true, strength central.
+  WHY: no domain in the title and the description is the general method, which
+  is what this part of the job asks for. This is the course the posting means,
+  and it is exactly why the biomedical one beside it is not. Note the contrast
+  with EXAMPLE 5: the same course is false for "applying AI-assisted development
+  practices", because that part is about USING a tool and this one is about
+  building the models.`;
 
 const SCHEMA = {
   name: "course_fit",
@@ -335,6 +388,24 @@ Return FALSE if any of these apply:
 Return TRUE only when someone sceptical, looking for a reason to say no, could
 not find one. Judge each claim on its own two sentences and nothing else.
 
+TWO TESTS. Run both on every claim before you answer. A claim has to pass both,
+because one alone lets through most of what gets through.
+
+  1. THE SAME SENSE. Name, to yourself, what the shared term refers to in the
+     job sentence and what it refers to in the course sentence. If those are two
+     different things, keep is false however well the two sentences read side by
+     side. This is not a rare trick. Twenty claims in a recent sweep of ten
+     postings turned on one word carrying two meanings.
+  2. WOULD A PRACTITIONER CALL THIS TRAINING. Picture someone who already does
+     the job in the posting, and does it well, reading the course sentence. Do
+     they say "yes, that is where you learn that part of my job", or do they say
+     "that is a different profession"? A content policy manager does not learn
+     their job from convolutional neural networks. A backend engineer does not
+     learn theirs from protein structure prediction.
+
+A claim can pass one and fail the other. The right sense in the wrong profession
+is still false, and the right profession in the wrong sense is still false.
+
 WORKED EXAMPLES, all taken from real failures of this system.
 
   PART: "Handling difficult customer environments"
@@ -358,7 +429,39 @@ WORKED EXAMPLES, all taken from real failures of this system.
 
   PART: "Managing a kitchen team"
   PROOF: "process scheduling, thread management, and synchronisation"
-  keep: false. Scheduling people is not scheduling processes.`;
+  keep: false. Scheduling people is not scheduling processes.
+
+  PART: "Working in fast paced customer environments"
+  PROOF: "training agents in simulated environments with reward shaping"
+  keep: false. Fails both tests at once. "Environment" is a simulator here and a
+  workplace there, and nobody in customer success would call reward shaping
+  training for their job.
+
+  PART: "Reviewing flagged content against written policy"
+  PROOF: "image classification, segmentation, and object detection"
+  keep: false. The course builds the detector. The job reads the queue and
+  writes the rule. This posting is not a technical posting, and a technical
+  course that touches the same subject matter is not training for it.
+
+  PART: "Training and evaluating machine learning models"
+  PROOF: "machine learning methods applied to protein structure and molecular
+  property prediction"
+  keep: false. The method is shared, the domain is not, and the posting is a
+  software company. A domain word in the proof, biomedical, biomolecular,
+  clinical, genomic, civil or environmental, settles this on its own.
+
+  PART: "Training and evaluating machine learning models"
+  PROOF: "supervised and unsupervised learning, model selection, generalisation
+  and evaluation of learned models"
+  keep: true. Same work, no borrowed domain, and this is what the posting means
+  by the words it used.
+
+  PART: "Making the site faster under real traffic"
+  PROOF: "performance measurement, caching, load balancing, and the design of
+  high throughput web services"
+  keep: true. "Traffic" means requests on both sides, and a backend engineer
+  would call this training for that part of their job. Both tests pass, so the
+  default to no does not apply.`;
 
 const REFUTE_SCHEMA = {
   name: "verdicts",
@@ -492,11 +595,26 @@ export async function POST(req: Request) {
     for (let i = 0; i < targets.length; i += TRIAGE_PER_CALL) {
       triageBatches.push(targets.slice(i, i + TRIAGE_PER_CALL));
     }
-    let triageCost = 0;
     let triaged = 0;
-    const shortlist: typeof targets = [];
+    /**
+     * Held per batch and stitched together afterwards, rather than appended to
+     * one array as the calls land.
+     *
+     * Appending from inside Promise.all put the shortlist in network completion
+     * order, which is different every run. The same posting kept the same 22
+     * courses twice and returned 5 helpful courses on one run and 8 on the
+     * next, because those 22 were sliced into different groups of PER_CALL and
+     * a course judged alongside different neighbours comes back differently.
+     * Nothing above this line is random, so nothing below it should be either.
+     *
+     * The cost is summed the same way for the same reason: floating point
+     * addition is not associative, so accumulating it in completion order made
+     * the reported figure wobble in its last digits.
+     */
+    const triageOut: { kept: typeof targets; cost: number }[] =
+      triageBatches.map(() => ({ kept: [], cost: 0 }));
 
-    await Promise.all(triageBatches.map(async (batch) => {
+    await Promise.all(triageBatches.map(async (batch, bi) => {
       const listing = batch
         .map((c) => `${c.code} | ${c.title} | ${c.description.slice(0, TRIAGE_CHARS)}`)
         .join("\n");
@@ -508,18 +626,25 @@ export async function POST(req: Request) {
           user: `${brief}\n\nCOURSES\n${listing}`,
           schema: TRIAGE_SCHEMA as never,
           maxTokens: 600,
+          // Stated here rather than left to the default in lib/ai/haiku.ts,
+          // because this endpoint is expected to answer the same question the
+          // same way twice and that should not depend on another file.
+          temperature: 0,
         });
-        triageCost += costUsd;
         const keep = new Set((content.keep ?? []).map((k) => codeKey(String(k))));
-        for (const c of batch) if (keep.has(codeKey(c.code))) shortlist.push(c);
+        triageOut[bi] = { kept: batch.filter((c) => keep.has(codeKey(c.code))), cost: costUsd };
       } catch {
         // A triage call that fails must not silently delete a quarter of the
         // catalog, so its whole batch goes through to the careful pass.
-        shortlist.push(...batch);
+        triageOut[bi] = { kept: [...batch], cost: 0 };
       }
       triaged += batch.length;
       onProgress?.({ read: triaged, total: targets.length, found: [], phase: "triage" });
     }));
+
+    // Catalog order, because triageBatches are consecutive slices of targets.
+    const shortlist = triageOut.flatMap((t) => t.kept);
+    const triageCost = triageOut.reduce((sum, t) => sum + t.cost, 0);
 
     // Nothing survived, which is a real answer for a job a CS catalog cannot
     // serve, but read everything rather than trust it if it looks like a fault.
@@ -534,6 +659,10 @@ export async function POST(req: Request) {
     // as reading seventy does, in a fifth of the time.
     const DEEP_CAP = deepCap > 0 ? deepCap : 72;
     const survived = shortlist.length ? shortlist : targets;
+    // Whatever falls off the cap is now the tail of the catalog rather than
+    // whichever triage call happened to answer last, so two identical requests
+    // read the same courses in full. It is still an arbitrary place to cut, and
+    // notFullyRead below is what says so.
     const deep = survived.slice(0, DEEP_CAP);
     const notRead = survived.length - deep.length;
 
@@ -567,9 +696,10 @@ export async function POST(req: Request) {
               key,
               purpose: `fit: ${batch.length} courses`,
               system: SYSTEM,
-                      user: `${brief}\n\nCOURSES\n${courseText}`,
+              user: `${brief}\n\nCOURSES\n${courseText}`,
               schema: SCHEMA as never,
               maxTokens: 1800,
+              temperature: 0,
             });
 
             const kept: CourseFit[] = [];
@@ -664,6 +794,7 @@ export async function POST(req: Request) {
             user: listing,
             schema: REFUTE_SCHEMA as never,
             maxTokens: 700,
+            temperature: 0,
           });
           return { group, verdicts: content.verdicts ?? [], cost };
         } catch {
@@ -706,9 +837,15 @@ export async function POST(req: Request) {
     return {
       ok: true as const,
       fits,
+      // Rarest part of the job first, then by name. The tiebreak is there so
+      // this order does not depend on which course happened to mention a part
+      // first, which is one more thing that could differ between two identical
+      // requests.
       aspects: [...aspects.entries()].map(([k, v]) => ({
         key: k, label: v.label, courses: v.courses,
-      })).sort((a, b) => a.courses.length - b.courses.length),
+      // Compared with < rather than localeCompare, which sorts differently
+      // depending on the machine's locale.
+      })).sort((a, b) => a.courses.length - b.courses.length || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
       coursesRead: targets.length - unread,
       /** How many survived the first pass and were read in full. */
       shortlisted: deep.length,

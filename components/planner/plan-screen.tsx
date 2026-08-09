@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Check, ChevronDown, ExternalLink, Loader2, Lock, Redo2,
   RotateCcw, Sparkles, TriangleAlert, Undo2, X,
   Plus,
   Users,
+  Search,
 } from "lucide-react";
 import type { Course, Placement, Plan, SlotAlternative, SlotChoice, Term } from "@/lib/types";
 import { usePlanner } from "./planner-store";
@@ -17,6 +18,8 @@ import { AskPanel } from "./ask-panel";
 import { RichText } from "./rich-text";
 import { SemesterChart } from "./semester-chart";
 import { WhatIsIt } from "./what-is-it";
+import { PrereqList } from "./prereq-list";
+import { CourseFinder } from "./course-finder";
 
 const BASE_YEAR = 2026;
 
@@ -53,13 +56,48 @@ const KIND_META: Record<SkillKind, { label: string; color: string }> = {
  */
 export function PlanScreen() {
   const {
-    state, setState, result, solving, courses, school, program, changed,
+    state, setState, result, solving, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
   } = usePlanner();
   const { noteSpend } = useBudget();
 
   const [openAlts, setOpenAlts] = useState<string | null>(null);
+  const [finderOpen, setFinderOpen] = useState(false);
+
+  /**
+   * Go to a course and make it obvious which one arrived.
+   *
+   * This lived inline in the chart's onJump prop, so nothing else on the page
+   * could reuse it. The prerequisite tags need exactly this behaviour, and a
+   * second implementation that scrolled slightly differently would be worse
+   * than no second implementation.
+   */
+  const jumpToCourse = useCallback((t: number, courseId?: string) => {
+    if (courseId) {
+      setOpenAlts(courseId);
+      setTimeout(() => {
+        const el = document.getElementById(`course-${courseId}`);
+        if (!el) return;
+        // A filler course lives inside a collapsed disclosure. Scrolling would
+        // land on a hidden element, so anything shut between here and the page
+        // root is opened first.
+        let node: HTMLElement | null = el;
+        while (node) {
+          if (node instanceof HTMLDetailsElement) node.open = true;
+          node = node.parentElement;
+        }
+        requestAnimationFrame(() => {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.remove("landed");
+          void el.offsetWidth;
+          el.classList.add("landed");
+        });
+      }, 60);
+      return;
+    }
+    document.getElementById(`term-${t}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const [openQuote, setOpenQuote] = useState<string | null>(null);
   const [draftSkill, setDraftSkill] = useState("");
   const [addingSkill, setAddingSkill] = useState(false);
@@ -184,6 +222,19 @@ export function PlanScreen() {
   };
 
   const plan = result?.plans?.[state.activePlan] ?? result?.plans?.[0] ?? null;
+
+  // The prerequisite list has to say whether each course it names is in this
+  // plan, already finished, or neither, so both sets are derived once here
+  // rather than rebuilt inside every card.
+  const plannedIds = useMemo(
+    () => new Set(plan?.placements.map((p) => p.courseId) ?? []),
+    [plan],
+  );
+  const completedIds = useMemo(
+    () => new Set(state.student.completed),
+    [state.student.completed],
+  );
+
   // A, B and C were rendered identically, so changing option looked like
   // nothing happened. Each carries its own accent through the whole page.
   const planTint = ["plan-a", "plan-b", "plan-c"][state.activePlan % 3];
@@ -677,40 +728,44 @@ export function PlanScreen() {
             plan={plan}
             courses={courses}
             fill={filledByTerm}
-            onJump={(t, courseId) => {
-              // Clicking a course in the chart used to scroll to its semester
-              // and leave you hunting for the row. It now goes to the course
-              // itself, opens the alternatives underneath it, and flashes it so
-              // there is no doubt which one you asked for.
-              if (courseId) {
-                // Open the alternatives on the card being jumped to, so the
-                // choice is visible on arrival rather than one click later.
-                setOpenAlts(courseId);
-                setTimeout(() => {
-                  const el = document.getElementById(`course-${courseId}`);
-                  if (!el) return;
-                  // A filler course lives inside a collapsed disclosure. Scroll
-                  // would land on a hidden element, so anything shut between
-                  // here and the page root is opened first.
-                  let node: HTMLElement | null = el;
-                  while (node) {
-                    if (node instanceof HTMLDetailsElement) node.open = true;
-                    node = node.parentElement;
-                  }
-                  el.closest("[data-collapsed]")?.dispatchEvent(new CustomEvent("expand"));
-                  requestAnimationFrame(() => {
-                    el.scrollIntoView({ behavior: "smooth", block: "center" });
-                    el.classList.remove("landed");
-                    void el.offsetWidth;
-                    el.classList.add("landed");
-                  });
-                }, 60);
-                return;
-              }
-              document.getElementById(`term-${t}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
+            completed={state.student.completed}
+            onJump={jumpToCourse}
           />
       </div>
+
+      {/* The board shows what the solver reached for. This is how you ask for
+          something it never offered, which for a whole degree is most of it.
+          It opens from a button rather than sitting open: as a permanent panel
+          it pushed the change log and everything below it off the screen, and
+          almost nobody is searching the bulletin on any given visit. */}
+      {program && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setFinderOpen((v) => !v)}
+            aria-expanded={finderOpen}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-[var(--blue)] hover:text-foreground"
+          >
+            <Search className="h-3 w-3" aria-hidden />
+            {finderOpen ? "Close the course search" : "Look for a course by name"}
+          </button>
+        </div>
+      )}
+      {program && finderOpen && (
+        <div className="fade-up mt-2">
+          <CourseFinder
+            catalog={{
+              courses: school?.courses ?? [],
+              buckets: program.buckets,
+              completed: state.student.completed,
+            }}
+            plan={plan}
+            courses={courses}
+            onKeep={(id, label) => keepInPlan(id, label)}
+            onJump={(id) => jumpToCourse(0, id)}
+          />
+        </div>
+      )}
 
       {/* ── what changed, and what it did ──────────────────────────────────── */}
       {lastChange && (
@@ -881,6 +936,9 @@ export function PlanScreen() {
                         altOpen={openAlts === p.courseId}
                         onToggleAlts={() => setOpenAlts(openAlts === p.courseId ? null : p.courseId)}
                         courses={courses}
+                        planned={plannedIds}
+                        completed={completedIds}
+                        onJump={jumpToCourse}
                         onLock={() => toggleLock(p.courseId, p.term, courses.get(p.courseId)?.code)}
                         onRemove={() => exclude(p.courseId, courses.get(p.courseId)?.code)}
                         onChoose={(id) => {
@@ -1203,7 +1261,7 @@ function swapNote(alt: SlotAlternative, chosenCode: string): string {
 
 function CourseRow({
   placement, course, plan, changed, choice, altOpen, onToggleAlts,
-  courses, onLock, onRemove, onChoose,
+  courses, onLock, onRemove, onChoose, planned, completed, onJump,
 }: {
   placement: Placement;
   course: Course;
@@ -1216,6 +1274,10 @@ function CourseRow({
   onLock: () => void;
   onRemove: () => void;
   onChoose: (id: string) => void;
+  /** every course id the plan holds, so a prerequisite can say where it is */
+  planned: Set<string>;
+  completed: Set<string>;
+  onJump: (term: number, courseId?: string) => void;
 }) {
   const isSupport = placement.bucketId === "SUPPORT";
   const bucket = plan.buckets.find((b) => b.bucketId === placement.bucketId);
@@ -1309,6 +1371,17 @@ function CourseRow({
               </details>
             </div>
           )}
+
+          {/* Shown for every course that has prerequisites, not only the ones
+              flagged for an advisor. The warning was appearing above a course
+              whose three prerequisites the page never named. */}
+          <PrereqList
+            course={course}
+            courses={courses}
+            planned={planned}
+            completed={completed}
+            onJump={(id) => onJump(0, id)}
+          />
 
           {placement.needsAdvisorCheck && (
             <div className="mt-2 rounded-xl border p-2.5"
