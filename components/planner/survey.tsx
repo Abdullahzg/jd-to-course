@@ -110,7 +110,7 @@ export function Survey({
     noteSpend(sk.costUsd);
     const skills: string[] = sk.ok ? sk.skills : FALLBACK;
     // The parts of the work, which is what courses are actually matched against.
-    const facets: { name: string; quote: string; weight: string }[] = sk.ok ? (sk.facets ?? []) : [];
+    const facets: { name: string; quote: string; weight: string; actor?: "own" | "around"; actorQuote?: string }[] = sk.ok ? (sk.facets ?? []) : [];
     if (!sk.ok) setError("Could not read that posting, so a standard skill list is being used. Everything else works the same.");
 
     if (sk.ok) {
@@ -160,7 +160,7 @@ export function Survey({
       ok?: boolean;
       fits?: {
         courseId: string; aspects: string[]; courseQuote: string; jobQuote: string;
-        why: string; aspectWhy?: Record<string, string>; strength: string; title: string; code: string;
+        why: string; aspectWhy?: Record<string, string>; rank?: number; strength: string; title: string; code: string;
       }[];
       aspects?: { key: string; label: string; courses: string[] }[];
       costUsd?: number; coursesRead?: number; coursesUnread?: number; unquotable?: number;
@@ -222,10 +222,10 @@ export function Survey({
     // The solver still thinks in terms of "this course covers that". What
     // changed is what "that" is: no longer a keyword lifted out of the posting,
     // but a named part of the work the posting describes.
-    const relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]> = {};
+    const relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]> = {};
     const fits = (rl.fits ?? []) as {
       courseId: string; aspects: string[]; courseQuote: string; jobQuote: string;
-      why: string; aspectWhy?: Record<string, string>; strength: string; title: string; code: string;
+      why: string; aspectWhy?: Record<string, string>; rank?: number; strength: string; title: string; code: string;
     }[];
     for (const f of fits) {
       for (const a of f.aspects ?? []) {
@@ -234,6 +234,7 @@ export function Survey({
           evidence: f.courseQuote,
           strength: f.strength as "central" | "useful" | "tangential",
           why: f.aspectWhy?.[a],
+          rank: f.rank,
         });
       }
     }

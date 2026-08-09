@@ -149,6 +149,17 @@ Each facet has:
     part of the work.
   - "weight": "core" if the job is largely this, "supporting" if it is real but
     secondary, "incidental" if the posting mentions it once in passing.
+  - "actor": WHOSE HANDS do this work. "own" when the person in the posting
+    does it themselves; "around" when the team around them does it and this
+    person directs, measures or coordinates it. Read the verbs and the role
+    title together: a product manager posting saying "build core product
+    capabilities such as data pipelines" means the person SPECIFIES pipelines
+    and engineers build them, so actor is "around". The same sentence in a
+    backend engineer posting is "own". When you are not sure, say "own".
+    This matters more than it looks: every facet you mark "around" stops
+    technical courses being sold to the student as their direct preparation.
+  - "actorQuote": the verb phrase from the posting, copied exactly, that shows
+    whose hands it is.
 
 A facet must be WORK, not a disposition. "Owning projects through obstacles to
 completion", "learning customer needs", "being a self-starter" and "thriving in
@@ -210,8 +221,10 @@ const FACET_SCHEMA = {
             name: { type: "string" },
             quote: { type: "string" },
             weight: { type: "string", enum: ["core", "supporting", "incidental"] },
+            actor: { type: "string", enum: ["own", "around"] },
+            actorQuote: { type: "string" },
           },
-          required: ["name", "quote", "weight"],
+          required: ["name", "quote", "weight", "actor"],
         },
       },
     },
@@ -305,7 +318,7 @@ export async function POST(req: Request) {
     // request in three. They are independent, so they no longer wait for each
     // other, and the loader can move on as soon as the shorter one lands.
     const [facetRes, reqRes] = await Promise.all([
-      haiku<{ roleSummary: string; facets: { name: string; quote: string; weight: string }[] }>({
+      haiku<{ roleSummary: string; facets: { name: string; quote: string; weight: string; actor?: string; actorQuote?: string }[] }>({
         key,
         purpose: "job posting → the parts of the work",
         system: FACET_SYSTEM,
@@ -368,6 +381,12 @@ export async function POST(req: Request) {
         name: String(f.name ?? "").trim().slice(0, 80),
         quote: String(f.quote ?? "").trim(),
         weight: (["core", "supporting", "incidental"].includes(f.weight) ? f.weight : "supporting") as string,
+        // Whose hands. This survived extraction and then this very map threw
+        // it away, so every facet reached the matcher actorless and the whole
+        // hands test downstream ran on the default. Unknown stays "own"
+        // because a silent cap is worse than a visible stretch.
+        actor: (f as { actor?: string }).actor === "around" ? "around" : "own",
+        actorQuote: String((f as { actorQuote?: string }).actorQuote ?? "").trim(),
       }))
       .slice(0, 8);
 

@@ -474,7 +474,7 @@ function buildCoverage(m: Model, plan: Plan, targetSkills: string[]): CoverageRe
 
   for (const target of m.skills) {
     // 1. Something in the plan already teaches it.
-    let hit: { courseId: string; ev: { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string } } | null = null;
+    let hit: { courseId: string; ev: { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number } } | null = null;
     for (const p of plan.placements) {
       const ev = teaches(p.courseId, target);
       if (ev) { hit = { courseId: p.courseId, ev }; break; }
@@ -698,6 +698,10 @@ export interface ElectiveOption {
   teaches: string[];
   /** The catalog sentence behind the first of those. */
   evidence?: string;
+  /** The judge's one line reason for this course. */
+  why?: string;
+  /** Position in the judge's strongest-first order. Lower is better. */
+  rank?: number;
   /**
    * Why this course is here when it answers nothing.
    *
@@ -778,7 +782,7 @@ export function electiveOptions(args: {
   term: number;
   /** Which season that semester is, so a spring-only course is not suggested for a fall. */
   season: Term;
-  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
+  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   /** What the posting asks for, used when there is no relevance pass to lean on. */
   targetSkills?: string[];
   /** Filler already committed to earlier semesters, so prerequisites chain through it. */
@@ -851,11 +855,21 @@ export function electiveOptions(args: {
         : hits.some((h) => h.strength === "tangential") ? "tangential"
         : undefined,
       evidence: hits[0]?.evidence,
+      why: hits[0]?.why,
+      rank: hits.reduce<number | undefined>((m, h) => (h.rank != null && (m == null || h.rank < m) ? h.rank : m), undefined),
       subjects: [...new Set(c.skills.map((sk) => sk.skill))],
     });
   }
 
-  options.sort((a, b) => b.teaches.length - a.teaches.length || a.code.localeCompare(b.code));
+  // The judge returned courses strongest first and that order is the product:
+  // when the best course cannot be scheduled, the student is offered the next
+  // one down. Sorting by breadth alone offered whichever course claimed the
+  // most parts, which is how a stretched three part claim outranked the single
+  // best course for the one part that mattered.
+  options.sort((a, b) =>
+    b.teaches.length - a.teaches.length ||
+    (a.rank ?? 999) - (b.rank ?? 999) ||
+    a.code.localeCompare(b.code));
   return options.slice(0, limit);
 }
 
@@ -888,7 +902,7 @@ export function fillOpenCredits(args: {
   completed: string[];
   excluded?: string[];
   termKinds: Term[];
-  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
+  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   targetSkills?: string[];
 }): FilledTerm[] {
   const { catalog, plan, termKinds } = args;
@@ -1014,7 +1028,10 @@ export function fillOpenCredits(args: {
             const room = already === 0 ? 10 : already === 1 ? 4 : already === 2 ? 1 : 0;
             score += room * str;
           }
-          if (score > bestScore) { best = o; bestScore = score; }
+          if (score > bestScore ||
+              (score === bestScore && best && (o.rank ?? 999) < (best.rank ?? 999))) {
+            best = o; bestScore = score;
+          }
         }
         // Once nothing in the job-relevant pool adds a part of the job that is
         // not already covered, the job-relevant pool is spent. A second course

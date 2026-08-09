@@ -128,7 +128,7 @@ export type SolveRequest = {
    * present it REPLACES the catalog's hand written skill lists, because it was
    * derived by reading the description against this specific job.
    */
-  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
+  relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   /**
    * How much each part of the work matters to this job: core, supporting or
    * incidental. Multiplied by how rare the part is in the catalog to decide

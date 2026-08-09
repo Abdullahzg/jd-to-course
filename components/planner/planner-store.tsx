@@ -33,7 +33,7 @@ export type PlannerState = {
   /** targetSkill -> catalog wording, from /api/match */
   skillMatches: Record<string, string[]>;
   /** courseId -> what it teaches for THIS job, with the catalog's own sentence */
-  relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string }[]>;
+  relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   /**
    * skill -> the sentence in the posting that asked for it, and whether a class
    * can actually supply it. This is what makes the requirement list checkable
@@ -53,7 +53,7 @@ export type PlannerState = {
   /** Courses the last relevance pass could not read. A missed course is not a course that teaches nothing. */
   coursesUnread: number;
   /** The parts of the work this posting describes, each quoted from it. */
-  facets: { name: string; quote: string; weight: string }[];
+  facets: { name: string; quote: string; weight: string; actor?: "own" | "around"; actorQuote?: string }[];
   /** Every course judged to help, with why and both quotes. */
   fits: { courseId: string; aspects: string[]; courseQuote: string; jobQuote: string; why: string; strength: string; title: string; code: string }[];
   jd: string;

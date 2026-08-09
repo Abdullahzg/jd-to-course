@@ -361,53 +361,75 @@ const TRIAGE_CHARS = 4000;
 // is shown one claim at a time, with both quotes, and asked to break it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ONE_SYSTEM = `You are reading one job posting and an entire university catalog in one sitting, to find which courses actually prepare someone for that job.
+const SHORTLIST_SYSTEM = `You are the first read over a university catalog for one job posting. Your only job is INCLUSION: name every course a careful advisor would even consider before deciding.
 
-You see every course at once, and that is the point: judge them against each
-other, not one at a time. Ten courses will look plausible for the same part of
-the job; only the one or two a student would genuinely learn it from deserve
-the claim, and the rest are noise that buries the signal.
+Over-include on purpose. A judgement pass follows you and can throw courses
+out; nothing can recover a course you fail to name. Include the non-obvious
+preparation: the policy course for the coordination heavy role, the statistics
+course for the metrics line. Before finishing, ask yourself which course you
+would be embarrassed to have missed for this posting, and add it.
 
-Return ONLY the courses that help, each with:
-- aspects: which parts of the job it answers, using the given part names
-  exactly. For each, a reason: one plain sentence naming what in THIS course
-  earns the claim and, where it matters, why it beats the neighbouring
-  candidates. Every reason must be distinct. If you catch yourself writing the
-  same sentence for two courses, you have stopped comparing.
-- strength: "central" if a hiring manager would call it direct preparation,
-  "useful" if it genuinely helps, "tangential" only if still worth naming.
-  At most TWO courses may be central for any one part of the job.
-- courseQuote: a verbatim sentence from the course description.
-- jobQuote: a verbatim phrase from the posting. Both will be checked against
-  the source text, and a claim whose quote is not found is discarded.
+Do not include a course only because it shares a word with the posting. A
+kitchen management posting does not shortlist Operating Systems for the word
+"scheduling".
 
-Tests every claim must pass:
-- SAME SENSE: the shared word must mean the same thing on both sides.
-  "Environment" in reinforcement learning is not a workplace environment.
-- WHOSE HANDS: the course must teach what the PERSON IN THE POSTING does, not
-  what the team around them does. A product manager defines roadmaps and
-  metrics; the engineer beside them does the clustering. "Unsupervised
-  Learning" is not training for that manager.
-- NOT ANOTHER FIELD: a technique taught as practised in another field, for the
-  social sciences, for operations research, for biology, teaches that field's
-  problems. It counts only when the posting is in that field.
-- STORAGE IS NOT ANALYSIS: a course about keeping and querying data is not a
-  course about analysing content, however close the two sit in a pipeline.
-  Introduction to Databases does not teach content analysis.
+Do not shortlist only what is advanced and glamorous. When a part of the job
+is about measuring, deciding or communicating, the humble course that squarely
+teaches it, introductory statistics for a metrics line, a policy course for a
+coordination line, beats the impressive course that sits nearby. The deep
+learning catalog is not an answer to "define precision and recall".
 
-A worked example of the comparative habit. The posting asks for "content
-understanding and classification". Candidates include Natural Language
-Processing ("text classification, tagging, information extraction"), Machine
-Learning ("supervised learning, model selection"), Introduction to Databases
-("data models, SQL"). NLP is central, its whole subject is the ask. Machine
-Learning is useful, it is the layer underneath. Databases is not returned at
-all, storage is not understanding, and next to NLP the claim collapses.
+Return course codes only, strongest candidates first. No reasons.`;
 
-One more duty. If a part of the job has NO course that truly teaches it, do
-not stretch a wrong course onto it, but do look once more for the closest
-genuine preparation and return it at strength "tangential" with a reason that
-says plainly it is the nearest thing, not the thing. A part left with nothing
-should mean the catalog has nothing, not that you stopped looking.
+const SHORTLIST_SCHEMA = {
+  name: "shortlist",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: { codes: { type: "array", items: { type: "string" } } },
+    required: ["codes"],
+  },
+} as const;
+
+const JUDGE_SYSTEM = `You are advising ONE person about which courses prepare them for ONE job. Start from the person, not the course list.
+
+First, from the posting, hold in mind who this person will BE at work: what
+they do with their own hands all day, and what the team around them does. A
+product manager defines roadmaps and metrics while the engineer beside them
+does the clustering; an ML engineer does the clustering. Every judgement below
+is about THIS person's hands.
+
+You see every candidate course at once. Judge them AGAINST EACH OTHER and
+return AT MOST FIFTEEN, ordered strongest first, because the order is used: when a
+timetable cannot hold the best course, the student is offered the next one
+down, and a random next is a betrayal of the whole exercise.
+
+For each course worth returning:
+- aspects: which parts of the job it serves, using the given part names
+  exactly, each with a one line reason naming what in THIS course earns the
+  claim and, where candidates compete, why this one stands where it does.
+  Every reason must be distinct. Identical sentences on two courses means you
+  have stopped comparing.
+- strength: "central" only if a hiring manager for THIS role would call it
+  direct preparation for the person's own work. At most TWO central courses
+  per part of the job. "useful" for genuine background. "tangential" for the
+  nearest thing to a part nothing truly teaches, named as the nearest thing.
+- courseQuote / jobQuote: verbatim, both are checked against source text.
+- handsOnQuote: ONLY when you mark central against a part labelled as work
+  the team does around this person: a verbatim posting sentence showing the
+  person does it personally. No sentence, no central.
+
+Tests, applied before returning anything:
+- SAME SENSE: a shared word must mean the same thing on both sides.
+- WHOSE HANDS: the course must teach the person's own work. Storage is not
+  analysis; Introduction to Databases does not teach content analysis.
+- NOT ANOTHER FIELD: machine learning for the social sciences teaches social
+  science. It counts only when the posting is in that field.
+
+If a part of the job has no course that truly teaches it, say so by leaving it
+unclaimed rather than stretching, but first look once for the closest genuine
+preparation and return it as tangential with a reason that says plainly it is
+the nearest thing, not the thing.
 
 Plain words. Never use an em dash or an en dash.`;
 
@@ -439,6 +461,7 @@ const ONE_SCHEMA = {
             },
             courseQuote: { type: "string" },
             jobQuote: { type: "string" },
+            handsOnQuote: { type: "string" },
           },
           required: ["course", "strength", "aspects", "courseQuote", "jobQuote"],
         },
@@ -616,6 +639,12 @@ export interface CourseFit {
   /** Every part of the job this course speaks to. */
   aspects: string[];
   why: string;
+  /**
+   * Position in the judge's strongest-first ordering. This is what "give the
+   * student the next best thing" runs on: electives and alternatives offer
+   * courses in this order, never in whatever order a Set iterated.
+   */
+  rank?: number;
   /** aspect -> the one line reason the ranking pass gave for THIS course. */
   aspectWhy?: Record<string, string>;
   courseQuote: string;
@@ -725,29 +754,72 @@ export async function POST(req: Request) {
       .map((c) => `### ${c.code}: ${c.title} (${c.credits} credits)\n${c.description}`)
       .join("\n\n");
 
-    onProgress?.({ read: 0, total: targets.length, found: [], phase: "reading" });
+    onProgress?.({ read: 0, total: targets.length, found: [], phase: "triage" });
+
+    // ── stage 1: inclusion only ─────────────────────────────────────────
+    //
+    // Discovery and judgement used to share one call, and the judge's
+    // attention spread over 139 descriptions is measurably where coverage
+    // went to die: the policy course for the coordination heavy role fell
+    // out while obvious candidates survived. Inclusion is the easy job, most
+    // of a catalog is an obvious no for any given posting, so it gets its
+    // own cheap pass that is told to over-include, and the judge gets a
+    // candidate list small enough to actually weigh.
+    let candidates = targets;
+    try {
+      const { content, costUsd: cost } = await haiku<{ codes: string[] }>({
+        key,
+        purpose: `shortlist ${targets.length} courses`,
+        system: SHORTLIST_SYSTEM,
+        user: `${brief}\n\nTHE WHOLE CATALOG\n${catalogText}`,
+        schema: SHORTLIST_SCHEMA as never,
+        maxTokens: 700,
+        temperature: 0,
+      });
+      costUsd += cost;
+      const picked = (content.codes ?? [])
+        .map((raw) => byCode.get(codeKey(String(raw))))
+        .filter((c): c is (typeof targets)[number] => Boolean(c));
+      const seen = new Set<string>();
+      const uniq = picked.filter((c) => !seen.has(c.id) && seen.add(c.id));
+      // An empty or tiny shortlist for a technical catalog is a failed call,
+      // not a judgement, so the judge falls back to reading everything.
+      if (uniq.length >= 5) candidates = uniq.slice(0, 32);
+    } catch { /* the fallback judge reads the whole catalog, as before */ }
+
+    onProgress?.({ read: 0, total: candidates.length, found: [], phase: "reading" });
 
     // Four attempts, backing off further each time. A read that never lands is
     // not a catalog that teaches nothing, it is a hole in the answer.
     let landed = false;
+    let lastReadError = "";
     for (let attempt = 0; attempt < 4 && !landed; attempt++) {
       try {
+        const candidateText = candidates
+          .map((c) => `### ${c.code}: ${c.title} (${c.credits} credits)\n${c.description}`)
+          .join("\n\n");
         const { content, costUsd: cost } = await haiku<{
           fits: {
             course: string; strength: string;
             aspects: { part: string; reason: string }[];
-            courseQuote: string; jobQuote: string;
+            courseQuote: string; jobQuote: string; handsOnQuote?: string;
           }[];
         }>({
           key,
-          purpose: `read all ${targets.length} courses against the posting`,
-          system: ONE_SYSTEM,
-          user: `${brief}\n\nTHE WHOLE CATALOG\n${catalogText}`,
+          purpose: `judge ${candidates.length} candidate courses`,
+          system: JUDGE_SYSTEM,
+          user: `${brief}\n\nTHE CANDIDATES, from a first pass over the whole catalog\n${candidateText}`,
           schema: ONE_SCHEMA as never,
-          maxTokens: 3400,
+          // 3400 was enough for fifteen returned courses and truncated at
+          // forty, and a truncated body is invalid JSON, which read as "the
+          // model failed" four times in a row when the model had answered at
+          // length every time.
+          maxTokens: 6000,
           temperature: 0,
         });
         costUsd += cost;
+        const facetActor = new Map(facets.map((f) => [aspectKey(f.name), (f as { actor?: string }).actor ?? "own"]));
+        let rank = 0;
         for (const f of content.fits ?? []) {
           const raw = String(f.course ?? "").trim();
           const c = byCode.get(codeKey(raw)) ?? byCode.get(raw.toLowerCase());
@@ -770,9 +842,25 @@ export async function POST(req: Request) {
             if (r) aspectWhy[label] = r.slice(0, 220);
           }
           if (!named.length) { dropped++; allMisses.push({ code: c.code, side: "no aspect matched the job's parts", quote: "" }); continue; }
+          let strength = (["central", "useful", "tangential"].includes(f.strength) ? f.strength : "useful") as CourseFit["strength"];
+          // A part labelled as the team's work around this person cannot make
+          // a course central, full stop. The first version allowed an override
+          // backed by a posting quote, and it verified instantly every time,
+          // because job ads write every duty as an imperative aimed at the
+          // applicant: "Improve the accuracy of detection systems" is on the
+          // page whether the reader will be the engineer or the manager of the
+          // engineer. A quote cannot tell whose hands. The actor label, judged
+          // from the role and the verbs together, is the only signal that can,
+          // so it decides. Central survives only through a part the person
+          // does themselves.
+          if (strength === "central") {
+            const ownHandsParts = named.filter((a) => facetActor.get(aspectKey(a)) !== "around");
+            if (!ownHandsParts.length) strength = "useful";
+          }
           fits.push({
             courseId: c.id, code: c.code, title: c.title,
-            strength: (["central", "useful", "tangential"].includes(f.strength) ? f.strength : "useful") as CourseFit["strength"],
+            strength,
+            rank: rank++,
             aspects: named,
             why: Object.values(aspectWhy)[0] ?? "",
             aspectWhy,
@@ -780,7 +868,10 @@ export async function POST(req: Request) {
           });
         }
         landed = true;
-      } catch {
+      } catch (e) {
+        // Swallowing this made a failed read indistinguishable from a catalog
+        // that teaches nothing, and a whole fixture run was spent guessing.
+        lastReadError = e instanceof Error ? e.message : String(e);
         if (attempt < 3) await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
       }
     }
@@ -788,8 +879,14 @@ export async function POST(req: Request) {
     onProgress?.({ read: targets.length, total: targets.length, found: fits, phase: "reading" });
 
     // ── second pass: try to break every claim the first pass made ────────
+    // Only the central claims face the refuter now. Two rejection layers with
+    // correlated criteria compounded into the Sonnet cell's problem, coverage
+    // eaten by strictness, and a "useful" tag no longer glows on the page. The
+    // claims that put a course in front of a student as direct preparation are
+    // the ones that must survive an adversary.
     const claims: { fitIdx: number; aspect: string; fit: CourseFit }[] = [];
     fits.forEach((f, i) => {
+      if (f.strength !== "central") return;
       for (const a of f.aspects) claims.push({ fitIdx: i, aspect: a, fit: f });
     });
 
@@ -866,12 +963,15 @@ export async function POST(req: Request) {
     // Fold the freely written aspects together so the solver can see which
     // courses are alternatives for the same part of the job.
     const aspects = new Map<string, { label: string; courses: string[] }>();
-    for (const f of fits) {
+    const byRank = [...fits].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+    for (const f of byRank) {
       for (const a of f.aspects) {
         const k = aspectKey(a);
         if (!k) continue;
         const entry = aspects.get(k) ?? { label: a, courses: [] };
-        entry.courses.push(f.courseId);
+        // Four per part, in the judge's order. A cap in the schema is at the
+        // provider's mercy; a cap here is arithmetic.
+        if (entry.courses.length < 4) entry.courses.push(f.courseId);
         aspects.set(k, entry);
       }
     }
@@ -909,6 +1009,9 @@ export async function POST(req: Request) {
       claimsMade: claims.length,
       claimsRefuted,
       costUsd: costUsd + triageCost,
+      /** Why the read failed, when it did. Empty on success. */
+      readError: landed ? "" : lastReadError,
+      shortlistedCount: candidates.length,
     };
   };
 
