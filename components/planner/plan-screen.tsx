@@ -1325,92 +1325,67 @@ function CourseRow({
   const matchClass = hits >= 3 ? "match-3" : hits === 2 ? "match-2" : hits === 1 ? "match-1" : "";
 
   return (
-    <div id={`course-${placement.courseId}`} className={`scroll-mt-6 rounded-xl border bg-white p-3 transition-all glow-hover ${matchClass} ${changed ? "pulse-changed match-announce" : ""}`}
+    <div id={`course-${placement.courseId}`} className={`scroll-mt-6 rounded-lg border bg-white p-2 transition-all glow-hover ${matchClass} ${changed ? "pulse-changed match-announce" : ""}`}
          style={placement.locked ? { borderColor: "var(--amber)" } : undefined}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-x-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-[15px] font-semibold">{course.title}</span>
+            <span className="text-sm font-semibold">{course.title}</span>
             <WhatIsIt course={course} />
-            <span className="code text-xs">{course.code}</span>
-            <span className="tabular text-sm text-muted-foreground">{course.credits} cr</span>
+            <span
+              className={`code text-xs ${placement.parseUnreviewed ? "cursor-help decoration-dotted underline-offset-2 [text-decoration-line:underline]" : ""}`}
+              title={placement.parseUnreviewed
+                ? "Its prerequisites were read off the bulletin by a parser and nobody has checked that reading"
+                : undefined}
+            >
+              {course.code}
+            </span>
+            <span className="tabular text-[11px] text-muted-foreground">{course.credits} cr</span>
             {hits > 0 && (
-              <span className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}>
-                <Sparkles className="h-3 w-3" />
-                answers {hits} thing{hits === 1 ? "" : "s"} this job asks for
+              <span className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium"
+                    style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}
+                    title={`Answers ${hits} thing${hits === 1 ? "" : "s"} this posting asks for`}>
+                <Sparkles className="h-2.5 w-2.5" />
+                {hits}
               </span>
             )}
             {placement.locked && (
-              <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                    style={{ background: "color-mix(in oklab, var(--amber) 15%, transparent)", color: "var(--amber)" }}>
-                <Lock className="h-3 w-3" /> pinned here
+              <span className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px]"
+                    style={{ background: "color-mix(in oklab, var(--amber) 15%, transparent)", color: "var(--amber)" }}
+                    title="Pinned to this semester">
+                <Lock className="h-2.5 w-2.5" />
               </span>
             )}
           </div>
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isSupport
-              ? placement.unlocks.length
-                ? `Not a requirement itself. You need it before ${placement.unlocks.join(", ")}.`
-                : "Not a requirement itself. It is here for what it teaches you."
-              : `Counts toward ${bucket?.label ?? "a requirement"}.`}
-            {" "}Taught in {course.termsOffered.map((t) => t === "FA" ? "Fall" : t === "SP" ? "Spring" : "Summer").join(" and ")}.
-            {hits > 0 && (
-              <span style={{ color: "var(--teal)" }}>
-                {" "}Picked over the alternatives because its catalog description says it teaches{" "}
-                {placement.covers.map((c) => c.skill).join(", ")}.
+          {/* One line, not four.
+              This was a sentence about the requirement, a second sentence
+              repeating the facet names that the pills below already carried, a
+              row of pills, a proof disclosure, a prerequisite block and a
+              bordered advisory box, stacked. Six blocks of chrome around three
+              facts. The facts are the same, the stacking is gone. */}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <span>
+              {isSupport
+                ? placement.unlocks.length
+                  ? `Needed before ${placement.unlocks.join(", ")}`
+                  : "Not a requirement, taken for what it teaches"
+                : `Counts toward ${bucket?.label ?? "a requirement"}`}
+            </span>
+            <span aria-hidden>·</span>
+            <span>{course.termsOffered.map((t) => (t === "FA" ? "Fall" : t === "SP" ? "Spring" : "Summer")).join("/")}</span>
+            {placement.covers.map((c) => (
+              <span
+                key={c.skill}
+                className="rounded-full px-1.5 py-0.5 text-[11px]"
+                style={{ background: "color-mix(in oklab, var(--teal) 12%, transparent)", color: "var(--teal)" }}
+                title={`The catalog says: "${c.evidence}"`}
+              >
+                {c.skill}
               </span>
-            )}
+            ))}
           </p>
 
-          {/* What it teaches, and underneath, the catalog sentence for each claim.
-              A tooltip is not proof; you cannot copy it, link it, or catch it
-              being wrong. */}
-          {!!placement.covers.length && (
-            <div className="mt-2.5">
-              <ul className="flex flex-wrap gap-1.5">
-                {placement.covers.map((s) => (
-                  <li key={s.skill}
-                      className="rounded-full px-2.5 py-1 text-xs"
-                      style={{ background: "color-mix(in oklab, var(--teal) 12%, transparent)", color: "var(--teal)" }}>
-                    {s.skill}
-                  </li>
-                ))}
-              </ul>
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs underline underline-offset-2"
-                         style={{ color: "var(--blue)" }}>
-                  Proof it teaches {placement.covers.length === 1 ? "this" : "these"}
-                </summary>
-                <ul className="mt-2 space-y-2 rounded-xl border border-border bg-[var(--blue-soft)]/50 p-3">
-                  {placement.covers.map((s) => (
-                    <li key={s.skill}>
-                      <p className="text-xs font-medium" style={{ color: "var(--teal)" }}>{s.skill}</p>
-                      <blockquote className="mt-0.5 border-l-2 pl-2 text-xs italic leading-relaxed text-muted-foreground"
-                                  style={{ borderColor: "var(--teal)" }}>
-                        &ldquo;{s.evidence}&rdquo;
-                      </blockquote>
-                    </li>
-                  ))}
-                  <li className="border-t border-border pt-2">
-                    <a href={course.sourceUrl} target="_blank" rel="noreferrer"
-                       className="inline-flex items-center gap-1 text-xs underline" style={{ color: "var(--blue)" }}>
-                      Read {course.code} in the catalog <ExternalLink className="h-2.5 w-2.5" />
-                    </a>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      Every sentence above is copied from that page. If one is not there, this
-                      claim is wrong and should be reported.
-                    </p>
-                  </li>
-                </ul>
-              </details>
-            </div>
-          )}
-
-          {/* Shown for every course that has prerequisites, not only the ones
-              flagged for an advisor. The warning was appearing above a course
-              whose three prerequisites the page never named. */}
           <PrereqList
             course={course}
             courses={courses}
@@ -1419,70 +1394,74 @@ function CourseRow({
             onJump={(id) => onJump(0, id)}
           />
 
-          {placement.needsAdvisorCheck && (
-            <div className="mt-2 rounded-xl border p-2.5"
-                 style={{ borderColor: "color-mix(in oklab, var(--amber) 45%, transparent)" }}>
-              <p className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--amber)" }}>
-                <TriangleAlert className="h-3.5 w-3.5" /> Ask your advisor about this one
-              </p>
-              {placement.unverifiableText.length > 0 && (
-                <>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    The catalog attaches {placement.unverifiableText.length === 1 ? "this condition" : "these conditions"} to
-                    the course, and the planner has no way to check {placement.unverifiableText.length === 1 ? "it" : "them"}:
-                  </p>
-                  <ul className="mt-1 space-y-0.5">
-                    {placement.unverifiableText.map((t, i) => (
-                      <li key={i} className="text-xs italic leading-relaxed text-muted-foreground">
-                        &ldquo;{t}&rdquo;
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {placement.parseUnreviewed && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Its prerequisites were read off the bulletin by a parser, and nobody has checked
-                  that reading.
-                </p>
-              )}
-              <p className="mt-1.5 text-[10px] text-muted-foreground">
-                The plan went ahead on the assumption this is fine, so it could still show you a
-                whole degree. It is not a yes and it is not a no.{" "}
-                <a href={course.sourceUrl} target="_blank" rel="noreferrer" className="underline">
-                  Read {course.code} in the catalog
-                </a>
-              </p>
-            </div>
+          {/* Only when the catalog attaches a real condition nobody can check.
+              55 of the 139 courses have an unreviewed parse and nothing else, so
+              showing that as its own amber line put an identical warning on
+              almost every card in the plan, which is noise wearing the clothes
+              of a warning. That fact now lives on the course code, which is the
+              thing it is about. */}
+          {placement.unverifiableText.length > 0 && (
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[11px]" style={{ color: "var(--amber)" }}>
+              <TriangleAlert className="h-3 w-3 shrink-0 self-center" aria-hidden />
+              <span className="font-medium">Ask an advisor:</span>
+              <span className="text-muted-foreground">
+                {placement.unverifiableText.map((t) => `"${t}"`).join("; ")}
+              </span>
+            </p>
+          )}
+
+          {!!placement.covers.length && (
+            <details className="mt-1">
+              <summary
+                className="cursor-pointer text-[11px] underline underline-offset-2"
+                style={{ color: "var(--blue)" }}
+              >
+                Proof it teaches {placement.covers.length === 1 ? "this" : "these"}
+              </summary>
+              <ul className="mt-1 space-y-1 rounded-lg border border-border bg-[var(--blue-soft)]/50 p-2">
+                {placement.covers.map((s) => (
+                  <li key={s.skill} className="text-[11px] leading-snug">
+                    <span className="font-medium" style={{ color: "var(--teal)" }}>{s.skill}</span>{" "}
+                    <span className="italic text-muted-foreground">&ldquo;{s.evidence}&rdquo;</span>
+                  </li>
+                ))}
+                <li className="border-t border-border pt-1 text-[10px] text-muted-foreground">
+                  <a href={course.sourceUrl} target="_blank" rel="noreferrer"
+                     className="inline-flex items-center gap-1 underline" style={{ color: "var(--blue)" }}>
+                    Read {course.code} in the catalog <ExternalLink className="h-2.5 w-2.5" />
+                  </a>{" "}
+                  Every sentence here is copied from that page. If one is not there, the claim is
+                  wrong and should be reported.
+                </li>
+              </ul>
+            </details>
           )}
         </div>
 
         <div className="order-first flex shrink-0 gap-2 self-end sm:order-none sm:self-auto">
           <button onClick={onLock}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--blue-soft)]">
-            {placement.locked ? "Let it move" : "Keep it here"}
+                  className="rounded-full border border-border px-2 py-0.5 text-[11px] transition-colors hover:bg-[var(--blue-soft)]">
+            {placement.locked ? "Let it move" : "Keep"}
           </button>
           <button onClick={onRemove}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--blue-soft)]">
-            Not this one
+                  className="rounded-full border border-border px-2 py-0.5 text-[11px] transition-colors hover:bg-[var(--blue-soft)]">
+            Drop
           </button>
         </div>
       </div>
 
       {/* the dropdown, unmissable */}
       {choice && choice.alternatives.length > 0 && (
-        <div className="mt-3 border-t border-border pt-3">
+        <div className="mt-1">
           <button
             onClick={onToggleAlts}
             aria-expanded={altOpen}
-            className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
-            style={{ background: "var(--blue-soft)", color: "var(--blue-deep)" }}
+            className="inline-flex items-center gap-1 text-[11px] underline underline-offset-2 transition-colors"
+            style={{ color: "var(--blue)" }}
           >
-            <span>
-              {altOpen ? "Hide" : "Show"} {choice.alternatives.length} other course
-              {choice.alternatives.length === 1 ? "" : "s"} that fit this slot
-            </span>
-            <ChevronDown className={`h-4 w-4 transition-transform ${altOpen ? "rotate-180" : ""}`} />
+            {altOpen ? "Hide" : "Show"} {choice.alternatives.length} other course
+            {choice.alternatives.length === 1 ? "" : "s"} that fit this slot
+            <ChevronDown className={`h-3 w-3 transition-transform ${altOpen ? "rotate-180" : ""}`} />
           </button>
 
           {altOpen && (

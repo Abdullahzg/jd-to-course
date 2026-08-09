@@ -382,8 +382,16 @@ Return FALSE if any of these apply:
   prepares them for THAT.
 - The proof is a topic list fragment, or a hedged sentence like "topics may
   include", or evidence that the course USES something rather than teaches it.
-- The course is about another domain borrowing the method: biomedical, civil,
-  environmental or genomic versions of a technique are not that technique.
+- The course teaches a technique AS PRACTISED IN ANOTHER FIELD. The giveaway is
+  a field in the title or the description: for the social sciences, for
+  operations research, for biology, for civil engineering, for finance, for
+  genomics, for chemistry. These teach the other field's problems, data and
+  conventions, and the technique is the vehicle. They count ONLY when the
+  posting is in that same field. A TikTok content moderation posting is not in
+  political science, so "Machine Learning and AI for the Social Sciences" is
+  false however much machine learning it contains, and "Data Analytics and
+  Machine Learning for Operations Research" is false for the same reason. Do
+  not reason "but it is still machine learning". That is the mistake.
 
 Return TRUE only when someone sceptical, looking for a reason to say no, could
 not find one. Judge each claim on its own two sentences and nothing else.
