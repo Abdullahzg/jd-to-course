@@ -371,6 +371,7 @@ function slotChoices(m: Model, sel: Selection, assignment: Map<string, string>):
       const losesSkills = chosenParts.filter((p) => !theirSet.has(p));
       return {
         courseId: memberId,
+        rank: m.courseRank.get(memberId),
         deltaSkills: theirs.filter((p) => !chosenSet.has(p)),
         losesSkills,
         lossesNoOtherPlannedCourseAnswers: losesSkills.filter((p) => !coveredElsewhere.has(p)),
@@ -398,10 +399,15 @@ function slotChoices(m: Model, sel: Selection, assignment: Map<string, string>):
 
     // Show the ties first, then the swaps that cost least. A swap that drags in
     // three prerequisite courses is not cheaper than one that drags in none.
+    // Best first, by the judge's own order once ties on the hard facts are
+    // broken. Six alternatives that all answer nothing used to arrive in
+    // arbitrary order wearing identical sentences, which is a list, not a
+    // recommendation.
     alternatives.sort((a, b) =>
       Number(b.sameClass) - Number(a.sameClass) ||
       b.deltaSkills.length - a.deltaSkills.length ||
       a.losesSkills.length - b.losesSkills.length ||
+      (a.rank ?? 999) - (b.rank ?? 999) ||
       (a.deltaCredits + a.extraPrereqCredits) - (b.deltaCredits + b.extraPrereqCredits),
     );
 
@@ -904,6 +910,8 @@ export function fillOpenCredits(args: {
   termKinds: Term[];
   relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   targetSkills?: string[];
+  /** courseId -> position in the reader's consideration order, 0 is best. */
+  shortlistRank?: Record<string, number>;
 }): FilledTerm[] {
   const { catalog, plan, termKinds } = args;
   const taken = new Set<string>();
@@ -1081,6 +1089,12 @@ export function fillOpenCredits(args: {
           for (const p of [...requiredSoFar, ...picks, ...pickedAll]) {
             for (const w of words(p.title)) titleWord.set(w, (titleWord.get(w) ?? 0) + 1);
           }
+          // The reader's consideration order first, taste second. A course
+          // the reader shortlisted for THIS posting and could not pin to a
+          // part is still a measured "next best thing"; a course it never
+          // considered is filler by taste, and the two must not be shuffled
+          // together as if the metric did not exist.
+          const consider = (o: ElectiveOption) => args.shortlistRank?.[o.courseId] ?? Number.MAX_SAFE_INTEGER;
           const cost = (o: ElectiveOption) => {
             const d = o.code.split(/\s+/)[0];
             return (
@@ -1108,7 +1122,8 @@ export function fillOpenCredits(args: {
               (o.teaches.length === 0 ? levelCost(o.code) : 0)
             );
           };
-          eligible.sort((a, b) => cost(a) - cost(b) || a.code.localeCompare(b.code));
+          eligible.sort((a, b) =>
+            consider(a) - consider(b) || cost(a) - cost(b) || a.code.localeCompare(b.code));
           best = eligible[0];
 
           // Say what actually won it the slot, out of the things that were
@@ -1119,6 +1134,12 @@ export function fillOpenCredits(args: {
           const newSubjects = best.subjects.filter((sub) => !subject.get(sub));
           const num = parseInt(best.code.replace(/[^0-9]/g, ""), 10) || 0;
           const reasons: string[] = [];
+          const cRank = args.shortlistRank?.[best.courseId];
+          if (cRank != null) {
+            reasons.push(
+              `the reader weighed it for this posting and placed it ${cRank + 1} of ${Object.keys(args.shortlistRank ?? {}).length} courses considered, even though it proves no single part`,
+            );
+          }
           if (!dept.get(d)) reasons.push(`it is the first ${d} course in the plan`);
           if (newSubjects.length) {
             reasons.push(

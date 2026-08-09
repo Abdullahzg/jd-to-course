@@ -330,6 +330,16 @@ export function PlanScreen() {
   // The degree does not name the free electives, so the solver cannot schedule
   // them. It can still be planned: this commits a concrete course to every open
   // credit, job relevant ones first, and guarantees nothing is used twice.
+  // The reader's consideration order for this posting, by course id. This is
+  // the metric behind every "which of these" list on the page: matched courses
+  // carry the judge's rank, and courses considered but not matched carry their
+  // shortlist position, so nothing below is ordered by taste alone.
+  const consideration: Record<string, number> = Object.fromEntries(
+    (state.shortlist ?? [])
+      .map((code, i) => [[...courses.values()].find((c) => c.code === code)?.id, i] as const)
+      .filter(([id]) => id),
+  ) as Record<string, number>;
+
   const filledByTerm = new Map(
     fillOpenCredits({
       catalog: school?.courses ?? [],
@@ -339,6 +349,7 @@ export function PlanScreen() {
       termKinds,
       relevance: state.relevance,
       targetSkills: state.targetSkills,
+      shortlistRank: consideration,
     }).map((f) => [f.term, f]),
   );
   const cov = result.coverage;
@@ -970,6 +981,15 @@ export function PlanScreen() {
                             {d.creditDelta > 0 ? "+" : ""}{d.creditDelta} credits
                           </span>
                         )}
+                        {!quiet && !!(d?.gains.length || d?.losses.length) && (
+                          <span className="block text-muted-foreground">
+                            {d!.gains.length && !d!.losses.length
+                              ? `Choose it to also cover ${d!.gains.join(", ")}.`
+                              : !d!.gains.length && d!.losses.length
+                                ? `Only if you can live without ${d!.losses.join(", ")}.`
+                                : `A trade: ${d!.gains.join(", ")} for ${d!.losses.join(", ")}.`}
+                          </span>
+                        )}
                         {quiet && (
                           <span className="block text-muted-foreground">
                             {(() => {
@@ -1052,6 +1072,9 @@ export function PlanScreen() {
                         planned={plannedIds}
                         completed={completedIds}
                         onJump={jumpToCourse}
+                        whyOf={(id) => state.relevance?.[id]?.[0]?.why}
+                        posOf={(id) => consideration[id]}
+                        consideredTotal={(state.shortlist ?? []).length}
                         onLock={() => toggleLock(p.courseId, p.term, courses.get(p.courseId)?.code)}
                         onRemove={() => exclude(p.courseId, courses.get(p.courseId)?.code)}
                         onChoose={(id) => {
@@ -1374,7 +1397,7 @@ function swapNote(alt: SlotAlternative, chosenCode: string): string {
 
 function CourseRow({
   placement, course, plan, changed, choice, altOpen, onToggleAlts,
-  courses, onLock, onRemove, onChoose, planned, completed, onJump,
+  courses, onLock, onRemove, onChoose, planned, completed, onJump, whyOf, posOf, consideredTotal,
 }: {
   placement: Placement;
   course: Course;
@@ -1391,6 +1414,11 @@ function CourseRow({
   planned: Set<string>;
   completed: Set<string>;
   onJump: (term: number, courseId?: string) => void;
+  /** The judge's one line reason for a course, when it gave one. */
+  whyOf: (courseId: string) => string | undefined;
+  /** Position in the reader's consideration order, when it was considered. */
+  posOf: (courseId: string) => number | undefined;
+  consideredTotal: number;
 }) {
   const isSupport = placement.bucketId === "SUPPORT";
   const bucket = plan.buckets.find((b) => b.bucketId === placement.bucketId);
@@ -1543,7 +1571,17 @@ function CourseRow({
 
           {altOpen && (
             <ul className="mt-2 space-y-1.5">
-              {choice.alternatives.map((alt) => {
+              {[...choice.alternatives]
+                .sort((a, b) =>
+                  // Gains first, fewest losses next, then the reader's own
+                  // order. Four rows losing the same facet used to arrive in
+                  // arbitrary order; now the best considered course of the
+                  // four is first, which is the whole meaning of "other
+                  // courses that fit".
+                  b.deltaSkills.length - a.deltaSkills.length ||
+                  a.losesSkills.length - b.losesSkills.length ||
+                  (a.rank ?? posOf(a.courseId) ?? 9999) - (b.rank ?? posOf(b.courseId) ?? 9999))
+                .map((alt) => {
                 const c = courses.get(alt.courseId);
                 if (!c) return null;
                 return (
@@ -1566,7 +1604,26 @@ function CourseRow({
                         </span>
                       </span>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        {swapNote(alt, chosenCode)}
+                        {(() => {
+                          const note = swapNote(alt, chosenCode);
+                          // Six rows carrying one identical sentence is a list,
+                          // not advice. When the hard trade is silent, each row
+                          // gets the judge's own reason for THIS course, which
+                          // is what makes the first one first.
+                          // The trade sentence states the facts; the second
+                          // sentence tells THIS course apart from its
+                          // neighbours losing the same facet.
+                          const why = whyOf(alt.courseId);
+                          const pos = posOf(alt.courseId);
+                          const own = why
+                            ?? (pos != null
+                              ? `The reader placed it ${pos + 1} of ${consideredTotal} courses considered for this posting.`
+                              : "");
+                          if (alt.deltaSkills.length || alt.losesSkills.length) {
+                            return own ? `${note} ${own}` : note;
+                          }
+                          return own || note;
+                        })()}
                       </span>
                       {alt.stopsSatisfying.length > 0 && (
                         <span className="mt-1 block text-xs" style={{ color: "var(--amber-deep, #92400e)" }}>
@@ -1732,11 +1789,11 @@ function OpenSlot({ fill, courses, revealCourse, jobParts }: {
                     </li>
                   ))}
                   <li className="px-1 pt-1 text-[11px] leading-relaxed text-muted-foreground">
-                    These were <strong>not chosen for your job</strong>. Nothing else in this catalog
-                    that runs this semester answers the posting, so the planner filled the credits by
-                    spreading across departments and subjects and preferring broader courses over
-                    narrow ones. That is the whole reason. Swap any of them for whatever your core
-                    curriculum actually needs.
+                    These were <strong>not chosen for your job</strong>. Nothing that runs this
+                    semester answers the posting directly, so the credits were filled in the
+                    reader&rsquo;s own consideration order for this posting first, and only past the
+                    end of that list by spreading across subjects. Swap any of them for whatever your
+                    core curriculum actually needs.
                   </li>
                 </ul>
               )}

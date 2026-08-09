@@ -830,7 +830,13 @@ export async function POST(req: Request) {
         maxTokens: 700,
         temperature: 0,
       });
-      const draws = await Promise.allSettled([draw(), draw()]);
+      let shortDone = 0;
+      const tick = <T,>(pr: Promise<T>): Promise<T> => pr.then((r) => {
+        shortDone++;
+        onProgress?.({ read: Math.round((shortDone * targets.length) / 2), total: targets.length, found: [], phase: "triage" });
+        return r;
+      });
+      const draws = await Promise.allSettled([tick(draw()), tick(draw())]);
       const picked: (typeof targets)[number][] = [];
       let landedDraws = 0;
       for (const d of draws) {
@@ -1005,7 +1011,13 @@ export async function POST(req: Request) {
       return null;
     };
 
-    const settled = await Promise.allSettled([judgeDraw(), judgeDraw(), judgeDraw()]);
+    let judged = 0;
+    const judgeTick = (pr: Promise<CourseFit[] | null>) => pr.then((r) => {
+      judged++;
+      onProgress?.({ read: Math.round((judged * candidates.length) / 3), total: candidates.length, found: [], phase: "reading" });
+      return r;
+    });
+    const settled = await Promise.allSettled([judgeTick(judgeDraw()), judgeTick(judgeDraw()), judgeTick(judgeDraw())]);
     for (const d of settled) {
       if (d.status === "fulfilled" && d.value) drawFits.push(d.value);
     }

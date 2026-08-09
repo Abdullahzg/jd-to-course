@@ -300,6 +300,8 @@ export type SymClass = {
 export type Model = {
   /** ids of courses that answer at least one part of this posting */
   jobRelevant: Set<string>;
+  /** courseId -> the judge's strongest-first position. Lower is better. */
+  courseRank: Map<string, number>;
   program: Program;
   catalog: Map<string, Course>;
   completed: Set<string>;
@@ -558,8 +560,19 @@ export function buildModel(
   const jobRelevant = new Set<string>();
   for (const c of school.courses) if (maskOf(c) !== 0) jobRelevant.add(c.id);
 
+  // The judge's order, carried to every place a course is offered as an
+  // alternative. "Which of these six should I take" has an answer, and it is
+  // not alphabetical.
+  const courseRank = new Map<string, number>();
+  for (const [id, hits] of Object.entries(relevance)) {
+    for (const h of hits as { rank?: number }[]) {
+      if (h.rank != null && h.rank < (courseRank.get(id) ?? Infinity)) courseRank.set(id, h.rank);
+    }
+  }
+
   return {
     jobRelevant,
+    courseRank,
     program,
     catalog,
     completed,

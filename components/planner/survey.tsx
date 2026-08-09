@@ -164,7 +164,7 @@ export function Survey({
       }[];
       aspects?: { key: string; label: string; courses: string[] }[];
       costUsd?: number; coursesRead?: number; coursesUnread?: number; unquotable?: number;
-      shortlisted?: number; ruledOutEarly?: number; notFullyRead?: number;
+      shortlisted?: number; ruledOutEarly?: number; notFullyRead?: number; shortlistCodes?: string[];
     } = { ok: false };
     try {
       // The whole posting goes to every course, rather than a keyword distilled
@@ -257,6 +257,10 @@ export function Survey({
       fits,
       skillMatches: {},
       relevance,
+      // The consideration order. Even a course that proves no part of the
+      // posting was weighed against it, and "weighed and placed 23rd" is a
+      // metric where "spread across departments" was a shrug.
+      shortlist: rl.shortlistCodes ?? [],
       skillEvidence: sk.evidence ?? {},
       roleSummary: sk.roleSummary ?? "",
       customSkills: [],

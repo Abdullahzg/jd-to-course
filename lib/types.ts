@@ -221,6 +221,8 @@ export type SlotAlternative = {
    * thing that may ever be described as an equal choice.
    */
   sameClass: boolean;
+  /** The judge's strongest-first position for this course. Lower is better. */
+  rank?: number;
 };
 
 /** Where a bucket has several legal fillers, the interface asks. §9.3 */
