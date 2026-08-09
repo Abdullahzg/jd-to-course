@@ -400,7 +400,10 @@ does the clustering; an ML engineer does the clustering. Every judgement below
 is about THIS person's hands.
 
 You see every candidate course at once. Judge them AGAINST EACH OTHER and
-return AT MOST FIFTEEN, ordered strongest first, because the order is used: when a
+return EVERY one that genuinely helps, ordered strongest first. Do not stop at
+a round number: a candidate list this size usually carries between eight and
+twenty genuine helpers, and leaving out the accessibility course because
+fifteen felt like enough is a miss with a name on it. Return them because the order is used: when a
 timetable cannot hold the best course, the student is offered the next one
 down, and a random next is a betrayal of the whole exercise.
 
@@ -419,17 +422,32 @@ For each course worth returning:
   the team does around this person: a verbatim posting sentence showing the
   person does it personally. No sentence, no central.
 
+A miss is as serious as a stretch. Before finishing, walk the parts of the
+job one by one: if a candidate squarely teaches a part and you have not
+returned it, you have failed that part. The user interface course for the
+posting about building accessible components. The statistics course for the
+posting that defines metrics and runs experiments. These are not close calls,
+and a judge that returns the four most famous systems courses for every job
+alike is not judging.
+
 Tests, applied before returning anything:
 - SAME SENSE: a shared word must mean the same thing on both sides.
 - WHOSE HANDS: the course must teach the person's own work. Storage is not
-  analysis; Introduction to Databases does not teach content analysis.
+  analysis; Introduction to Databases does not teach content analysis. This
+  holds however the part is phrased: a databases course may claim data
+  pipeline and storage parts, and may never claim a part about understanding,
+  detecting, classifying or SPECIFYING content systems. Learning SQL does not
+  teach anyone to specify a detection capability either.
 - NOT ANOTHER FIELD: machine learning for the social sciences teaches social
   science. It counts only when the posting is in that field.
 
 If a part of the job has no course that truly teaches it, say so by leaving it
 unclaimed rather than stretching, but first look once for the closest genuine
 preparation and return it as tangential with a reason that says plainly it is
-the nearest thing, not the thing.
+the nearest thing, not the thing. Tangential is for a genuine gap. It is never
+a back door: a course that failed the hands test or the field test is returned
+not at all, at any strength. The engineer's clustering course does not come
+back as "the nearest thing" for the manager who will never run it.
 
 Plain words. Never use an em dash or an en dash.`;
 
@@ -468,6 +486,26 @@ const ONE_SCHEMA = {
       },
     },
     required: ["fits"],
+  },
+} as const;
+
+const REQUOTE_SCHEMA = {
+  name: "quotes",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      quotes: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: { n: { type: "integer" }, courseQuote: { type: "string" } },
+          required: ["n", "courseQuote"],
+        },
+      },
+    },
+    required: ["quotes"],
   },
 } as const;
 
@@ -555,6 +593,15 @@ WORKED EXAMPLES, all taken from real failures of this system.
   PART: "Managing a kitchen team"
   PROOF: "process scheduling, thread management, and synchronisation"
   keep: false. Scheduling people is not scheduling processes.
+
+  PART: "Specifying content detection capabilities"
+  PROOF: "database design and application development using databases:
+  entity-relationship modeling, SQL"
+  keep: false. Storing data is not detecting anything in it, and learning SQL
+  does not teach anyone what a detection system should do. The claim rides the
+  word "capabilities" and nothing else. The same verdict holds for every
+  phrasing: building, specifying or improving a detection, understanding or
+  classification capability is not answered by a storage course.
 
   PART: "Working in fast paced customer environments"
   PROOF: "training agents in simulated environments with reward shaping"
@@ -767,7 +814,14 @@ export async function POST(req: Request) {
     // candidate list small enough to actually weigh.
     let candidates = targets;
     try {
-      const { content, costUsd: cost } = await haiku<{ codes: string[] }>({
+      // Two draws, one union. A single shortlist varied at its boundary run
+      // to run, the provider is not deterministic even at temperature zero,
+      // and the security fixture returned eleven matches one run and four the
+      // next because different tails reached the judge. Inclusion is a task
+      // where variance only ever DROPS courses, so the union of two draws is
+      // strictly more stable and more complete than either alone, and the
+      // second draw runs in parallel so it costs cents and no wall clock.
+      const draw = () => haiku<{ codes: string[] }>({
         key,
         purpose: `shortlist ${targets.length} courses`,
         system: SHORTLIST_SYSTEM,
@@ -776,24 +830,45 @@ export async function POST(req: Request) {
         maxTokens: 700,
         temperature: 0,
       });
-      costUsd += cost;
-      const picked = (content.codes ?? [])
-        .map((raw) => byCode.get(codeKey(String(raw))))
-        .filter((c): c is (typeof targets)[number] => Boolean(c));
+      const draws = await Promise.allSettled([draw(), draw()]);
+      const picked: (typeof targets)[number][] = [];
+      let landedDraws = 0;
+      for (const d of draws) {
+        if (d.status !== "fulfilled") continue;
+        landedDraws++;
+        costUsd += d.value.costUsd;
+        for (const raw of d.value.content.codes ?? []) {
+          const c = byCode.get(codeKey(String(raw)));
+          if (c) picked.push(c);
+        }
+      }
       const seen = new Set<string>();
       const uniq = picked.filter((c) => !seen.has(c.id) && seen.add(c.id));
       // An empty or tiny shortlist for a technical catalog is a failed call,
       // not a judgement, so the judge falls back to reading everything.
-      if (uniq.length >= 5) candidates = uniq.slice(0, 32);
+      if (landedDraws > 0 && uniq.length >= 5) {
+        // Sorted by code before the judge sees them. The judge re-ranks
+        // anyway, and a deterministic input order removes one more way two
+        // identical requests could diverge.
+        candidates = uniq.slice(0, 36).sort((a, b) => (a.code < b.code ? -1 : 1));
+      }
     } catch { /* the fallback judge reads the whole catalog, as before */ }
 
     onProgress?.({ read: 0, total: candidates.length, found: [], phase: "reading" });
 
-    // Four attempts, backing off further each time. A read that never lands is
-    // not a catalog that teaches nothing, it is a hole in the answer.
+    // Three independent draws, majority vote. One judge call at temperature
+    // zero still varies with the provider's numerics, and its variance is
+    // catastrophic in both directions: one security run returned eleven
+    // matches and the next returned two, and a one off hallucination can put
+    // the wrong course in front of a student. A course has to convince two of
+    // three independent readings to appear at all, which kills the one off
+    // drop and the one off inclusion with the same stroke. The draws run in
+    // parallel, so the wall clock is one judge, not three.
     let landed = false;
     let lastReadError = "";
-    for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+    const drawFits: CourseFit[][] = [];
+    const judgeDraw = async (): Promise<CourseFit[] | null> => {
+      for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const candidateText = candidates
           .map((c) => `### ${c.code}: ${c.title} (${c.credits} credits)\n${c.description}`)
@@ -819,19 +894,13 @@ export async function POST(req: Request) {
         });
         costUsd += cost;
         const facetActor = new Map(facets.map((f) => [aspectKey(f.name), (f as { actor?: string }).actor ?? "own"]));
+        const needRepair: { f: (typeof content.fits)[number]; c: (typeof targets)[number]; jq: string }[] = [];
+        // Draw local. Three draws run at once, and pushing into the shared
+        // array meant each splice carried away another draw's entries: a race
+        // that scrambled the vote and doubled the wall clock.
+        const out: CourseFit[] = [];
         let rank = 0;
-        for (const f of content.fits ?? []) {
-          const raw = String(f.course ?? "").trim();
-          const c = byCode.get(codeKey(raw)) ?? byCode.get(raw.toLowerCase());
-          if (!c) { dropped++; allMisses.push({ code: raw.slice(0, 60), side: "unknown course", quote: "" }); continue; }
-          const cq = String(f.courseQuote ?? "").trim();
-          const jq = String(f.jobQuote ?? "").trim();
-          // Neither side gets to be asserted. Both have to be shown.
-          if (!quoted(c.description, cq) || !quoted(jd, jq)) {
-            dropped++;
-            allMisses.push({ code: c.code, side: !quoted(c.description, cq) ? "course" : "job", quote: cq.slice(0, 120) });
-            continue;
-          }
+        const admit = (f: (typeof content.fits)[number], c: (typeof targets)[number], cq: string, jq: string) => {
           const aspectWhy: Record<string, string> = {};
           const named: string[] = [];
           for (const a of Array.isArray(f.aspects) ? f.aspects : []) {
@@ -841,23 +910,20 @@ export async function POST(req: Request) {
             const r = String(a?.reason ?? "").trim();
             if (r) aspectWhy[label] = r.slice(0, 220);
           }
-          if (!named.length) { dropped++; allMisses.push({ code: c.code, side: "no aspect matched the job's parts", quote: "" }); continue; }
+          if (!named.length) { dropped++; allMisses.push({ code: c.code, side: "no aspect matched the job's parts", quote: "" }); return; }
           let strength = (["central", "useful", "tangential"].includes(f.strength) ? f.strength : "useful") as CourseFit["strength"];
           // A part labelled as the team's work around this person cannot make
           // a course central, full stop. The first version allowed an override
           // backed by a posting quote, and it verified instantly every time,
           // because job ads write every duty as an imperative aimed at the
-          // applicant: "Improve the accuracy of detection systems" is on the
-          // page whether the reader will be the engineer or the manager of the
-          // engineer. A quote cannot tell whose hands. The actor label, judged
-          // from the role and the verbs together, is the only signal that can,
+          // applicant. A quote cannot tell whose hands; the actor label can,
           // so it decides. Central survives only through a part the person
           // does themselves.
           if (strength === "central") {
             const ownHandsParts = named.filter((a) => facetActor.get(aspectKey(a)) !== "around");
             if (!ownHandsParts.length) strength = "useful";
           }
-          fits.push({
+          out.push({
             courseId: c.id, code: c.code, title: c.title,
             strength,
             rank: rank++,
@@ -866,13 +932,131 @@ export async function POST(req: Request) {
             aspectWhy,
             courseQuote: cq, jobQuote: jq,
           });
+        };
+        for (const f of content.fits ?? []) {
+          const raw = String(f.course ?? "").trim();
+          const c = byCode.get(codeKey(raw)) ?? byCode.get(raw.toLowerCase());
+          if (!c) { dropped++; allMisses.push({ code: raw.slice(0, 60), side: "unknown course", quote: "" }); continue; }
+          const cq = String(f.courseQuote ?? "").trim();
+          const jq = String(f.jobQuote ?? "").trim();
+          // Neither side gets to be asserted. Both have to be shown.
+          if (!quoted(jd, jq)) {
+            dropped++;
+            allMisses.push({ code: c.code, side: "job", quote: jq.slice(0, 120) });
+            continue;
+          }
+          if (!quoted(c.description, cq)) {
+            // The model quotes from memory. For User Interface Design it
+            // reproduced a real sentence from an OLD Columbia bulletin, word
+            // for word, instead of copying the description it was given, and
+            // the verification correctly refused it, killing the single best
+            // course for a design systems posting over a citation error. The
+            // claim is stashed and the model gets one chance to re-quote from
+            // the actual text before the claim dies.
+            needRepair.push({ f, c, jq });
+            continue;
+          }
+          admit(f, c, cq, jq);
         }
-        landed = true;
+
+        // One repair round for claims that failed only on the course quote.
+        // Repaired claims re-enter through admit(), the same gate as everyone
+        // else: same aspect snapping, same actor ceiling, same rank counter.
+        if (needRepair.length) {
+          try {
+            const listing = needRepair.map((r, n) =>
+              `${n + 1}. ${r.c.code}: ${r.c.title}\nTHE DESCRIPTION, the only text you may quote from:\n${r.c.description}`).join("\n\n");
+            const { content: rep, costUsd: repCost } = await haiku<{ quotes: { n: number; courseQuote: string }[] }>({
+              key,
+              purpose: `re-quote ${needRepair.length} course claims`,
+              system: "Each course below was claimed to help a job, but the quote offered as proof was not in its description, usually because it was quoted from memory of some other year's catalog. Copy ONE sentence, verbatim, from the description given here that carries the claim. If nothing in the description supports it, return an empty string and the claim dies, which is the correct outcome.",
+              user: listing,
+              schema: REQUOTE_SCHEMA as never,
+              maxTokens: 600,
+              temperature: 0,
+            });
+            costUsd += repCost;
+            for (const q of rep.quotes ?? []) {
+              const r = needRepair[q.n - 1];
+              if (!r) continue;
+              const cq2 = String(q.courseQuote ?? "").trim();
+              if (!cq2 || !quoted(r.c.description, cq2)) {
+                dropped++;
+                allMisses.push({ code: r.c.code, side: "course", quote: cq2.slice(0, 120) });
+                continue;
+              }
+              admit(r.f, r.c, cq2, r.jq);
+            }
+          } catch {
+            for (const r of needRepair) {
+              dropped++;
+              allMisses.push({ code: r.c.code, side: "course", quote: "repair call failed" });
+            }
+          }
+        }
+        return out;
       } catch (e) {
         // Swallowing this made a failed read indistinguishable from a catalog
         // that teaches nothing, and a whole fixture run was spent guessing.
         lastReadError = e instanceof Error ? e.message : String(e);
-        if (attempt < 3) await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+        if (attempt < 1) await new Promise((r) => setTimeout(r, 1200));
+      }
+      }
+      return null;
+    };
+
+    const settled = await Promise.allSettled([judgeDraw(), judgeDraw(), judgeDraw()]);
+    for (const d of settled) {
+      if (d.status === "fulfilled" && d.value) drawFits.push(d.value);
+    }
+    landed = drawFits.length > 0;
+    if (landed) {
+      const appearances = new Map<string, CourseFit[]>();
+      for (const draw of drawFits) {
+        for (const f of draw) appearances.set(f.courseId, [...(appearances.get(f.courseId) ?? []), f]);
+      }
+      // Two of three, or everything a lone surviving draw saw. The threshold
+      // scales down when a draw dies so an outage degrades to one reading
+      // rather than to an empty answer.
+      const needVotes = Math.min(2, drawFits.length);
+      const order = ["central", "useful", "tangential"];
+      for (const [, seen] of appearances) {
+        if (seen.length < needVotes) continue;
+        // The vote applies to every CLAIM, not just to the course. Merging a
+        // course's entries wholesale let one draw's stray aspect ride in on
+        // the other two draws' votes: Databases earned its seat through data
+        // pipelines, twice, and a single reading's "content understanding"
+        // came along for free, which is the exact claim this pipeline exists
+        // to refuse. An aspect now needs the same two readings the course
+        // does.
+        const aspectVotes = new Map<string, number>();
+        for (const f of seen) {
+          for (const a of f.aspects) aspectVotes.set(a, (aspectVotes.get(a) ?? 0) + 1);
+        }
+        const keptAspects = [...aspectVotes.entries()]
+          .filter(([, n]) => n >= needVotes)
+          .map(([a]) => a);
+        if (!keptAspects.length) continue;
+        const best = [...seen].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))[0];
+        const counts = new Map<string, number>();
+        for (const f of seen) counts.set(f.strength, (counts.get(f.strength) ?? 0) + 1);
+        const strength = [...counts.entries()].sort((a, b) =>
+          b[1] - a[1] || order.indexOf(a[0]) - order.indexOf(b[0]))[0][0] as CourseFit["strength"];
+        const aspectWhy: Record<string, string> = {};
+        for (const a of keptAspects) {
+          // The reason from whichever draw stated it best, best ranked first.
+          for (const f of [...seen].sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99))) {
+            const w = f.aspectWhy?.[a];
+            if (w) { aspectWhy[a] = w; break; }
+          }
+        }
+        fits.push({
+          ...best,
+          strength,
+          aspects: keptAspects,
+          aspectWhy,
+          why: Object.values(aspectWhy)[0] ?? best.why,
+        });
       }
     }
     if (!landed) unread = targets.length;
@@ -884,10 +1068,23 @@ export async function POST(req: Request) {
     // eaten by strictness, and a "useful" tag no longer glows on the page. The
     // claims that put a course in front of a student as direct preparation are
     // the ones that must survive an adversary.
+    const facetActorPre = new Map(facets.map((f) => [aspectKey(f.name), (f as { actor?: string }).actor ?? "own"]));
     const claims: { fitIdx: number; aspect: string; fit: CourseFit }[] = [];
     fits.forEach((f, i) => {
-      if (f.strength !== "central") return;
-      for (const a of f.aspects) claims.push({ fitIdx: i, aspect: a, fit: f });
+      // What faces the refuter: every central claim, and every claim made
+      // against a part of the job the TEAM does around this person. Widening
+      // it to all useful claims was measured and reverted: the refuter
+      // started killing whole postings to zero, variably, security went from
+      // eleven matches to none between two runs. The around facets are where
+      // wrong actor stretches live, "databases specifies detection
+      // capabilities" was one, so they are audited at every strength, and
+      // claims on the person's own work keep their recall.
+      if (f.strength === "tangential") return;
+      for (const a of f.aspects) {
+        if (f.strength === "central" || facetActorPre.get(aspectKey(a)) === "around") {
+          claims.push({ fitIdx: i, aspect: a, fit: f });
+        }
+      }
     });
 
     const rejected = new Set<string>();
@@ -939,10 +1136,19 @@ export async function POST(req: Request) {
     }
 
     const claimsRefuted = rejected.size;
+    const facetActorPost = new Map(facets.map((f) => [aspectKey(f.name), (f as { actor?: string }).actor ?? "own"]));
     const survivors: CourseFit[] = [];
     fits.forEach((f, i) => {
       const kept = f.aspects.filter((a) => !rejected.has(`${i}::${aspectKey(a)}`));
-      if (kept.length) survivors.push({ ...f, aspects: kept });
+      if (!kept.length) return;
+      let strength = f.strength;
+      // The refuter can kill the one claim the central label was standing on.
+      // Recheck the ceiling over what survived, or a course stays lit for a
+      // reason that no longer exists.
+      if (strength === "central" && !kept.some((a) => facetActorPost.get(aspectKey(a)) !== "around")) {
+        strength = "useful";
+      }
+      survivors.push({ ...f, aspects: kept, strength });
     });
     fits.length = 0;
     // Sorted, by course and then by aspect within each course.
@@ -1012,6 +1218,7 @@ export async function POST(req: Request) {
       /** Why the read failed, when it did. Empty on success. */
       readError: landed ? "" : lastReadError,
       shortlistedCount: candidates.length,
+      shortlistCodes: candidates.map((c) => c.code),
     };
   };
 

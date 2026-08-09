@@ -201,6 +201,13 @@ async function callOpenRouter(args: ChatArgs) {
     max_tokens: args.maxTokens ?? 900,
     temperature: args.temperature ?? 0,
     usage: { include: true },
+    // One provider, first in line. OpenRouter load balances the same model
+    // across Anthropic, Bedrock and Vertex, whose numerics differ, so two
+    // identical temperature zero requests could come back meaningfully
+    // different depending on who served them. Measured on the fixture suite
+    // as a security run returning eleven matches and then six. Fallbacks stay
+    // on, an outage should degrade to variance rather than to nothing.
+    provider: { order: ["Anthropic"], allow_fallbacks: true },
   };
 
   if (args.schema) {

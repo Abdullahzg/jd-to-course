@@ -158,6 +158,15 @@ Each facet has:
     backend engineer posting is "own". When you are not sure, say "own".
     This matters more than it looks: every facet you mark "around" stops
     technical courses being sold to the student as their direct preparation.
+    A worked example, an AI product manager posting: "improving detection
+    system accuracy" is around, engineers train the models. "Defining metrics
+    and running experiments" is own, the manager decides what to measure.
+    "Translating requirements into roadmaps" is own. Do not let the imperative
+    grammar of job ads fool you: every bullet is written as "improve X" even
+    when the reader will manage the improving, so judge from the ROLE TITLE
+    first and the verb second. For manager and analyst roles, verbs like
+    drive, oversee, ensure and deliver applied to a technical capability are
+    "around"; verbs like define, decide, analyse, measure and write are "own".
   - "actorQuote": the verb phrase from the posting, copied exactly, that shows
     whose hands it is.
 
@@ -317,15 +326,24 @@ export async function POST(req: Request) {
     // taking thirty five seconds while the provider itself answered a small
     // request in three. They are independent, so they no longer wait for each
     // other, and the loader can move on as soon as the shorter one lands.
-    const [facetRes, reqRes] = await Promise.all([
-      haiku<{ roleSummary: string; facets: { name: string; quote: string; weight: string; actor?: string; actorQuote?: string }[] }>({
-        key,
-        purpose: "job posting → the parts of the work",
-        system: FACET_SYSTEM,
-        user: window,
-        schema: FACET_SCHEMA as never,
-        maxTokens: 900,
-      }),
+    type FacetDraft = { roleSummary: string; facets: { name: string; quote: string; weight: string; actor?: string; actorQuote?: string }[] };
+    const facetDraw = () => haiku<FacetDraft>({
+      key,
+      purpose: "job posting → the parts of the work",
+      system: FACET_SYSTEM,
+      user: window,
+      schema: FACET_SCHEMA as never,
+      maxTokens: 900,
+    });
+    // Everything downstream stands on the facets, so a single unlucky reading
+    // there cascades: one run of a product manager posting labelled the
+    // classification facet as the person's own hands, and three technical
+    // courses lit up as direct preparation on the strength of that one flip.
+    // Two independent readings and a reconciliation, run alongside the
+    // requirements call, so the whole tree grows from a steadier root.
+    const [draftA, draftB, reqRes] = await Promise.all([
+      facetDraw(),
+      facetDraw().catch(() => null),
       haiku<{ requirements: { skill: string; evidence: string; kind: string }[] }>({
         key,
         purpose: "job posting → requirements with quotes",
@@ -335,6 +353,36 @@ export async function POST(req: Request) {
         maxTokens: 1600,
       }),
     ]);
+    let facetRes = draftA;
+    if (draftB) {
+      try {
+        const merged = await haiku<FacetDraft>({
+          key,
+          purpose: "reconcile two facet readings",
+          system: `Two independent readings of the same job posting follow, each a list of the parts of the work. Produce ONE consolidated list of three to seven parts.
+
+Where the readings agree in substance, keep the clearer wording. Where only
+one reading saw a real part of the work, keep it. For "actor", the stakes are
+one sided: marking the person's own work as the team's hides good courses,
+but marking the team's work as the person's sells wrong courses as direct
+preparation, which is worse. So when the two readings disagree on actor,
+"around" wins. Copy quotes exactly from whichever reading carried them.
+Same fields, same rules as the readings themselves. Plain words, no em or en
+dashes.`,
+          user: `READING ONE
+${JSON.stringify(draftA.content)}
+
+READING TWO
+${JSON.stringify(draftB.content)}`,
+          schema: FACET_SCHEMA as never,
+          maxTokens: 900,
+        });
+        if ((merged.content.facets ?? []).length >= 3) {
+          facetRes = { content: merged.content, costUsd: draftA.costUsd + draftB.costUsd + merged.costUsd } as typeof draftA;
+        }
+      } catch { /* one honest reading beats a failed reconciliation */ }
+    }
+
     const content = {
       roleSummary: facetRes.content.roleSummary,
       facets: facetRes.content.facets,

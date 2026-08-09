@@ -36,7 +36,55 @@ const FIXTURES = [
     mustMatch: ["COMS W4160|COMS W4167|COMS E4995"],
     mustNotMatch: ["IEOR E4212"], neverCentral: [], forbiddenClaims: [],
   },
+  {
+    name: "content governance (nontechnical)", file: "jd_gov.txt",
+    // The posting that started everything: Computer Vision was sold as
+    // preparation for a governance analyst.
+    neverCentral: ["COMS W4731", "COMS W4732", "COMS W4726", "POLS GU4728"],
+    mustNotMatch: [], mustMatch: [], forbiddenClaims: [],
+  },
+  {
+    name: "frontend engineer", file: "jd_fe.txt",
+    mustMatch: ["COMS W4170|COMS W4160|COMS W3107"],
+    mustNotMatch: ["CBMF W4761"], neverCentral: [], forbiddenClaims: [],
+  },
+  {
+    name: "site reliability engineer", file: "sre_jd.txt",
+    mustMatch: ["COMS W4113|COMS W4118|COMS W4119"],
+    mustNotMatch: ["POLS GU4728"], neverCentral: [], forbiddenClaims: [],
+  },
+  {
+    name: "compliance analyst", file: "jd_compliance.txt",
+    // Coordination heavy and nontechnical: deep learning may never glow here.
+    neverCentral: ["COMS W4726", "COMS W4771", "COMS W4732"],
+    mustMatch: [], mustNotMatch: [], forbiddenClaims: [],
+  },
+  {
+    name: "bakery manager (control)", file: "jd_control.txt",
+    maxMatches: 1, mustMatch: [], mustNotMatch: [], neverCentral: [], forbiddenClaims: [],
+  },
 ];
+
+// ── stability: the same request twice must land on mostly the same courses ──
+// The union-of-two-draws shortlist exists exactly for this; the check keeps it
+// honest. Jaccard under 0.5 means a student refreshing the page gets a
+// different answer to the same question, which is the machine changing its
+// mind, not the student changing theirs.
+async function stability(dir) {
+  const jd = readFileSync(`${dir}/sec_jd.txt`, "utf8");
+  const skText = await (await fetch("http://localhost:3000/api/skills", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jd }) })).text();
+  let sk = {}; for (const l of skText.trim().split("\n")) { try { sk = { ...sk, ...JSON.parse(l) }; } catch { /* partial */ } }
+  const once = async () => {
+    const r = await (await fetch("http://localhost:3000/api/fit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jd, schoolId: "COLUMBIA", courseIds: ids, facets: sk.facets ?? [], stream: false }) })).json();
+    return new Set((r.fits ?? []).map((f) => f.code));
+  };
+  const [a, b] = [await once(), await once()];
+  const inter = [...a].filter((x) => b.has(x)).length;
+  const union = new Set([...a, ...b]).size;
+  const j = union ? inter / union : 1;
+  console.log(`stability (security, run twice): ${a.size} vs ${b.size} matches, agreement ${(j * 100).toFixed(0)}%`);
+  return j;
+}
 
 const ids = JSON.parse(readFileSync(new URL("../node_modules/.fixture-ids.json", import.meta.url), "utf8"));
 let pass = 0, fail = 0; const failures = [];
@@ -62,6 +110,9 @@ for (const fx of FIXTURES) {
   console.log(`   actors: ${actors}`);
   console.log(`   ${fits.map((f) => `${f.code}[${f.strength[0]}]`).join(" ")}`);
 }
+const j = await stability(DIR);
+if (j >= 0.5) pass++; else { fail++; failures.push(`stability: agreement ${(j * 100).toFixed(0)}% is below 50%`); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 failures.forEach((f) => console.log("  FAIL " + f));
 process.exit(fail ? 1 : 0);
