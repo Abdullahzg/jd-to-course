@@ -390,7 +390,27 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
           k: 3,
         }),
       });
-      const json: SolveResponse = await res.json();
+      let json: SolveResponse = await res.json();
+      if (!json.ok && json.infeasibility?.timedOut) {
+        // The server already escalated once. One more from here covers the
+        // case where its machine was simply busy at the wrong moment.
+        const again = await fetch("/api/solve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            schoolId: next.schoolId,
+            programId: next.programId,
+            student: { ...next.student, program: next.programId },
+            targetSkills: next.targetSkills,
+            skillMatches: next.skillMatches,
+            relevance: next.relevance,
+            centrality: Object.fromEntries((next.facets ?? []).map((f) => [f.name, f.weight])),
+            k: 3,
+            budgetMs: 22000,
+          }),
+        });
+        json = await again.json();
+      }
 
       // §9.1 step 4 — only what genuinely moved earns the amber pulse.
       const moved = new Set<string>();

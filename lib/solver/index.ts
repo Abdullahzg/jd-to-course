@@ -16,7 +16,7 @@ const DEFAULT_BUDGET_MS = 12000;
 
 const norm = (s: string) => skillKey(s);
 
-export function solve(req: SolveRequest, budgetMs = DEFAULT_BUDGET_MS): SolveResponse {
+export function solve(req: SolveRequest, budgetMs = DEFAULT_BUDGET_MS, nodeLimit = 400_000): SolveResponse {
   const t0 = Date.now();
   const school = getSchool(req.schoolId);
   const program = getProgram(req.schoolId, req.programId);
@@ -49,7 +49,7 @@ export function solve(req: SolveRequest, budgetMs = DEFAULT_BUDGET_MS): SolveRes
 
   for (let i = 0; i < k; i++) {
     const perPlan = Math.max(400, Math.floor((deadline - Date.now()) / Math.max(1, k - i)));
-    const r = search(model, forbidden, Math.min(deadline, Date.now() + perPlan));
+    const r = search(model, forbidden, Math.min(deadline, Date.now() + perPlan), nodeLimit);
     if (i === 0) searchExhausted = r.exhausted;
     nodes += r.nodes;
     if (i === 0) provedOptimal = r.provedOptimal;
@@ -82,7 +82,7 @@ export function solve(req: SolveRequest, budgetMs = DEFAULT_BUDGET_MS): SolveRes
         ok: false, plans: [], coverage: null,
         counterfactuals: [],
         infeasibility: {
-          message: "This took longer than the time allowed, so no plan came back. Nothing here says a plan is impossible, only that the search was cut short. Try again.",
+          message: "The search ran out of time before finding a plan, even after an automatic retry with a much larger budget. Nothing here says a plan is impossible, only that it is taking too long to prove. Unpinning a course or adding a semester usually breaks the logjam.",
           blockingBuckets: [],
           suggestions: [],
           timedOut: true,
