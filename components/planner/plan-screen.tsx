@@ -1111,7 +1111,7 @@ export function PlanScreen() {
 
                     {other > 0 && (
                       <OpenSlot fill={filledByTerm.get(t)} courses={courses} revealCourse={openAlts}
-                                jobParts={(state.facets ?? []).length} />
+                                jobParts={(state.facets ?? []).length} consideredTotal={(state.shortlist ?? []).length} />
                     )}
 
                     {!inTerm.length && other === 0 && (
@@ -1594,78 +1594,104 @@ function CourseRow({
             <ChevronDown className={`h-3 w-3 transition-transform ${altOpen ? "rotate-180" : ""}`} />
           </button>
 
-          {altOpen && (
-            <ul className="mt-2 space-y-1.5">
-              {[...choice.alternatives]
-                .sort((a, b) =>
-                  // Gains first, fewest losses next, then the reader's own
-                  // order. Four rows losing the same facet used to arrive in
-                  // arbitrary order; now the best considered course of the
-                  // four is first, which is the whole meaning of "other
-                  // courses that fit".
-                  b.deltaSkills.length - a.deltaSkills.length ||
-                  a.losesSkills.length - b.losesSkills.length ||
-                  (a.rank ?? posOf(a.courseId) ?? 9999) - (b.rank ?? posOf(b.courseId) ?? 9999))
-                .map((alt) => {
-                const c = courses.get(alt.courseId);
-                if (!c) return null;
-                return (
-                  <li key={alt.courseId}>
-                    <button
-                      onClick={() => onChoose(alt.courseId)}
-                      className="w-full rounded-xl border border-border p-3 text-left transition-all hover:border-[var(--blue)] hover:bg-[var(--blue-soft)]"
-                    >
-                      <span className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-sm font-medium">{c.title}</span>
-                        <span className="code text-xs">{c.code}</span>
-                        <WhatIsIt course={c} align="right" />
-                        {alt.sameClass && (
-                          <span className="rounded-full bg-foreground/5 px-2 text-[10px] text-muted-foreground">
-                            same on every count
+          {altOpen && (() => {
+            // A visible ranking, not six sentences that all start the same
+            // way. The shared fact, that none of these answer what the chosen
+            // course answers, is said ONCE in the lead line, so each row is
+            // left saying only what makes it different: its rank, the
+            // reader's placement, and its own reason. Row one is named the
+            // best alternative outright, because "which one do I take if not
+            // this" is the entire question this list exists to answer.
+            const sorted = [...choice.alternatives].sort((a, b) =>
+              b.deltaSkills.length - a.deltaSkills.length ||
+              a.losesSkills.length - b.losesSkills.length ||
+              (a.rank ?? posOf(a.courseId) ?? 9999) - (b.rank ?? posOf(b.courseId) ?? 9999));
+            const lossKey = (x: SlotAlternative) => [...x.losesSkills].sort().join("|");
+            const sharedLoss = sorted.length > 1 &&
+              sorted[0].losesSkills.length > 0 &&
+              sorted.every((x) => lossKey(x) === lossKey(sorted[0]));
+            return (
+              <div className="mt-2">
+                <p className="mb-1.5 text-[11px] text-muted-foreground">
+                  Ranked best first, by the reader&rsquo;s weighing of your posting.
+                  {sharedLoss && (
+                    <> None of these answer {listOf(sorted[0].losesSkills)}, which {chosenCode} does; that
+                    loss is the price of any swap here, so it is not repeated on every row.</>
+                  )}
+                </p>
+                <ul className="space-y-1.5">
+                  {sorted.map((alt, i) => {
+                    const c = courses.get(alt.courseId);
+                    if (!c) return null;
+                    const pos = posOf(alt.courseId);
+                    return (
+                      <li key={alt.courseId}>
+                        <button
+                          onClick={() => onChoose(alt.courseId)}
+                          className="w-full rounded-xl border border-border p-2.5 text-left transition-all hover:border-[var(--blue)] hover:bg-[var(--blue-soft)]"
+                        >
+                          <span className="flex flex-wrap items-baseline gap-2">
+                            <span
+                              className={`tabular shrink-0 rounded px-1.5 text-[11px] font-semibold ${i === 0 ? "text-white" : "text-muted-foreground"}`}
+                              style={i === 0 ? { background: "var(--blue)" } : { background: "var(--foreground)/0.06" }}
+                            >
+                              #{i + 1}
+                            </span>
+                            <span className="text-sm font-medium">{c.title}</span>
+                            <span className="code text-xs">{c.code}</span>
+                            <WhatIsIt course={c} align="right" />
+                            {i === 0 && (
+                              <span className="rounded-full px-2 text-[10px] font-medium"
+                                    style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}>
+                                best alternative
+                              </span>
+                            )}
+                            {alt.sameClass && (
+                              <span className="rounded-full bg-foreground/5 px-2 text-[10px] text-muted-foreground">
+                                same on every count
+                              </span>
+                            )}
+                            <span className="tabular ml-auto text-xs text-muted-foreground">
+                              {pos != null
+                                ? `reader's pick ${pos + 1} of ${consideredTotal}`
+                                : consideredTotal > 0 ? "not weighed for this job" : ""}
+                              {" · "}{creditNote(alt)}
+                            </span>
                           </span>
-                        )}
-                        <span className="tabular ml-auto text-xs text-muted-foreground">
-                          {creditNote(alt)}
-                        </span>
-                      </span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        {(() => {
-                          const note = swapNote(alt, chosenCode);
-                          // Six rows carrying one identical sentence is a list,
-                          // not advice. When the hard trade is silent, each row
-                          // gets the judge's own reason for THIS course, which
-                          // is what makes the first one first.
-                          // The trade sentence states the facts; the second
-                          // sentence tells THIS course apart from its
-                          // neighbours losing the same facet.
-                          const why = whyOf(alt.courseId, placement.covers.map((c) => c.skill));
-                          const pos = posOf(alt.courseId);
-                          const own = why
-                            ?? (pos != null
-                              ? pos + 1 > (consideredTotal * 2) / 3
-                                ? `Near the bottom of the reader's list for this posting, ${pos + 1} of ${consideredTotal} considered.`
-                                : `The reader placed it ${pos + 1} of ${consideredTotal} courses considered for this posting.`
-                              : consideredTotal > 0
-                                ? `Not among the ${consideredTotal} courses the reader weighed for this posting. It fits the degree slot, nothing more.`
-                                : "");
-                          if (alt.deltaSkills.length || alt.losesSkills.length) {
-                            return own ? `${note} ${own}` : note;
-                          }
-                          return own || note;
-                        })()}
-                      </span>
-                      {alt.stopsSatisfying.length > 0 && (
-                        <span className="mt-1 block text-xs" style={{ color: "var(--amber-deep, #92400e)" }}>
-                          This one leaves {listOf(alt.stopsSatisfying)} short, so something else has to
-                          cover it.
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {(() => {
+                              const why = whyOf(alt.courseId, placement.covers.map((x) => x.skill));
+                              const gains = alt.deltaSkills.length
+                                ? `Also answers ${listOf(alt.deltaSkills)}, which ${chosenCode} does not. `
+                                : "";
+                              const loss = !sharedLoss && alt.losesSkills.length
+                                ? `Drops ${listOf(alt.losesSkills)}. `
+                                : "";
+                              const own = why
+                                ?? (pos != null
+                                  ? pos + 1 > (consideredTotal * 2) / 3
+                                    ? `Near the bottom of the reader's list for this posting.`
+                                    : ""
+                                  : consideredTotal > 0
+                                    ? `It fits the degree slot; the posting never asked for it.`
+                                    : "");
+                              return `${gains}${loss}${own}`.trim() || "Fits the same requirement for the same credits.";
+                            })()}
+                          </span>
+                          {alt.stopsSatisfying.length > 0 && (
+                            <span className="mt-1 block text-xs" style={{ color: "var(--amber-deep, #92400e)" }}>
+                              This one leaves {listOf(alt.stopsSatisfying)} short, so something else has to
+                              cover it.
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -1700,11 +1726,13 @@ function Empty() {
  * Courses that answer nothing are still listed, because a semester with a hole
  * in it is not a plan, but they are visibly the quiet ones.
  */
-function OpenSlot({ fill, courses, revealCourse, jobParts }: {
+function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal }: {
   fill?: FilledTerm;
   courses: Map<string, Course>;
   /** How many parts of the job exist, so "answers 2 of 5" has a denominator. */
   jobParts: number;
+  /** how many courses the reader weighed for this posting */
+  consideredTotal: number;
   /** A course the page is jumping to; if it is one of the quiet ones, unfold them. */
   revealCourse?: string | null;
 }) {
@@ -1758,6 +1786,12 @@ function OpenSlot({ fill, courses, revealCourse, jobParts }: {
                         answers {o.teaches.length} of {jobParts}
                         {o.strength === "central" ? ", closely" : o.strength === "tangential" ? ", loosely" : ""}
                       </span>
+                      {o.consideredPos != null && consideredTotal > 0 && (
+                        <span className="tabular rounded px-1.5 text-[10px] text-muted-foreground"
+                              style={{ background: "var(--foreground)/0.05" }}>
+                          reader&rsquo;s pick {o.consideredPos + 1} of {consideredTotal}
+                        </span>
+                      )}
                       <span className="tabular ml-auto text-[11px] text-muted-foreground">{o.credits} cr</span>
                     </div>
                     <p className="mt-1 text-xs">
@@ -1801,28 +1835,30 @@ function OpenSlot({ fill, courses, revealCourse, jobParts }: {
                         <span className="code text-[10px]">{o.code}</span>
                         <span className="rounded px-1.5 text-[10px] text-muted-foreground"
                               style={{ background: "var(--foreground)/0.05" }}>
-                          answers 0 of {jobParts}
+                          {o.consideredPos != null && consideredTotal > 0
+                            ? `elective rank ${o.consideredPos + 1} of ${consideredTotal} considered`
+                            : "not weighed for this posting"}
                         </span>
                         {o.fillerPool ? (
                           <span className="tabular text-[10px] text-muted-foreground">
-                            1st of {o.fillerPool} that could take this slot
+                            best of {o.fillerPool} available for this slot
                           </span>
                         ) : null}
                         <span className="tabular ml-auto text-[10px] text-muted-foreground">{o.credits} cr</span>
                       </span>
                       <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
                         {o.fillerReason
-                          ? `Every course in the catalog was read against your posting and this one answers none of it. Of the ${o.fillerPool ?? "other"} courses that could have taken this slot it came first because ${o.fillerReason}.`
+                          ? `The closest remaining match: of the ${o.fillerPool ?? "other"} courses that could take this slot it came first because ${o.fillerReason}.`
                           : "Every course in the catalog was read against your posting and this one answers none of it. It is here to complete the credits."}
                       </span>
                     </li>
                   ))}
                   <li className="px-1 pt-1 text-[11px] leading-relaxed text-muted-foreground">
-                    These were <strong>not chosen for your job</strong>. Nothing that runs this
-                    semester answers the posting directly, so the credits were filled in the
-                    reader&rsquo;s own consideration order for this posting first, and only past the
-                    end of that list by spreading across subjects. Swap any of them for whatever your
-                    core curriculum actually needs.
+                    No course left in this semester answers a part of the posting outright, so
+                    these are the <strong>closest remaining matches</strong>: filled from the top of
+                    the reader&rsquo;s ranked list for your posting, and only past the end of that
+                    list by spreading across subjects. Each row carries its rank and its reason.
+                    Swap any of them for whatever your core curriculum actually needs.
                   </li>
                 </ul>
               )}

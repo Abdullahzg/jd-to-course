@@ -1230,7 +1230,13 @@ export async function POST(req: Request) {
       /** Why the read failed, when it did. Empty on success. */
       readError: landed ? "" : lastReadError,
       shortlistedCount: candidates.length,
-      shortlistCodes: candidates.map((c) => c.code),
+      // Only a real consideration order is published as one. When the
+      // shortlist calls fail, the judge reads the whole catalog in CATALOG
+      // order, and publishing that as a ranking put "reader's pick 11 of 139"
+      // on screen for a course that merely sits eleventh in the file. An
+      // empty list here makes every rank badge downstream hide rather than
+      // lie.
+      shortlistCodes: candidates === targets ? [] : candidates.map((c) => c.code),
     };
   };
 

@@ -708,6 +708,8 @@ export interface ElectiveOption {
   why?: string;
   /** Position in the judge's strongest-first order. Lower is better. */
   rank?: number;
+  /** Position in the reader's consideration list for this posting. */
+  consideredPos?: number;
   /**
    * Why this course is here when it answers nothing.
    *
@@ -1159,7 +1161,10 @@ export function fillOpenCredits(args: {
             fillerReason: reasons.join(", and "),
           };
         }
-        picks.push(best);
+        // Every pick, matched or filler, carries its place on the one scale
+        // the page ranks by, so the row can wear its number instead of a
+        // shrug.
+        picks.push({ ...best, consideredPos: args.shortlistRank?.[best.courseId] });
         seenHere.add(best.courseId);
         taken.add(best.courseId);
         // And everything it rules out, immediately. Propagating conflicts only
