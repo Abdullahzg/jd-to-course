@@ -990,22 +990,34 @@ export function PlanScreen() {
                                 : `A trade: ${d!.gains.join(", ")} for ${d!.losses.join(", ")}.`}
                           </span>
                         )}
-                        {quiet && (
-                          <span className="block text-muted-foreground">
-                            {(() => {
-                              // "Answers the job just as well" is true and
-                              // useless: it gives no reason to ever click. The
-                              // incoming course carries the reader's own one
-                              // line reason, so the card borrows it.
-                              const firstIn = d?.swaps.find((sw) => sw.in);
-                              const inId = firstIn && [...courses.values()].find((c) => c.code === firstIn.in!.code)?.id;
-                              const why = inId ? state.relevance?.[inId]?.[0]?.why : null;
-                              return why
-                                ? `Same coverage by a different route. ${why}`
-                                : "Same job coverage, same credits, a different set of courses. Pick by which subjects you would rather sit through.";
-                            })()}
-                          </span>
-                        )}
+                        <span className="block text-muted-foreground">
+                          {(() => {
+                            // The one question this card exists to answer:
+                            // why would you take THIS plan over the one you
+                            // have open. Praising the incoming course was not
+                            // an answer, it was an advert. Both courses of
+                            // the first swap are placed on the same scale,
+                            // the reader's consideration list, and the
+                            // sentence says which plan that list favours.
+                            const sw = d?.swaps.find((x) => x.in && x.out);
+                            if (!sw) return null;
+                            const byCode = (code: string) => [...courses.values()].find((c) => c.code === code);
+                            const cin = byCode(sw.in!.code);
+                            const cout = byCode(sw.out!.code);
+                            const pIn = cin ? consideration[cin.id] : undefined;
+                            const pOut = cout ? consideration[cout.id] : undefined;
+                            const N = (state.shortlist ?? []).length;
+                            if (pIn == null && N > 0) {
+                              return `${sw.in!.title} was not among the ${N} courses the reader weighed for this posting. The degree accepts it; the posting does not ask for it.`;
+                            }
+                            if (pIn != null && pOut != null) {
+                              return pIn < pOut
+                                ? `The reader placed ${sw.in!.title} ${pIn + 1} of ${N} and ${sw.out!.title} ${pOut + 1}, so this option follows its reading of your posting more closely.`
+                                : `Your open plan follows the reader's order, ${sw.out!.title} placed ${pOut + 1} of ${N} against ${pIn + 1}. Take this option only if you would rather study ${sw.in!.title}.`;
+                            }
+                            return "Same job coverage, same credits, a different set of courses. Pick by which subjects you would rather sit through.";
+                          })()}
+                        </span>
                       </span>
                     )}
                   </button>
@@ -1072,7 +1084,20 @@ export function PlanScreen() {
                         planned={plannedIds}
                         completed={completedIds}
                         onJump={jumpToCourse}
-                        whyOf={(id) => state.relevance?.[id]?.[0]?.why}
+                        whyOf={(id, context) => {
+                          // The first reason on file was shown whatever the
+                          // slot was about, which put a sentence about GPU
+                          // pipelines under a course offered for a databases
+                          // slot. A reason only shows unlabelled when it is
+                          // about a part the chosen course actually covers;
+                          // out of context it carries the part's name, so a
+                          // strange pairing reads as what it is.
+                          const hits = state.relevance?.[id] ?? [];
+                          const inContext = hits.find((h) => h.why && context.includes(h.skill));
+                          if (inContext) return inContext.why;
+                          const any = hits.find((h) => h.why);
+                          return any ? `For "${any.skill}": ${any.why}` : undefined;
+                        }}
                         posOf={(id) => consideration[id]}
                         consideredTotal={(state.shortlist ?? []).length}
                         onLock={() => toggleLock(p.courseId, p.term, courses.get(p.courseId)?.code)}
@@ -1414,8 +1439,8 @@ function CourseRow({
   planned: Set<string>;
   completed: Set<string>;
   onJump: (term: number, courseId?: string) => void;
-  /** The judge's one line reason for a course, when it gave one. */
-  whyOf: (courseId: string) => string | undefined;
+  /** The judge's reason for a course IN THE CONTEXT of given facets. */
+  whyOf: (courseId: string, context: string[]) => string | undefined;
   /** Position in the reader's consideration order, when it was considered. */
   posOf: (courseId: string) => number | undefined;
   consideredTotal: number;
@@ -1613,12 +1638,16 @@ function CourseRow({
                           // The trade sentence states the facts; the second
                           // sentence tells THIS course apart from its
                           // neighbours losing the same facet.
-                          const why = whyOf(alt.courseId);
+                          const why = whyOf(alt.courseId, placement.covers.map((c) => c.skill));
                           const pos = posOf(alt.courseId);
                           const own = why
                             ?? (pos != null
-                              ? `The reader placed it ${pos + 1} of ${consideredTotal} courses considered for this posting.`
-                              : "");
+                              ? pos + 1 > (consideredTotal * 2) / 3
+                                ? `Near the bottom of the reader's list for this posting, ${pos + 1} of ${consideredTotal} considered.`
+                                : `The reader placed it ${pos + 1} of ${consideredTotal} courses considered for this posting.`
+                              : consideredTotal > 0
+                                ? `Not among the ${consideredTotal} courses the reader weighed for this posting. It fits the degree slot, nothing more.`
+                                : "");
                           if (alt.deltaSkills.length || alt.losesSkills.length) {
                             return own ? `${note} ${own}` : note;
                           }
