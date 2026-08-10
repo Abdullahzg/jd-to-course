@@ -22,7 +22,9 @@ export function AppHeader() {
   const pathname = usePathname();
 
   const tabs = [
+    { href: "/home", label: "Home", short: "Home" },
     { href: "/plan", label: "My course path", short: "Plan" },
+    { href: "/tracker", label: "Applications", short: "Apps" },
     { href: "/sources", label: "Where the rules come from", short: "Sources" },
   ];
 

@@ -149,6 +149,7 @@ type Ctx = {
   unexclude: (courseId: string, label?: string) => void;
   chooseSlot: (bucketId: string, replace: string, withCourse: string, replaceLabel?: string, withLabel?: string) => void;
   keepInPlan: (courseId: string, label?: string) => void;
+  restoreSnapshot: (payload: { state?: Partial<PlannerState>; result?: SolveResponse | null; summary?: string | null; summaryFor?: string | null }) => void;
   reset: () => void;
 };
 
@@ -239,6 +240,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef<PlannerState>(INITIAL);
   const hydrated = useRef(false);
   const pulseTimer = useRef<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
   const historyIndexRef = useRef(-1);
   /** solveWith is stable-by-identity, so it must read the catalog through a
    *  ref; the closure copy is the empty map from before the fetch landed, and
@@ -319,6 +321,34 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     } catch { /* quota — the app still works, it just won't survive a reload */ }
+
+    // The same snapshot, saved to the account when there is one, so /home can
+    // reopen any past search exactly as it stood. Fire and forget: signed out
+    // costs nothing and errors cost nothing, the local session is already the
+    // source of truth for THIS visit.
+    if (result?.ok && state.jd && result.plans?.length) {
+      // Debounced: this effect fires on every streamed summary token, and an
+      // unguarded save turned one course search into a hundred identical
+      // POSTs. The row was deduped server side, the traffic was still real.
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => {
+      const plan = result.plans[state.activePlan] ?? result.plans[0];
+      void fetch("/api/searches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: state.roleSummary || state.jd.slice(0, 80),
+          jd: state.jd,
+          coursesPicked: plan.placements.filter((p) => p.covers.length > 0).length,
+          partsAnswered: plan.skillsCovered.length,
+          snapshot: {
+            storageKey: STORAGE,
+            payload: { state, result, summary, summaryFor: summaryFor.current },
+          },
+        }),
+      }).catch(() => undefined);
+      }, 1500);
+    }
   }, [state, result, summary]);
 
   useEffect(() => {
@@ -452,6 +482,37 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       setReflowing(false);
       if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
       pulseTimer.current = window.setTimeout(() => setChanged(new Set()), 900);
+    }
+  }, []);
+
+  /**
+   * Load a saved search into the LIVE store.
+   *
+   * Writing the snapshot into sessionStorage and navigating looked identical
+   * to a reload and did nothing, because this provider mounts at the layout
+   * and hydrates exactly once: the write landed in storage, the running store
+   * never re-read it, and the plan page said "No plan yet" over a fully saved
+   * plan sitting one storage key away.
+   */
+  const restoreSnapshot = useCallback((payload: { state?: Partial<PlannerState>; result?: SolveResponse | null; summary?: string | null; summaryFor?: string | null }) => {
+    const restored = { ...INITIAL, ...(payload.state ?? {}) } as PlannerState;
+    setStateRaw(restored);
+    stateRef.current = restored;
+    if (payload.result?.ok) {
+      setResult(payload.result);
+      resultRef.current = payload.result;
+      const plan = payload.result.plans?.[0];
+      const key = plan ? plan.placements.map((pl) => `${pl.courseId}@${pl.term}`).sort().join("|") : "";
+      if (payload.summary && payload.summaryFor === key) {
+        setSummary(payload.summary);
+        summaryFor.current = key;
+      } else {
+        setSummary(null);
+      }
+    } else {
+      setResult(null);
+      resultRef.current = null;
+      setSummary(null);
     }
   }, []);
 
@@ -812,6 +873,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     lastChange: historyIndex >= 0 ? history[historyIndex] ?? null : null,
     summary, summaryBusy,
     solveWith, runSolve, toggleLock, exclude, unexclude, chooseSlot, keepInPlan, reset,
+    restoreSnapshot,
   };
 
   return <PlannerCtx.Provider value={value}>{children}</PlannerCtx.Provider>;

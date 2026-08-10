@@ -44,3 +44,6 @@ next-env.d.ts
 /shot*.mjs
 /flow.mjs
 /*.output
+
+# per-machine database
+.data/

@@ -9,6 +9,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Node native and worker-thread packages must not be bundled: Turbopack
+  // chases pino's test files inside imapflow's logger and dies on them, and
+  // better-sqlite3 is a compiled binary.
+  serverExternalPackages: ["imapflow", "mailparser", "better-sqlite3"],
 };
 
 export default nextConfig;

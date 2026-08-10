@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Poppins, Inter, JetBrains_Mono } from "next/font/google";
 import { BudgetBar } from "@/components/budget/budget-bar";
 import { BudgetProvider } from "@/components/budget/budget-provider";
+import { AuthProvider, Beacon } from "@/components/session";
 import { PlannerProvider } from "@/components/planner/planner-store";
 import "./globals.css";
 
@@ -44,6 +45,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             it, not an extra strip stacked on top. Stacking it above a
             100vh child made every page exactly one bar taller than the screen,
             which is why a survey that should never scroll, scrolled. */}
+        <AuthProvider>
+        <Beacon />
         <BudgetProvider>
           <div className="flex h-dvh flex-col overflow-hidden">
             <BudgetBar />
@@ -52,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </div>
           </div>
         </BudgetProvider>
+        </AuthProvider>
       </body>
     </html>
   );
