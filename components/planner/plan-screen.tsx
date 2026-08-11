@@ -58,7 +58,7 @@ const KIND_META: Record<SkillKind, { label: string; color: string }> = {
  */
 export function PlanScreen() {
   const {
-    state, setState, result, solving, courses, school, program, changed, keepInPlan,
+    state, setState, result, solving, reflowing, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
     repair, clearRepair, tryArrangement,
@@ -387,6 +387,12 @@ export function PlanScreen() {
 
   return (
     <div className={`${planTint} mx-auto max-w-[1500px] px-4 py-5 lg:px-8 lg:py-6`}>
+      {(solving || reflowing) && (
+        <div className="fixed left-1/2 top-14 z-[80] flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-xs font-medium shadow-lg">
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
+          Rebuilding the plan around your change
+        </div>
+      )}
       {/* What this plan is for: the school, the degree, the job. Used to be
           its own bar; three bars deep, the page started below the fold. */}
       <p className="mb-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -847,9 +853,9 @@ export function PlanScreen() {
           />
           <div className="mt-2 flex justify-end">
             <button onClick={() => setDoctorOpen(true)} data-track="plan_doctor_open"
-                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    title="Move, add and remove courses by hand, with every rule checked live">
-              Arrange by hand
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-2 text-xs font-medium transition-colors hover:border-[var(--blue)] hover:bg-[var(--blue-soft)]"
+                    title="Every semester gets its own search box and live rule checks">
+              <RotateCcw className="h-3.5 w-3.5" /> Arrange semesters by hand: add, remove, move courses
             </button>
           </div>
       </div>
@@ -1055,9 +1061,18 @@ export function PlanScreen() {
                               return `${sw.in!.title} was not among the ${N} courses the reader weighed for this posting. The degree accepts it; the posting does not ask for it.`;
                             }
                             if (pIn != null && pOut != null) {
+                              const inHits = (cin && state.relevance?.[cin.id]) || [];
+                              const answers = inHits.length
+                                ? ` ${sw.in!.title} answers ${inHits.slice(0, 2).map((h) => h.skill).join(" and ")} for this posting.`
+                                : "";
+                              // Eleventh against twelfth is not a reason, it
+                              // is a rounding error wearing one's clothes.
+                              if (Math.abs(pIn - pOut) <= 2) {
+                                return `The reader ranks these nearly even (${sw.in!.title} ${pIn + 1} of ${N}, ${sw.out!.title} ${pOut + 1}), so the posting is answered the same either way.${answers} Pick by which subject you would rather sit through.`;
+                              }
                               return pIn < pOut
-                                ? `The reader placed ${sw.in!.title} ${pIn + 1} of ${N} and ${sw.out!.title} ${pOut + 1}, so this option follows its reading of your posting more closely.`
-                                : `Your open plan follows the reader's order, ${sw.out!.title} placed ${pOut + 1} of ${N} against ${pIn + 1}. Take this option only if you would rather study ${sw.in!.title}.`;
+                                ? `The reader placed ${sw.in!.title} ${pIn + 1} of ${N}, well above ${sw.out!.title} at ${pOut + 1}.${answers}`
+                                : `Your open plan already holds the stronger pick: ${sw.out!.title} sits ${pOut + 1} of ${N} against ${pIn + 1}. Take this option only if you would rather study ${sw.in!.title}.${answers}`;
                             }
                             return "Same job coverage, same credits, a different set of courses. Pick by which subjects you would rather sit through.";
                           })()}
