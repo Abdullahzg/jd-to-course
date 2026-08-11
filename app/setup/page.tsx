@@ -210,7 +210,7 @@ export default function Setup() {
               <li>Turn on <strong>2 Step Verification</strong> first: Google account, Security, 2 Step
                 Verification. Google only offers app passwords once it is on.</li>
               <li>Then open <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.</li>
-              <li>Name it anything, press Create, and copy the 16 characters it shows.</li>
+              <li>Name it <strong>Carpa</strong>, press Create, and copy the 16 characters it shows.</li>
               <li>Paste them here. Carpa gets read only mail access you can revoke on that same page any time.</li>
             </ol>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
