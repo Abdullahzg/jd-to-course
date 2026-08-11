@@ -151,7 +151,7 @@ export default function TrackerPage() {
             { label: "In motion", dot: "#3b82f6", n: (items ?? []).filter((i) => ["applied", "assessment", "update", "waitlisted"].includes(i.status)).length },
             { label: "Interviews", dot: "#8b5cf6", n: (items ?? []).filter((i) => i.status === "interview").length },
             { label: "Offers and accepts", dot: "#10b981", n: (items ?? []).filter((i) => ["offer", "accepted"].includes(i.status)).length },
-            { label: "Needs your hands", dot: "var(--amber)", n: (items ?? []).filter((i) => i.status === "action needed").length },
+            { label: "Needs your hands", dot: "var(--amber)", n: (items ?? []).filter((i) => i.status === "action needed" || (i.status === "assessment" && i.deadline)).length },
           ].map((c) => (
             <div key={c.label} className="card-lift rounded-xl border border-border bg-white px-3 py-2.5">
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">

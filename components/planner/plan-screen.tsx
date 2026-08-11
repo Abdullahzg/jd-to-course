@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Check, ChevronDown, ExternalLink, Loader2, Lock, Redo2,
@@ -61,9 +61,26 @@ export function PlanScreen() {
     state, setState, result, solving, reflowing, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
-    repair, clearRepair, tryArrangement, removeCourse, addCourse, lastRemovedTerm,
+    repair, clearRepair, tryArrangement, removeCourse, addCourse, lastRemovedTerm, restoreSnapshot,
   } = usePlanner();
   const [doctorOpen, setDoctorOpen] = useState(false);
+  // A plan you built belongs to your account, not to one browser tab. An
+  // empty store on /plan pulls your newest saved search back from the
+  // database before showing "no plan yet" to someone who has one.
+  const triedRestore = useRef(false);
+  useEffect(() => {
+    if (result?.ok || triedRestore.current) return;
+    triedRestore.current = true;
+    void (async () => {
+      try {
+        const list = await fetch("/api/searches").then((r) => r.json());
+        const latest = list?.searches?.[0];
+        if (!latest) return;
+        const full = await fetch(`/api/searches?id=${latest.id}`).then((r) => r.json());
+        if (full?.ok && full.search?.snapshot?.payload) restoreSnapshot(full.search.snapshot.payload);
+      } catch { /* signed out or nothing saved; the empty state stands */ }
+    })();
+  }, [result, restoreSnapshot]);
   const { noteSpend } = useBudget();
 
   const [openAlts, setOpenAlts] = useState<string | null>(null);

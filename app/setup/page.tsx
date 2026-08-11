@@ -29,6 +29,12 @@ export default function Setup() {
   const [imapEmail, setImapEmail] = useState("");
   const [imapPass, setImapPass] = useState("");
   const [judgePopup, setJudgePopup] = useState(false);
+  useEffect(() => {
+    if (!judgePopup) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setJudgePopup(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [judgePopup]);
   const timers = useRef<number[]>([]);
 
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
@@ -137,7 +143,7 @@ export default function Setup() {
             <strong> Abdullah Zubair Ghouri</strong>, who built it, without connecting anything of
             yours.
           </p>
-          <button onClick={() => { setStep(1); setJudgePopup(true); }} data-track="setup_judge_banner"
+          <button onClick={() => setJudgePopup(true)} data-track="setup_judge_banner"
                   className="mt-3 rounded-full bg-background px-6 py-2.5 text-sm font-semibold text-foreground transition-transform hover:scale-[1.02]">
             Use the owner&rsquo;s inbox
           </button>
