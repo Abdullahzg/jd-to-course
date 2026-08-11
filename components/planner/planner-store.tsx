@@ -149,6 +149,9 @@ type Ctx = {
   runSolve: (overrides?: Partial<PlannerState>) => Promise<void>;
   toggleLock: (courseId: string, term: number, label?: string) => void;
   exclude: (courseId: string, label?: string) => void;
+  repair: { attempted: string; message: string; blockingBuckets: { bucketId: string; label: string; detail: string }[]; suggestions: string[]; dropCourseId?: string } | null;
+  clearRepair: () => void;
+  tryArrangement: (placements: { courseId: string; term: number }[], dropId?: string) => void;
   unexclude: (courseId: string, label?: string) => void;
   chooseSlot: (bucketId: string, replace: string, withCourse: string, replaceLabel?: string, withLabel?: string) => void;
   keepInPlan: (courseId: string, label?: string) => void;
@@ -229,6 +232,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const restoreNeedsSummary = useRef<{ res: SolveResponse; st: PlannerState } | null>(null);
   const [solving, setSolving] = useState(false);
   const [reflowing, setReflowing] = useState(false);
+  const [repair, setRepair] = useState<{ attempted: string; message: string; blockingBuckets: { bucketId: string; label: string; detail: string }[]; suggestions: string[]; dropCourseId?: string } | null>(null);
   const [changed, setChanged] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<ChangeRecord[]>([]);
@@ -395,7 +399,8 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const solveWith = useCallback(async (
     next: PlannerState,
     preferCourse?: string,
-    change?: { action: string; reason: string },
+    change?: { action: string; reason: string; dropCourseId?: string },
+    revertTo?: PlannerState,
   ) => {
     const previousPlan = resultRef.current?.plans?.[0] ?? null;
     const before = new Map<string, number>(
@@ -444,6 +449,25 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
         });
         json = await again.json();
       }
+
+      // A change that breaks a WORKING plan never replaces it with an error
+      // screen: the old plan stays, and the repair room opens with the
+      // solver's reasons. First solves keep the old behaviour, because there
+      // is nothing to protect yet.
+      if (!json.ok && hadPlan) {
+        if (revertTo) { stateRef.current = revertTo; setStateRaw(revertTo); }
+        setRepair({
+          attempted: change?.action ?? "That change",
+          message: json.infeasibility?.message ?? "The solver could not rebuild the plan around it.",
+          blockingBuckets: json.infeasibility?.blockingBuckets ?? [],
+          suggestions: (json.infeasibility?.suggestions ?? []).map((c) => c.change),
+          dropCourseId: change?.dropCourseId,
+        });
+        setSolving(false);
+        setReflowing(false);
+        return;
+      }
+      if (json.ok) setRepair(null);
 
       // §9.1 step 4 — only what genuinely moved earns the amber pulse.
       const moved = new Set<string>();
@@ -530,19 +554,43 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     (
       mutate: (s: PlannerState) => PlannerState,
       preferCourse?: string,
-      change?: { action: string; reason: string },
+      change?: { action: string; reason: string; dropCourseId?: string },
     ) => {
       // The first change needs somewhere to undo back to.
       if (!baseline.current && resultRef.current) {
         baseline.current = { state: stateRef.current, result: resultRef.current };
       }
+      const prev = stateRef.current;
       const next = mutate(stateRef.current);
       stateRef.current = next;
       setStateRaw(next);
-      void solveWith(next, preferCourse, change);
+      void solveWith(next, preferCourse, change, prev);
     },
     [solveWith],
   );
+
+  const clearRepair = useCallback(() => setRepair(null), []);
+
+  /**
+   * The repair room's commit: every draft course locked to its term, the
+   * solver run once as a verifier. Passing means a real plan built exactly
+   * as arranged; failing reopens the room with the solver's reasons.
+   */
+  const tryArrangement = useCallback((placements: { courseId: string; term: number }[], dropId?: string) => {
+    setRepair(null);
+    mutateAndSolve((s) => ({
+      ...s,
+      student: {
+        ...s.student,
+        locked: placements,
+        excluded: dropId ? [...new Set([...s.student.excluded, dropId])] : s.student.excluded,
+      },
+    }), undefined, {
+      action: "Arranged the board by hand",
+      reason: "You placed the courses yourself in the repair view; the solver checked the arrangement against every rule.",
+      dropCourseId: dropId,
+    });
+  }, [mutateAndSolve]);
 
   /** §9.2 — "I know something the model doesn't." Pin it; solve around it. */
   const toggleLock = useCallback((courseId: string, term: number, label = courseId) => {
@@ -577,6 +625,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     }), undefined, {
       action: `Removed ${label}`,
       reason: "You said you did not want this course, so it had to be replaced.",
+      dropCourseId: courseId,
     });
   }, [mutateAndSolve]);
 
@@ -869,6 +918,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     state, setState, catalog, courses, school, program,
     result, solving, reflowing, changed, error,
+    repair, clearRepair, tryArrangement,
     history, historyIndex,
     canUndo: historyIndex >= 0,
     canRedo: historyIndex < history.length - 1,

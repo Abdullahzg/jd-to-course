@@ -13,6 +13,7 @@ import type { Course, Placement, Plan, SlotAlternative, SlotChoice, Term } from 
 import { usePlanner } from "./planner-store";
 import { useBudget } from "@/components/budget/budget-provider";
 import { termKindsFor, verifyPlan } from "@/lib/verify";
+import { PlanDoctor } from "./plan-doctor";
 import { describeDiff, fillOpenCredits, type ElectiveOption, type FilledTerm } from "@/lib/solver";
 import { AskPanel } from "./ask-panel";
 import { RichText } from "./rich-text";
@@ -60,7 +61,9 @@ export function PlanScreen() {
     state, setState, result, solving, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
+    repair, clearRepair, tryArrangement,
   } = usePlanner();
+  const [doctorOpen, setDoctorOpen] = useState(false);
   const { noteSpend } = useBudget();
 
   const [openAlts, setOpenAlts] = useState<string | null>(null);
@@ -842,7 +845,32 @@ export function PlanScreen() {
             completed={state.student.completed}
             onJump={jumpToCourse}
           />
+          <div className="mt-2 flex justify-end">
+            <button onClick={() => setDoctorOpen(true)} data-track="plan_doctor_open"
+                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    title="Move, add and remove courses by hand, with every rule checked live">
+              Arrange by hand
+            </button>
+          </div>
       </div>
+
+      {(doctorOpen || repair) && program && (
+        <PlanDoctor
+          key={repair ? `${repair.attempted}-${repair.dropCourseId ?? ""}` : "manual"}
+          plan={plan}
+          program={program}
+          courses={courses}
+          catalog={school?.courses ?? []}
+          names={names}
+          termKinds={termKinds}
+          completed={state.student.completed}
+          repair={repair}
+          busy={solving}
+          onClose={() => { setDoctorOpen(false); clearRepair(); }}
+          onApply={(pl, dropId) => { setDoctorOpen(false); tryArrangement(pl, dropId); }}
+          onJump={(id) => { setDoctorOpen(false); clearRepair(); jumpToCourse(0, id); }}
+        />
+      )}
 
 
       {/* The board shows what the solver reached for. This is how you ask for
