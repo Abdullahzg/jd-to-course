@@ -1,4 +1,4 @@
-import { triageHeaders, extractSignals, refuteSignals } from "./classify";
+import { triageHeaders, extractSignals, refuteSignals, prefilterBulk } from "./classify";
 import { reconcile } from "./reconcile";
 import {
   demoInbox, fetchGmailHeaders, fetchGmailBodies, fetchImapHeaders, fetchImapBodies,
@@ -41,10 +41,13 @@ export async function runScan(
     let headers: EmailHeader[];
     let getBodies: (ids: string[], onChunk?: (done: number) => void) => Promise<RawEmail[]>;
 
-    // A person's own connection reads their newest 400; that is plenty to
-    // build a season and keeps a first scan under a minute. The owner's
-    // shared inbox is built once, in full, and cloned to judges after.
-    const personalCap = 400;
+    // A person's own connection fetches the whole year of headers (headers
+    // are nearly free), strips bulk senders deterministically, and spends
+    // the model budget on the newest 1200 that remain. A fixed 400 raw cap
+    // once made a noisy mailbox's scan reach back six weeks and miss every
+    // real application sitting just beyond the alerts.
+    const personalCap = 8000;
+    const triageWindow = 1200;
     if (mode === "gmail") {
       if (!opts.gmailToken) throw new Error("Google is not connected on this session. Sign in with Google, approving the Gmail permission.");
       const token = opts.gmailToken;
@@ -75,13 +78,20 @@ export async function runScan(
 
     // ── skip what earlier scans already paid for ─────────────────────────
     const seen = await seenEmailIds(userId, mode, headers.map((h) => h.id));
-    const fresh = headers.filter((h) => !seen.has(h.id));
-    await up({ phase: "triage", total: fresh.length, done: 0, alreadyKnown: seen.size });
+    let fresh = headers.filter((h) => !seen.has(h.id));
+    // Bulk mail dies here, for free, before a single model call.
+    const { kept: nonBulk, bulk } = prefilterBulk(fresh);
+    const windowed = nonBulk.length > triageWindow
+      ? [...nonBulk].sort((a, b) => b.date - a.date).slice(0, triageWindow)
+      : nonBulk;
+    const processedIds = new Set([...bulk.map((h) => h.id), ...windowed.map((h) => h.id)]);
+    fresh = fresh.filter((h) => processedIds.has(h.id));
+    await up({ phase: "triage", total: windowed.length, done: 0, alreadyKnown: seen.size });
 
     // ── triage headers, in parallel waves ────────────────────────────────
     let lastTick = 0;
-    const { keep, costUsd: triageCost } = await triageHeaders(key, fresh, (done) => {
-      if (done - lastTick >= 180 || done === fresh.length) { lastTick = done; void up({ done }); }
+    const { keep, costUsd: triageCost } = await triageHeaders(key, windowed, (done) => {
+      if (done - lastTick >= 180 || done === windowed.length) { lastTick = done; void up({ done }); }
     });
 
     // ── bodies for the survivors only ────────────────────────────────────

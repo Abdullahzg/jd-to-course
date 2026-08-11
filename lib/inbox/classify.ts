@@ -305,3 +305,28 @@ export async function refuteSignals(
   }), 4);
   return { kept, refuted: signals.length - kept.length, costUsd };
 }
+
+
+/**
+ * The free pass before any model call. A noisy mailbox is hundreds of job
+ * alerts and platform newsletters a month, and a fixed reading window filled
+ * with those is how a tester with "loads of applications" scanned 400 emails
+ * and reached back only six weeks. These senders and subjects are bulk by
+ * construction, never a status of anything the owner did, so they are
+ * dropped by string match and the model budget is spent on the remainder.
+ * Application mail from the same platforms (jobs-noreply@linkedin.com's
+ * "your application was sent", indeedapply@indeed.com) does NOT match these
+ * rules and flows through to triage.
+ */
+const BULK_FROM = /jobalert\.indeed|match\.indeed|@alerts?\.|invitations@linkedin|messages-noreply@linkedin|newsletters-noreply@linkedin|updates-noreply@linkedin|notifications-noreply@linkedin|jobalerts-noreply@linkedin|noreply@glassdoor|alerts@ziprecruiter/i;
+const BULK_SUBJECT = /^daily update:|^i want to connect|^you have an invitation|\d+ (new |more )?(jobs?|positions?|students remote)|jobs? (for you|you may|matching)|is hiring near you|new jobs? posted|top job picks|recommended for you/i;
+
+export function prefilterBulk(headers: EmailHeader[]): { kept: EmailHeader[]; bulk: EmailHeader[] } {
+  const kept: EmailHeader[] = [];
+  const bulk: EmailHeader[] = [];
+  for (const h of headers) {
+    if (BULK_FROM.test(h.from) || BULK_SUBJECT.test(h.subject)) bulk.push(h);
+    else kept.push(h);
+  }
+  return { kept, bulk };
+}
