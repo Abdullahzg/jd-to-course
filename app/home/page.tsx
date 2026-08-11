@@ -175,6 +175,11 @@ export default function Home() {
           <h2 className="text-sm font-semibold">Application tracker</h2>
           <p className="text-xs text-muted-foreground">Built from your own email, every status backed by the sentence that announced it.</p>
 
+          {tracker === null && (
+            <div className="mt-3 space-y-1.5">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 animate-pulse rounded-lg bg-foreground/5" />)}
+            </div>
+          )}
           {(tracker?.length ?? 0) > 0 && (
             <>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -222,7 +227,11 @@ export default function Home() {
                     ? "These rows are the real season of Abdullah Zubair Ghouri, for judging. Connect your own inbox below whenever you want your own."
                     : "The first scan reads back a year and builds the tracker by itself: what you applied to, where each one stands, grouped by kind. Nothing is written to your mailbox, ever."}
             </p>
-            {inboxStatus?.savedImap || inboxStatus?.gmailConnected ? (
+            {inboxStatus === null ? (
+              <div className="mt-2.5 flex gap-2">
+                {[0, 1, 2].map((i) => <div key={i} className="h-8 w-36 animate-pulse rounded-full bg-foreground/5" />)}
+              </div>
+            ) : inboxStatus?.savedImap || inboxStatus?.gmailConnected ? (
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 <button onClick={() => runScan(inboxStatus?.savedImap ? "imap" : "gmail")}
                         disabled={scan.busy} data-track="scan_now"
@@ -421,7 +430,18 @@ function LatestPlan({ searches, openSearch }: {
     return () => { alive = false; };
   }, [latest]);
 
-  if (!latest || !data) return null;
+  if (!latest) return null;
+  if (!data) {
+    return (
+      <section className="mt-6">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold">Latest plan: {latest.title}</h2>
+          <span className="text-[11px] text-muted-foreground">loading the board</span>
+        </div>
+        <div className="mt-2 h-56 animate-pulse rounded-xl border border-border bg-foreground/5" />
+      </section>
+    );
+  }
   return (
     <section className="mt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
