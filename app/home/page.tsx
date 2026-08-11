@@ -68,8 +68,8 @@ export default function Home() {
     const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e) }));
     if (r.ok) {
       if (r.done) {
-        setScan({ busy: false, note: `Loaded the owner's tracker: ${r.total} applications, ${r.created} new to your view.` });
-        void load();
+        window.dispatchEvent(new Event("carpa-nav"));
+        router.push("/tracker");
         return;
       }
       window.dispatchEvent(new Event("carpa-scan-started"));

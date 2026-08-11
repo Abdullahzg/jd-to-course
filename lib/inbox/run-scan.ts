@@ -98,6 +98,12 @@ export async function runScan(
     await up({ phase: "reading", total: keep.size, done: 0, costUsd: triageCost });
     const bodies = await getBodies([...keep], (done) => void up({ done }));
 
+    // Owner rows do not belong in a personal scan's result. Shifting back
+    // to your own inbox is also a replacement, not a merge.
+    if (mode === "imap" || mode === "gmail") {
+      await (await import("@/lib/db")).purgeJudgeRows(userId);
+    }
+
     // ── extract, verify quotes, reconcile ────────────────────────────────
     await up({ phase: "extracting", total: bodies.length, done: 0 });
     const { signals: rawSignals, costUsd: extractCost, dropped } = await extractSignals(key, bodies, (done) => void up({ done }));

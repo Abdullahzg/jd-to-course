@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS carpa_ai_calls (
 CREATE INDEX IF NOT EXISTS carpa_ai_fp ON carpa_ai_calls(fp, "createdAt" DESC);
 ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS body TEXT;
 ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS "fromAddr" TEXT;
+ALTER TABLE carpa_tracker ADD COLUMN IF NOT EXISTS origin TEXT;
 `);
   })();
   return ready;
@@ -396,21 +397,25 @@ export const SHARED_JUDGE_USER = "judge-shared";
 
 export async function cloneJudgeRows(toUserId: string): Promise<{ created: number; total: number }> {
   const src = await q<TrackerItem>(`SELECT * FROM carpa_tracker WHERE "userId" = $1`, [SHARED_JUDGE_USER]);
-  const mine = await q<{ company: string; role: string | null }>(
-    `SELECT company, role FROM carpa_tracker WHERE "userId" = $1`, [toUserId]);
-  const norm = (s: string | null) => (s ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  const have = new Set(mine.map((r) => `${norm(r.company)}|${norm(r.role)}`));
-  const fresh = src.filter((r) => !have.has(`${norm(r.company)}|${norm(r.role)}`));
+  // Shifting to the owner's view REPLACES the tracker; mixing two people's
+  // seasons in one table answered nobody's question. The person's own scan
+  // state is cleared too, so scanning their own inbox later rebuilds their
+  // full tracker from scratch instead of "nothing new since last time".
+  await q(`DELETE FROM carpa_tracker_events WHERE "itemId" IN (SELECT id FROM carpa_tracker WHERE "userId" = $1)`, [toUserId]);
+  await q(`DELETE FROM carpa_tracker WHERE "userId" = $1`, [toUserId]);
+  await q(`DELETE FROM carpa_seen_emails WHERE "userId" = $1 AND source IN ('imap','gmail')`, [toUserId]);
+  await q(`DELETE FROM carpa_mail_state WHERE "userId" = $1 AND source IN ('imap','gmail')`, [toUserId]);
+  const fresh = src;
   if (!fresh.length) return { created: 0, total: src.length };
 
   const idMap = new Map(fresh.map((r) => [r.id, uid()]));
   const rowVals: unknown[] = []; const rowTuples: string[] = [];
   fresh.forEach((r) => {
     const base = rowVals.length;
-    rowVals.push(idMap.get(r.id), toUserId, r.company, r.role, r.kind, r.status, r.quote, r.subject, r.emailDate, r.actionLink, r.deadline, r.notes, now(), now());
-    rowTuples.push(`(${Array.from({ length: 14 }, (_, k) => `$${base + k + 1}`).join(",")})`);
+    rowVals.push(idMap.get(r.id), toUserId, r.company, r.role, r.kind, r.status, r.quote, r.subject, r.emailDate, r.actionLink, r.deadline, r.notes, "judge", now(), now());
+    rowTuples.push(`(${Array.from({ length: 15 }, (_, k) => `$${base + k + 1}`).join(",")})`);
   });
-  await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, "createdAt", "updatedAt") VALUES ${rowTuples.join(",")}`, rowVals);
+  await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, origin, "createdAt", "updatedAt") VALUES ${rowTuples.join(",")}`, rowVals);
 
   // The events carry whole stored emails, megabytes of them. They are
   // copied INSIDE Postgres with one INSERT..SELECT; pulling them across the
@@ -427,6 +432,12 @@ export async function cloneJudgeRows(toUserId: string): Promise<{ created: numbe
      JOIN (VALUES ${mapTuples.join(",")}) AS m(old_id, new_id) ON m.old_id = e."itemId"`,
     [...mapVals, now()]);
   return { created: fresh.length, total: src.length };
+}
+
+/** Remove the owner's cloned rows from a personal tracker. */
+export async function purgeJudgeRows(userId: string) {
+  await q(`DELETE FROM carpa_tracker_events WHERE "itemId" IN (SELECT id FROM carpa_tracker WHERE "userId" = $1 AND origin = 'judge')`, [userId]);
+  await q(`DELETE FROM carpa_tracker WHERE "userId" = $1 AND origin = 'judge'`, [userId]);
 }
 
 // ── the AI spend ledger, per key fingerprint, durable across deploys ────────

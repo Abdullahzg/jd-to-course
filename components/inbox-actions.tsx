@@ -34,7 +34,13 @@ export function InboxActions({ onDone }: { onDone?: () => void }) {
     const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then((x) => x.json()).catch(() => ({ ok: false, error: "The connection dropped." }));
     if (!r.ok) { setBusy(false); setNote(r.error ?? "That did not work."); return; }
-    if (r.done) { setBusy(false); setNote(`The owner's tracker is in your view: ${r.total} applications.`); onDone?.(); return; }
+    if (r.done) {
+      setBusy(false);
+      if (window.location.pathname !== "/tracker") { window.dispatchEvent(new Event("carpa-nav")); window.location.href = "/tracker"; return; }
+      setNote(`The owner's tracker is in your view: ${r.total} applications.`);
+      onDone?.();
+      return;
+    }
     window.dispatchEvent(new Event("carpa-scan-started"));
     const tick = async () => {
       const j = (await fetch(`/api/inbox/scan?job=${r.jobId}`).then((x) => x.json()).catch(() => null))?.job;
