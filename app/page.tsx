@@ -14,15 +14,9 @@ export default function Page() {
   const courses = SCHOOLS.reduce((n, s) => n + s.courses.length, 0);
   const rules = SCHOOLS.reduce((n, s) => n + s.programs.reduce((m, p) => m + p.buckets.length, 0), 0);
 
-  // The gallery flies abstract panels drawn by this repo's own build script,
-  // not the product screenshots: light UI rectangles tumbling through a dark
-  // scene read as glitch, not as craft. The screenshots do their work below,
-  // in the sections whose claims they prove.
-  const shots = Array.from({ length: 8 }, (_, i) => ({ src: `/hero/h${i + 1}.png`, alt: "" }));
-
   return (
     <main className="bg-[#07090f] text-white">
-      <LandingHero shots={shots} />
+      <LandingHero />
 
       {/* ── the numbers, computed not claimed ─────────────────────────────── */}
       <section id="proof" className="mx-auto max-w-6xl px-5 py-14 sm:py-20 scroll-mt-8">

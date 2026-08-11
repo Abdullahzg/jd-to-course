@@ -1,52 +1,31 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-// The three.js gallery is the heaviest thing on the whole site, so it loads
-// after the text is already readable, and never on the server.
-const InfiniteGallery = dynamic(() => import("./infinite-gallery"), { ssr: false });
+import { TrackerDemo } from "./tracker-demo";
 
 /**
- * The hero from the design template, repurposed with receipts.
+ * Statement left, product right, nothing in between to break.
  *
- * The template flew art photography past the camera; this flies the product's
- * own unedited test screenshots. Same motion, but the gallery is proof, not
- * decoration. On phones and for anyone who prefers reduced motion, a static
- * screenshot stands in: WebGL on a cold mobile GPU is how a landing page
- * earns a spinner, and nobody scrolls a spinner.
+ * The three js gallery is gone: it glitched on real machines, and gradient
+ * rectangles flying at a visitor argued for nothing. What replaced it is the
+ * strongest asset this product has, the tracker visibly doing its job, an
+ * email arrives, a row updates, the quote appears, on loop, in the hero. The
+ * background is two CSS radial glows and a grid, which cannot glitch because
+ * there is nothing to run.
  */
-export function LandingHero({ shots }: { shots: { src: string; alt: string }[] }) {
-  const [show3d, setShow3d] = useState(false);
-  useEffect(() => {
-    const wide = window.matchMedia("(min-width: 768px)").matches;
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setShow3d(wide && !calm);
-  }, []);
-
+export function LandingHero() {
   return (
-    <section className="relative h-[92svh] min-h-[540px] w-full overflow-hidden">
-      {/* The static layer is not a fallback, it is the floor. WebGL can be
-          off, blocked, or on battery saver, and a hero that goes black when a
-          canvas fails is a hero that fails silently. The gallery draws OVER a
-          real screenshot, so the worst case is still the product. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={shots[1]?.src ?? "/hero/h1.png"} alt=""
-           className="absolute inset-0 h-full w-full object-cover opacity-40" />
-      {show3d && (
-        <InfiniteGallery
-          images={shots}
-          speed={0.9}
-          zSpacing={3}
-          visibleCount={10}
-          falloff={{ near: 0.8, far: 14 }}
-          className="absolute inset-0 h-full w-full opacity-70"
-        />
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#07090f]/60 via-transparent to-[#07090f]" />
+    <section className="relative min-h-[92svh] w-full overflow-hidden">
+      {/* background: pure CSS, zero runtime */}
+      <div aria-hidden className="absolute inset-0">
+        <div className="absolute -left-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(56,132,255,0.22),transparent_65%)]" />
+        <div className="absolute -bottom-52 -right-32 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle,rgba(16,185,163,0.16),transparent_65%)]" />
+        <div className="absolute inset-0 opacity-[0.35]"
+             style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "72px 72px" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090f]" />
+      </div>
 
-      <div className="relative z-10 flex h-full flex-col">
+      <div className="relative z-10 flex min-h-[92svh] flex-col">
         <header className="flex items-center justify-between px-5 py-4 sm:px-8">
           <p className="font-display text-sm font-semibold tracking-wide">Course Path</p>
           <nav className="flex items-center gap-2">
@@ -61,30 +40,41 @@ export function LandingHero({ shots }: { shots: { src: string; alt: string }[] }
           </nav>
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
-          <h1 className="max-w-3xl font-display text-4xl font-semibold leading-[1.05] sm:text-6xl">
-            The job you want,
-            <span className="block italic text-white/80">planned backwards.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
-            Paste a job posting and get the course plan that answers it, built inside your degree&rsquo;s
-            real rules, every choice backed by a quoted line from the catalog. Then connect your inbox
-            and watch every application you ever sent become a tracker that keeps itself.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/start" data-track="cta_start_hero"
-                  className="rounded-full bg-white px-7 py-3 text-sm font-semibold text-black transition-transform hover:scale-[1.03]">
-              Plan my degree
-            </Link>
-            <a href="#proof" className="rounded-full border border-white/20 px-7 py-3 text-sm text-white/80 transition-colors hover:border-white/60">
-              See the proof
-            </a>
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center gap-12 px-5 py-10 lg:flex-row lg:gap-16">
+          <div className="max-w-xl text-center lg:text-left">
+            <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+              for students done doing this by hand
+            </p>
+            <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.04] sm:text-6xl">
+              Pick the job.
+              <span className="block italic text-white/75">We&rsquo;ll plan the degree.</span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-lg text-sm leading-relaxed text-white/60 sm:text-base lg:mx-0">
+              Paste a posting and get the exact courses that answer it, inside your degree&rsquo;s real
+              rules, every pick backed by a quoted line from the catalog. Then connect your inbox once,
+              and every application you send tracks itself: confirmations, assessments, interviews,
+              offers, each with the sentence that proved it.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+              <Link href="/start" data-track="cta_start_hero"
+                    className="rounded-full bg-white px-7 py-3 text-sm font-semibold text-black transition-transform hover:scale-[1.03]">
+                Plan my degree
+              </Link>
+              <a href="#proof"
+                 className="rounded-full border border-white/20 px-7 py-3 text-sm text-white/80 transition-colors hover:border-white/60">
+                See the numbers
+              </a>
+            </div>
+            <p className="mt-6 text-[11px] text-white/35">
+              No claim without a receipt: every course quote and every status quote is machine checked
+              against its source.
+            </p>
+          </div>
+
+          <div className="flex w-full flex-1 justify-center lg:justify-end">
+            <TrackerDemo />
           </div>
         </div>
-
-        <p className="pb-6 text-center font-mono text-[10px] uppercase tracking-widest text-white/35">
-          scroll to fly through, real product screenshots wait below
-        </p>
       </div>
     </section>
   );
