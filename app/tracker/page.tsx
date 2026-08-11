@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ChevronDown, Download, ExternalLink, Loader2, Trash2 } from "lucide-react";
-import { StatusPill } from "@/app/home/page";
+import { ChevronDown, Download, ExternalLink, Loader2, Search, Trash2 } from "lucide-react";
 
 /**
  * The tracker as the spreadsheet it replaces, minus the typing.
@@ -25,6 +24,15 @@ type Item = {
 
 const KINDS = ["internship", "job", "research", "grad school", "scholarship", "hackathon", "program", "other"];
 const STATUSES = ["applied", "assessment", "interview", "offer", "accepted", "rejected", "waitlisted", "action needed", "update"];
+const STATUS_DOT: Record<string, string> = {
+  applied: "#3b82f6", assessment: "#d97706", interview: "#8b5cf6", offer: "#10b981",
+  accepted: "#059669", rejected: "#ef4444", waitlisted: "#f97316", "action needed": "var(--amber)", update: "#6b7280",
+};
+const COLS = [
+  { key: "company", label: "Company" }, { key: "role", label: "Role" }, { key: "kind", label: "Kind" },
+  { key: "status", label: "Status" }, { key: "updated", label: "Updated" }, { key: "deadline", label: "Deadline" },
+  { key: "notes", label: "Notes" }, { key: "actions", label: "" },
+] as const;
 const KIND_LABEL: Record<string, string> = {
   internship: "Internships", job: "Jobs", research: "Research", "grad school": "Grad school",
   scholarship: "Scholarships", hackathon: "Hackathons", program: "Programs", other: "Everything else",
@@ -35,6 +43,23 @@ export default function TrackerPage() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("all");
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [actionsOnly, setActionsOnly] = useState(false);
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "updated", dir: -1 });
+  // Column widths are yours to drag; the numbers are only the opening offer.
+  const [widths, setWidths] = useState<Record<string, number>>({ company: 190, role: 260, kind: 112, status: 152, updated: 96, deadline: 180, notes: 220 });
+  const resizing = useRef<{ key: string; startX: number; startW: number } | null>(null);
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      const r = resizing.current; if (!r) return;
+      setWidths((w) => ({ ...w, [r.key]: Math.max(64, r.startW + e.clientX - r.startX) }));
+    };
+    const up = () => { resizing.current = null; document.body.style.cursor = ""; };
+    window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -48,10 +73,24 @@ export default function TrackerPage() {
     void fetch("/api/tracker", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...fields }) });
   };
 
-  const visible = useMemo(
-    () => (items ?? []).filter((i) => tab === "all" || i.kind === tab),
-    [items, tab],
-  );
+  const visible = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const dateOf = (i: Item) => i.emailDate ?? i.updatedAt;
+    const val = (i: Item, k: string): string | number =>
+      k === "company" ? i.company.toLowerCase()
+      : k === "role" ? (i.role ?? "").toLowerCase()
+      : k === "kind" ? i.kind
+      : k === "status" ? i.status
+      : k === "deadline" ? (i.deadline ?? "")
+      : k === "notes" ? (i.notes ?? "").toLowerCase()
+      : dateOf(i);
+    return (items ?? [])
+      .filter((i) => tab === "all" || i.kind === tab)
+      .filter((i) => statusFilter === "all" || i.status === statusFilter)
+      .filter((i) => !actionsOnly || i.status === "action needed" || (i.status === "assessment" && i.deadline))
+      .filter((i) => !needle || [i.company, i.role, i.notes, i.status, i.kind, i.subject].some((f) => (f ?? "").toLowerCase().includes(needle)))
+      .sort((a, b) => { const x = val(a, sort.key), y = val(b, sort.key); return (x < y ? -1 : x > y ? 1 : 0) * sort.dir; });
+  }, [items, tab, q, statusFilter, actionsOnly, sort]);
 
   const exportCsv = () => {
     // UTF-8 BOM so Excel opens it with the right encoding on double click.
@@ -69,7 +108,6 @@ export default function TrackerPage() {
     URL.revokeObjectURL(url);
   };
 
-  const actions = (items ?? []).filter((i) => i.status === "action needed" || (i.status === "assessment" && i.deadline));
 
   if (status === "loading") return <Center><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></Center>;
   if (status !== "authenticated") {
@@ -121,25 +159,30 @@ export default function TrackerPage() {
         </div>
       )}
 
-      {actions.length > 0 && (
-        <div className="mt-4 rounded-xl border p-3" style={{ borderColor: "color-mix(in oklab, var(--amber) 45%, transparent)" }}>
-          <p className="text-xs font-medium" style={{ color: "var(--amber)" }}>Needs your hands</p>
-          <ul className="mt-1 space-y-1">
-            {actions.map((a) => (
-              <li key={a.id} className="text-xs">
-                <strong>{a.company}</strong>{a.role ? ` · ${a.role}` : ""}: {a.deadline ?? "action requested"}
-                {a.actionLink && (
-                  <a href={a.actionLink} target="_blank" rel="noreferrer" className="ml-1.5 inline-flex items-center gap-0.5 underline">
-                    open <ExternalLink className="h-2.5 w-2.5" />
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, role, notes"
+                 className="w-64 rounded-full border border-border bg-white py-1.5 pl-8 pr-3 text-xs focus:border-[var(--blue)] focus:outline-none" />
         </div>
-      )}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status"
+                className="rounded-full border border-border bg-white px-2.5 py-1.5 text-xs focus:border-[var(--blue)] focus:outline-none">
+          <option value="all">every status</option>
+          {STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
+        <button onClick={() => setActionsOnly((v) => !v)} data-track="tracker_actions_only"
+                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${actionsOnly ? "border-transparent text-white" : "text-muted-foreground hover:text-foreground border-border"}`}
+                style={actionsOnly ? { background: "var(--amber)" } : undefined}>
+          Needs your hands · {(items ?? []).filter((i) => i.status === "action needed" || (i.status === "assessment" && i.deadline)).length}
+        </button>
+        {(q || statusFilter !== "all" || actionsOnly) && (
+          <button onClick={() => { setQ(""); setStatusFilter("all"); setActionsOnly(false); }}
+                  className="text-xs text-muted-foreground underline underline-offset-2">clear</button>
+        )}
+        <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{visible.length} shown</span>
+      </div>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {["all", ...KINDS.filter((k) => (items ?? []).some((i) => i.kind === k))].map((k) => (
           <button key={k} onClick={() => setTab(k)} data-track="tracker_tab"
                   className={`rounded-full px-3 py-1 text-xs transition-colors ${tab === k ? "bg-foreground text-background" : "border border-border text-muted-foreground hover:text-foreground"}`}>
@@ -162,11 +205,24 @@ export default function TrackerPage() {
 
       {(items?.length ?? 0) > 0 && (
         <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-white">
-          <table className="w-full min-w-[880px] text-left text-xs">
+          <table className="w-full table-fixed text-left text-xs" style={{ minWidth: Object.values(widths).reduce((a, b) => a + b, 84) }}>
+            <colgroup>
+              {COLS.map((c) => <col key={c.key} style={{ width: c.key === "actions" ? 84 : widths[c.key] }} />)}
+            </colgroup>
             <thead className="sticky top-0 z-10 bg-[#f3f4f6] text-muted-foreground">
               <tr>
-                {["Company", "Role", "Kind", "Status", "Updated", "Deadline", "Notes", ""].map((h) => (
-                  <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                {COLS.map((c) => c.key === "actions" ? <th key={c.key} className="px-3 py-2" /> : (
+                  <th key={c.key} className="group relative px-3 py-2 font-medium select-none">
+                    <button onClick={() => setSort((sv) => ({ key: c.key, dir: sv.key === c.key ? (sv.dir === 1 ? -1 : 1) : c.key === "updated" ? -1 : 1 }))}
+                            title="Sort by this column" data-track="tracker_sort"
+                            className="inline-flex max-w-full items-center gap-1 truncate transition-colors hover:text-foreground">
+                      {c.label}
+                      {sort.key === c.key && <span aria-hidden className="text-[9px]">{sort.dir === 1 ? "\u25B2" : "\u25BC"}</span>}
+                    </button>
+                    <span onMouseDown={(e) => { resizing.current = { key: c.key, startX: e.clientX, startW: widths[c.key] }; document.body.style.cursor = "col-resize"; e.preventDefault(); }}
+                          title="Drag to resize this column" aria-hidden
+                          className="absolute -right-0.5 top-0 z-10 h-full w-2 cursor-col-resize border-r border-transparent hover:border-[var(--blue)]" />
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -196,37 +252,44 @@ function Row({ t, open, onToggle, onPatch, onDelete }: {
   const inputCls = "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs transition-colors hover:border-border focus:border-[var(--blue)] focus:outline-none";
   return (
     <>
-      <tr className="border-t border-border">
+      <tr className="border-t border-border transition-colors hover:bg-foreground/[0.02]"
+          style={t.status === "action needed" ? { boxShadow: "inset 3px 0 0 var(--amber)" } : undefined}>
         <td className={cell}>
-          <input defaultValue={t.company} onBlur={(e) => e.target.value.trim() && e.target.value !== t.company && onPatch({ company: e.target.value.trim() })}
+          <input defaultValue={t.company} title={t.company}
+                 onBlur={(e) => e.target.value.trim() && e.target.value !== t.company && onPatch({ company: e.target.value.trim() })}
                  className={`${inputCls} font-medium`} aria-label="Company" />
         </td>
         <td className={cell}>
-          <input defaultValue={t.role ?? ""} placeholder="add role" onBlur={(e) => e.target.value !== (t.role ?? "") && onPatch({ role: e.target.value })}
+          <input defaultValue={t.role ?? ""} placeholder="add role" title={t.role ?? ""}
+                 onBlur={(e) => e.target.value !== (t.role ?? "") && onPatch({ role: e.target.value })}
                  className={inputCls} aria-label="Role" />
         </td>
         <td className={cell}>
           <select value={t.kind} onChange={(e) => onPatch({ kind: e.target.value })} aria-label="Kind"
-                  className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-border focus:border-[var(--blue)] focus:outline-none">
+                  className="w-full min-w-0 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-border focus:border-[var(--blue)] focus:outline-none">
             {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
         </td>
         <td className={cell}>
-          <select value={t.status} onChange={(e) => onPatch({ status: e.target.value })} aria-label="Status"
-                  className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-border focus:border-[var(--blue)] focus:outline-none">
-            {STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
-          </select>
-          <StatusPill status={t.status} />
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: STATUS_DOT[t.status] ?? "#9ca3af" }} />
+            <select value={t.status} onChange={(e) => onPatch({ status: e.target.value })} aria-label="Status"
+                    className="w-full min-w-0 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-border focus:border-[var(--blue)] focus:outline-none">
+              {STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </span>
         </td>
         <td className={`${cell} tabular-nums text-muted-foreground`}>
           {t.emailDate ? new Date(t.emailDate).toLocaleDateString() : new Date(t.updatedAt).toLocaleDateString()}
         </td>
         <td className={cell}>
-          <input defaultValue={t.deadline ?? ""} placeholder="add" onBlur={(e) => e.target.value !== (t.deadline ?? "") && onPatch({ deadline: e.target.value })}
-                 className={`${inputCls} w-24`} aria-label="Deadline" />
+          <input defaultValue={t.deadline ?? ""} placeholder="add" title={t.deadline ?? ""}
+                 onBlur={(e) => e.target.value !== (t.deadline ?? "") && onPatch({ deadline: e.target.value })}
+                 className={inputCls} aria-label="Deadline" />
         </td>
         <td className={cell}>
-          <input defaultValue={t.notes ?? ""} placeholder="add a note" onBlur={(e) => e.target.value !== (t.notes ?? "") && onPatch({ notes: e.target.value })}
+          <input defaultValue={t.notes ?? ""} placeholder="add a note" title={t.notes ?? ""}
+                 onBlur={(e) => e.target.value !== (t.notes ?? "") && onPatch({ notes: e.target.value })}
                  className={inputCls} aria-label="Notes" />
         </td>
         <td className={`${cell} whitespace-nowrap text-right`}>

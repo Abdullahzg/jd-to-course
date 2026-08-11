@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronRight, KeyRound, Loader2, Mail, Play, ShieldQuestion, X } from "lucide-react";
+import { CheckCircle2, ChevronRight, KeyRound, Loader2, Mail, Play, X } from "lucide-react";
 
 /**
  * The first three minutes, walked rather than explained.
@@ -118,7 +118,22 @@ export default function Setup() {
       </div>
 
       {step === 0 && (
-        <section className="mt-6 rounded-2xl border border-border bg-white p-5">
+        <>
+        <section className="mt-6 rounded-2xl bg-foreground p-5 text-background">
+          <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">Judging Carpa?</p>
+          <h1 className="mt-1 font-display text-2xl font-semibold leading-tight">
+            One click and the tracker is full: use the owner&rsquo;s inbox.
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed opacity-80">
+            The owner&rsquo;s real Gmail was read once, in full: 55 applications with every status
+            proven by a sentence from the email. You connect nothing and wait for nothing.
+          </p>
+          <button onClick={() => { setStep(1); setJudgePopup(true); }} data-track="setup_judge_banner"
+                  className="mt-3 rounded-full bg-background px-6 py-2.5 text-sm font-semibold text-foreground transition-transform hover:scale-[1.02]">
+            Use the owner&rsquo;s inbox
+          </button>
+        </section>
+        <section className="mt-3 rounded-2xl border border-border bg-white p-5">
           <h1 className="font-display text-lg font-semibold">Welcome to Carpa, {session.user?.name?.split(" ")[0]}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Carpa does two jobs, and both run on receipts.
@@ -137,12 +152,6 @@ export default function Setup() {
               the sentence from the email that proved it. Nothing is ever written to your mailbox.</span>
             </li>
           </ol>
-          <p className="mt-3 rounded-lg border border-border p-2.5 text-xs leading-relaxed text-muted-foreground">
-            <ShieldQuestion className="mr-1 inline h-3.5 w-3.5" />
-            Judging Carpa rather than using it? The next step includes the judges&rsquo; option: scan the
-            owner&rsquo;s real, connected inbox instead of your own, so you can watch the tracker work on
-            genuine mail without granting anything.
-          </p>
           <button onClick={() => setStep(1)} data-track="setup_next"
                   className="mt-4 w-full rounded-full bg-foreground py-2.5 text-sm font-medium text-background shadow-lg shadow-foreground/20 transition-transform hover:scale-[1.01]">
             Set up my inbox
@@ -151,6 +160,7 @@ export default function Setup() {
             skip for now
           </Link>
         </section>
+        </>
       )}
 
       {step === 1 && (

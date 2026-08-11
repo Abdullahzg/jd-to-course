@@ -574,3 +574,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 .card-lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
 .card-lift:hover { transform: translateY(-2px); box-shadow: 0 12px 32px -14px rgb(15 23 42 / 0.22); }
+
+/* The navigation bar's sweep. Transform only; nothing repaints. */
+@keyframes carpa-bar {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}

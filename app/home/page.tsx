@@ -97,6 +97,7 @@ export default function Home() {
   if (status !== "authenticated") return <SignIn />;
 
   const openSearch = async (id: string) => {
+    window.dispatchEvent(new Event("carpa-nav"));
     const r = await fetch(`/api/searches?id=${id}`).then((x) => x.json());
     if (!r.ok) return;
     // Into the LIVE store, not just storage: the provider hydrates once at
