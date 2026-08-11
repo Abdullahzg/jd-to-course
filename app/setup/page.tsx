@@ -184,7 +184,7 @@ export default function Setup() {
           </div>
 
           {/* the judges' inbox */}
-          <div className="card-lift ring-gradient rounded-2xl bg-white p-4">
+          <div className="card-lift rounded-2xl border-2 border-foreground/20 bg-white p-4">
             <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600/10"><Play className="h-3.5 w-3.5 text-violet-700" /></span> Judging Carpa?</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Scan the owner&rsquo;s real inbox instead, or the scripted demo inbox. Both show the whole

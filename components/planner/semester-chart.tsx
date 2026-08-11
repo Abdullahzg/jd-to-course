@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Sparkles, Waypoints } from "lucide-react";
+import { Waypoints } from "lucide-react";
 import type { Course, Plan } from "@/lib/types";
 import type { FilledTerm } from "@/lib/solver";
 import { prereqSteps } from "@/lib/solver/core";
@@ -292,7 +292,7 @@ export function SemesterChart({
                 {forJob > 0 && (
                   <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
                         style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}>
-                    <Sparkles className="h-2.5 w-2.5" />{forJob} for this job
+                    {forJob} for this job
                   </span>
                 )}
                 {heavy >= 3 && (

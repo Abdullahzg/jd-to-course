@@ -24,6 +24,7 @@ export default function Home() {
   const router = useRouter();
   const { restoreSnapshot } = usePlanner();
   const [searches, setSearches] = useState<SearchRow[] | null>(null);
+  const [allSearches, setAllSearches] = useState(false);
   const [tracker, setTracker] = useState<TrackerRow[] | null>(null);
   const [scan, setScan] = useState<{ busy: boolean; note: string }>({ busy: false, note: "" });
   const [imapOpen, setImapOpen] = useState(false);
@@ -116,7 +117,7 @@ export default function Home() {
             {searches?.length === 0 && (
               <Empty text="No searches yet. Paste a posting and the result lands here on its own." cta={{ href: "/start", label: "Plan against a posting" }} />
             )}
-            {searches?.map((s) => (
+            {searches?.slice(0, allSearches ? undefined : 4).map((s) => (
               <button key={s.id} onClick={() => openSearch(s.id)} data-track="home_open_search"
                       className="w-full rounded-xl border border-border bg-white p-3 text-left transition-all hover:border-[var(--blue)] hover:bg-[var(--blue-soft)]">
                 <p className="text-sm font-medium">{s.title}</p>
@@ -125,6 +126,12 @@ export default function Home() {
                 </p>
               </button>
             ))}
+            {(searches?.length ?? 0) > 4 && (
+              <button onClick={() => setAllSearches((v) => !v)} data-track="home_see_more_searches"
+                      className="w-full rounded-xl border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                {allSearches ? "See fewer" : `See all ${searches?.length}`}
+              </button>
+            )}
           </div>
         </section>
 
@@ -157,6 +164,12 @@ export default function Home() {
                     <StatusPill status={t.status} />
                   </Link>
                 ))}
+                {(tracker?.length ?? 0) > 5 && (
+                  <Link href="/tracker" data-track="home_see_more_tracker"
+                        className="block rounded-lg border border-dashed border-border py-2 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">
+                    See all {tracker?.length} in the tracker
+                  </Link>
+                )}
               </div>
             </>
           )}
@@ -243,6 +256,12 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+            {(tracker?.length ?? 0) > 6 && (
+              <Link href="/tracker" data-track="home_see_more_sheet"
+                    className="block border-t border-border py-2 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">
+                See all {tracker?.length} rows
+              </Link>
+            )}
           </div>
         </section>
       )}

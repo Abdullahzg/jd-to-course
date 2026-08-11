@@ -85,7 +85,7 @@ export function Landing({
 
           {/* ── what you get ──────────────────────────────────────────────── */}
           <div className="hidden min-h-0 lg:block">
-            <div className="rounded-[28px] bg-white/[0.07] p-3 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.8)] ring-1 ring-white/15 backdrop-blur-sm">
+            <div className="rounded-[28px] border border-white/15 bg-black/20 p-3 shadow-[0_40px_90px_-40px_rgba(0,0,0,0.8)]">
               <div className="rounded-[20px] bg-white p-6 text-[var(--ink)]">
                 <div className="flex items-baseline justify-between border-b border-border pb-3">
                   <span className="font-display text-lg font-semibold">Fall 2026</span>

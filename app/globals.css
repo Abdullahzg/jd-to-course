@@ -177,37 +177,12 @@ html {
     font-family: var(--font-display);
   }
   
-  .text-stroke {
-    -webkit-text-stroke: 1.5px currentColor;
-    -webkit-text-fill-color: transparent;
-  }
   
-  .marquee {
-    animation: marquee 30s linear infinite;
-  }
   
-  .marquee-reverse {
-    animation: marquee-reverse 25s linear infinite;
-  }
 
-  @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
   
-  @keyframes marquee-reverse {
-    0% { transform: translateX(-50%); }
-    100% { transform: translateX(0); }
-  }
   
-  .line-reveal {
-    clip-path: inset(0 100% 0 0);
-    animation: line-reveal 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
-  }
   
-  @keyframes line-reveal {
-    to { clip-path: inset(0 0 0 0); }
-  }
   
   .hover-lift {
     transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -217,48 +192,10 @@ html {
     transform: translateY(-4px);
   }
   
-  .letter-spin {
-    display: inline-block;
-    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
   
-  .letter-spin:hover {
-    transform: rotateY(360deg);
-  }
   
-  .animate-char-in {
-    animation: char-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    opacity: 0;
-    filter: blur(40px);
-    transform: translateY(100%);
-  }
   
-  @keyframes char-in {
-    0% {
-      opacity: 0;
-      filter: blur(40px);
-      transform: translateY(100%);
-    }
-    100% {
-      opacity: 1;
-      filter: blur(0);
-      transform: translateY(0);
-    }
-  }
 
-  .noise-overlay {
-    position: relative;
-  }
-  
-  .noise-overlay::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.03;
-    pointer-events: none;
-    z-index: 1;
-  }
   
   /* ── The reflow (BUILD_SPEC §9.1) ────────────────────────────────────────
      This is the whole demo: constraint propagation made visible. Cards fade
@@ -635,22 +572,5 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .chart-track > div { border: 1px solid #ddd; page-break-inside: avoid; }
 }
 
-/* Landing glow drift: transform-only animation, nothing repaints but the
-   compositor layer, so it cannot stutter the way the old canvas did. */
-@keyframes carpa-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(44px, -28px, 0) scale(1.08); }
-}
-@keyframes carpa-drift-2 {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-52px, 26px, 0) scale(1.12); }
-}
 .card-lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
 .card-lift:hover { transform: translateY(-2px); box-shadow: 0 12px 32px -14px rgb(15 23 42 / 0.22); }
-/* A one line gradient ring, used where a card should read as "the special one". */
-.ring-gradient {
-  border: 1.5px solid transparent;
-  background:
-    linear-gradient(var(--background, #fff), var(--background, #fff)) padding-box,
-    linear-gradient(90deg, #38bdf8, #2dd4bf, #34d399) border-box;
-}

@@ -66,6 +66,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         (session.user as { id?: string }).id = token.uid as string;
         (session as { gmailConnected?: boolean }).gmailConnected = Boolean(token.gmail);
+        const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+        (session as { isAdmin?: boolean }).isAdmin = admins.includes((session.user.email ?? "").toLowerCase());
       }
       return session;
     },

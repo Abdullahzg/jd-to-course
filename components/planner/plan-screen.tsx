@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Check, ChevronDown, ExternalLink, Loader2, Lock, Redo2,
-  RotateCcw, Sparkles, TriangleAlert, Undo2, X,
+  RotateCcw, TriangleAlert, Undo2, X,
   Plus,
   Users,
   Search,
@@ -749,7 +749,7 @@ export function PlanScreen() {
           {/* and what the plan does about it */}
           <div className="p-3 lg:p-4">
             <p className="label flex items-center gap-2 plan-accent">
-              <Sparkles className="h-3.5 w-3.5" /> What this plan does about it
+              What this plan does about it
             </p>
             {summaryBusy && !summary ? (
               <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -1475,8 +1475,7 @@ function CourseRow({
               <span className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium"
                     style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}
                     title={`Answers ${hits} thing${hits === 1 ? "" : "s"} this posting asks for`}>
-                <Sparkles className="h-2.5 w-2.5" />
-                {hits}
+                                {hits}
               </span>
             )}
             {placement.locked && (
@@ -1758,8 +1757,7 @@ function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal }: {
         {matched.length > 0 && (
           <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
                 style={{ background: "color-mix(in oklab, var(--teal) 14%, transparent)", color: "var(--teal)" }}>
-            <Sparkles className="h-3 w-3" />
-            {matched.length} spent on this job
+                        {matched.length} spent on this job
           </span>
         )}
       </div>

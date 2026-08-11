@@ -16,7 +16,7 @@ export default function Page() {
 
   return (
     <main className="bg-[#07090f] text-white">
-      <div className="border-b border-white/10 bg-gradient-to-r from-sky-500/15 via-transparent to-emerald-500/15 px-4 py-1.5 text-center text-[11px] text-white/60">
+      <div className="border-b border-white/10 bg-white/[0.03] px-4 py-1.5 text-center text-[11px] text-white/60">
         <strong className="text-white/85">Carpa</strong> · built for the Stellic challenge · every claim on this page carries a receipt
       </div>
       <LandingHero />
@@ -114,7 +114,7 @@ function Feature({ flag, title, body, img, points, flip }: {
           <ul className="mt-5 space-y-2">
             {points.map((p) => (
               <li key={p} className="flex gap-2 text-sm text-white/75">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden />
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/30" aria-hidden />
                 {p}
               </li>
             ))}

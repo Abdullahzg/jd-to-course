@@ -95,7 +95,7 @@ export function TrackerDemo() {
         <p className="truncate text-[11px] text-white/45">{toast?.from ?? ""}</p>
       </div>
 
-      <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4 shadow-2xl backdrop-blur">
+      <div className="rounded-2xl border border-white/12 bg-[#111318] p-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-white/80">Applications</p>
           <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] text-emerald-300">
