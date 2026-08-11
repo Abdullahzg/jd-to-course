@@ -210,6 +210,19 @@ function SignIn() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  // What can actually sign someone in on THIS deployment. Rendering a Google
+  // button that 404s because the env is empty is worse than saying so.
+  const [providers, setProviders] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    void fetch("/api/auth/providers").then((r) => r.json()).then(setProviders).catch(() => setProviders({}));
+  }, []);
+  const hasGoogle = Boolean(providers && "google" in providers);
+  // The demo door is for local testing and judging tables, off by default:
+  // the owner asked for Google only, so Google only is what ships. Flip it on
+  // with NEXT_PUBLIC_ALLOW_DEMO=1 or by visiting /home?demo.
+  const allowDemo =
+    process.env.NEXT_PUBLIC_ALLOW_DEMO === "1" ||
+    (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo"));
   return (
     <Centered>
       <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-5 shadow-sm">
@@ -217,13 +230,23 @@ function SignIn() {
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Google keeps your searches and connects your inbox for the tracker in the same step.
         </p>
-        <button
-          onClick={() => { setBusy(true); void signIn("google", { callbackUrl: "/home" }); }}
-          disabled={busy} data-track="signin_google"
-          className="mt-3 w-full rounded-full bg-foreground py-2 text-sm font-medium text-background disabled:opacity-50"
-        >
-          Continue with Google
-        </button>
+        {providers === null ? (
+          <div className="mt-3 h-9 animate-pulse rounded-full bg-foreground/5" />
+        ) : hasGoogle ? (
+          <button
+            onClick={() => { setBusy(true); void signIn("google", { callbackUrl: "/home" }); }}
+            disabled={busy} data-track="signin_google"
+            className="mt-3 w-full rounded-full bg-foreground py-2 text-sm font-medium text-background disabled:opacity-50"
+          >
+            Continue with Google
+          </button>
+        ) : (
+          <p className="mt-3 rounded-lg border border-border bg-foreground/[0.03] p-2.5 text-[11px] leading-relaxed text-muted-foreground">
+            Google sign in is not configured on this deployment yet. Set AUTH_GOOGLE_ID and
+            AUTH_GOOGLE_SECRET in the environment and it appears here.
+          </p>
+        )}
+        {allowDemo && (<>
         <div className="my-4 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
           <span className="h-px flex-1 bg-border" /> or just look around <span className="h-px flex-1 bg-border" />
         </div>
@@ -244,6 +267,7 @@ function SignIn() {
             scanning your own mail.
           </p>
         </div>
+        </>)}
       </div>
     </Centered>
   );

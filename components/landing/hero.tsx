@@ -27,19 +27,22 @@ export function LandingHero({ shots }: { shots: { src: string; alt: string }[] }
 
   return (
     <section className="relative h-[92svh] min-h-[540px] w-full overflow-hidden">
-      {show3d ? (
+      {/* The static layer is not a fallback, it is the floor. WebGL can be
+          off, blocked, or on battery saver, and a hero that goes black when a
+          canvas fails is a hero that fails silently. The gallery draws OVER a
+          real screenshot, so the worst case is still the product. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={shots[1]?.src ?? "/hero/h1.png"} alt=""
+           className="absolute inset-0 h-full w-full object-cover opacity-40" />
+      {show3d && (
         <InfiniteGallery
           images={shots}
           speed={0.9}
           zSpacing={3}
           visibleCount={10}
           falloff={{ near: 0.8, far: 14 }}
-          className="absolute inset-0 h-full w-full opacity-60"
+          className="absolute inset-0 h-full w-full opacity-70"
         />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={shots[1]?.src ?? "/shots/s1.png"} alt=""
-             className="absolute inset-0 h-full w-full object-cover opacity-25" />
       )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#07090f]/60 via-transparent to-[#07090f]" />
 
@@ -80,10 +83,9 @@ export function LandingHero({ shots }: { shots: { src: string; alt: string }[] }
         </div>
 
         <p className="pb-6 text-center font-mono text-[10px] uppercase tracking-widest text-white/35">
-          the images flying past are unedited screenshots of this product
+          scroll to fly through, real product screenshots wait below
         </p>
       </div>
-      <span id="proof" />
     </section>
   );
 }
