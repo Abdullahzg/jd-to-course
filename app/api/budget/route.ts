@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   clearActiveKey, fetchKeyStatus, getActiveKey, keyFingerprint, maskKey, setActiveKey,
 } from "@/lib/ai/keystore";
@@ -42,12 +43,22 @@ async function snapshot() {
   };
 }
 
+
+/** Only the admin replaces or removes the key everyone spends from. */
+async function isAdmin(): Promise<boolean> {
+  const session = await auth();
+  const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const email = (session?.user?.email ?? "").toLowerCase();
+  return Boolean(email) && (admins.length === 0 || admins.includes(email));
+}
+
 export async function GET() {
-  return NextResponse.json(await snapshot());
+  return NextResponse.json({ ...(await snapshot()), canEdit: await isAdmin() });
 }
 
 /** Replace the key. Validated before it is stored, so a bad paste never lands. */
 export async function POST(req: Request) {
+  if (!(await isAdmin())) return NextResponse.json({ ok: false, error: "Only the site owner can change the API key." }, { status: 403 });
   let key = "";
   try {
     ({ key } = await req.json());
@@ -89,6 +100,7 @@ export async function POST(req: Request) {
 
 /** Drop the pasted key and fall back to the deployment's own, if it has one. */
 export async function DELETE() {
+  if (!(await isAdmin())) return NextResponse.json({ ok: false, error: "Only the site owner can change the API key." }, { status: 403 });
   const previous = await getActiveKey();
   if (previous.key && previous.source === "user") clearLedger(previous.key);
   await clearActiveKey();

@@ -48,7 +48,7 @@ export default function TrackerPage() {
   const [actionsOnly, setActionsOnly] = useState(false);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "updated", dir: -1 });
   // Column widths are yours to drag; the numbers are only the opening offer.
-  const [widths, setWidths] = useState<Record<string, number>>({ company: 190, role: 260, kind: 112, status: 152, updated: 96, deadline: 180, notes: 220 });
+  const [widths, setWidths] = useState<Record<string, number>>({ company: 190, role: 260, kind: 112, status: 152, updated: 96, deadline: 170, notes: 130 });
   const resizing = useRef<{ key: string; startX: number; startW: number } | null>(null);
 
   useEffect(() => {
@@ -180,6 +180,9 @@ export default function TrackerPage() {
                   className="text-xs text-muted-foreground underline underline-offset-2">clear</button>
         )}
         <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{visible.length} shown</span>
+        <span className="w-full text-[10px] text-muted-foreground sm:w-auto">
+          Click a column name to sort. Drag the line at a column&rsquo;s edge to resize.
+        </span>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -217,11 +220,14 @@ export default function TrackerPage() {
                             title="Sort by this column" data-track="tracker_sort"
                             className="inline-flex max-w-full items-center gap-1 truncate transition-colors hover:text-foreground">
                       {c.label}
-                      {sort.key === c.key && <span aria-hidden className="text-[9px]">{sort.dir === 1 ? "\u25B2" : "\u25BC"}</span>}
+                      {sort.key === c.key
+                        ? <span aria-hidden className="text-[9px]">{sort.dir === 1 ? "\u25B2" : "\u25BC"}</span>
+                        : <span aria-hidden className="text-[8px] opacity-30">{"\u25B2\u25BC"}</span>}
                     </button>
+                    {/* the visible line IS the handle; nobody drags what they cannot see */}
                     <span onMouseDown={(e) => { resizing.current = { key: c.key, startX: e.clientX, startW: widths[c.key] }; document.body.style.cursor = "col-resize"; e.preventDefault(); }}
                           title="Drag to resize this column" aria-hidden
-                          className="absolute -right-0.5 top-0 z-10 h-full w-2 cursor-col-resize border-r border-transparent hover:border-[var(--blue)]" />
+                          className="absolute right-0 top-1/2 z-10 h-2/3 w-2 -translate-y-1/2 cursor-col-resize border-r-2 border-border hover:border-[var(--blue)]" />
                   </th>
                 ))}
               </tr>

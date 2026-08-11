@@ -211,26 +211,35 @@ export default function Home() {
               The first scan reads back a year and builds the tracker by itself: what you applied to,
               where each one stands, grouped by kind. Nothing is written to your mailbox, ever.
             </p>
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
               <button onClick={() => (gmailConnected ? void runScan("gmail") : void connectGmail())}
                       disabled={scan.busy} data-track="scan_gmail"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-xs font-medium text-background disabled:opacity-40">
-                <Mail className="h-3.5 w-3.5" /> {gmailConnected ? "Scan Gmail" : "Connect Gmail"}
+                      className="rounded-xl border border-foreground bg-foreground p-2.5 text-left text-background transition-opacity disabled:opacity-40">
+                <span className="flex items-center gap-1.5 text-xs font-medium"><Mail className="h-3.5 w-3.5" /> {gmailConnected ? "Scan Gmail" : "Connect Gmail"}</span>
+                <span className="mt-0.5 block text-[10px] leading-snug opacity-70">
+                  Your own Gmail, through your Google sign in. First time asks Google for read only permission.
+                </span>
               </button>
               <button onClick={() => setImapOpen((v) => !v)} disabled={scan.busy} data-track="scan_imap_open"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
-                <KeyRound className="h-3.5 w-3.5" /> App password
+                      className="rounded-xl border border-border bg-white p-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-40">
+                <span className="flex items-center gap-1.5 text-xs font-medium"><KeyRound className="h-3.5 w-3.5" /> App password</span>
+                <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
+                  Your own Gmail through a 16 character app password instead. Works for any Google account.
+                </span>
               </button>
               <button onClick={() => runScan("judge")} disabled={scan.busy} data-track="scan_judge"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
-                <Play className="h-3.5 w-3.5" /> Judges&rsquo; inbox
+                      className="rounded-xl border border-border bg-white p-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-40">
+                <span className="flex items-center gap-1.5 text-xs font-medium"><Play className="h-3.5 w-3.5" /> Judges&rsquo; inbox</span>
+                <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
+                  See it work on real mail: opens the tracker of Abdullah Zubair Ghouri, who built Carpa.
+                </span>
               </button>
-              {(tracker?.length ?? 0) > 0 && (
-                <button onClick={() => void load()} className="ml-auto text-muted-foreground" title="Refresh">
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
-              )}
             </div>
+            {(tracker?.length ?? 0) > 0 && (
+              <button onClick={() => void load()} className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" title="Refresh">
+                <RefreshCw className="h-3 w-3" /> refresh rows
+              </button>
+            )}
             {imapOpen && (
               <div className="mt-2.5 space-y-1.5 rounded-lg bg-foreground/[0.03] p-2.5">
                 <p className="text-[11px] text-muted-foreground">
@@ -379,7 +388,7 @@ function LatestPlan({ searches, openSearch }: {
           open the full plan
         </button>
       </div>
-      <div className="mt-2">
+      <div className="plan-a mt-2">
         <SemesterChart
           names={data.names}
           plan={data.plan}

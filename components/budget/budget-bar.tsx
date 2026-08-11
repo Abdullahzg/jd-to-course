@@ -180,6 +180,7 @@ export function BudgetBar() {
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
+          {(budget as { canEdit?: boolean } | null)?.canEdit !== false && (
           <button
             onClick={() => setOpen((v) => !v)}
             className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors sm:px-3 ${
@@ -192,6 +193,7 @@ export function BudgetBar() {
             <span className="hidden sm:inline">{budget?.masked ?? "add key"}</span>
             <span className="sm:hidden">{budget?.connected ? "key" : "add key"}</span>
           </button>
+          )}
         </span>
       </div>
 

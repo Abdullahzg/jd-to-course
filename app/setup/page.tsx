@@ -133,9 +133,9 @@ export default function Setup() {
             One click and the tracker is full: use the owner&rsquo;s inbox.
           </h1>
           <p className="mt-2 text-sm leading-relaxed opacity-80">
-            The owner is <strong>Abdullah Zubair Ghouri</strong>, who built and submitted Carpa. His
-            real Gmail was read once, in full: a whole application season with every status proven by
-            a sentence from the email. You connect nothing and wait for nothing.
+            So judges can see Carpa working on real mail: load the tracker of
+            <strong> Abdullah Zubair Ghouri</strong>, who built it, without connecting anything of
+            yours.
           </p>
           <button onClick={() => { setStep(1); setJudgePopup(true); }} data-track="setup_judge_banner"
                   className="mt-3 rounded-full bg-background px-6 py-2.5 text-sm font-semibold text-foreground transition-transform hover:scale-[1.02]">
@@ -188,9 +188,8 @@ export default function Setup() {
               <span className="ml-1 rounded-full bg-violet-600/10 px-2 py-0.5 text-[10px] font-medium text-violet-700">instant, for judges</span>
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              The owner, <strong>Abdullah Zubair Ghouri</strong>, who built and submitted Carpa, read
-              his real Gmail into Carpa once, in full; you get that tracker immediately, every status
-              carrying the sentence from the email that proved it. Nothing of yours is touched.
+              See how Carpa works on real mail: the tracker of <strong>Abdullah Zubair Ghouri</strong>,
+              who built it, opens in your view. Nothing of yours is touched.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <button onClick={() => setJudgePopup(true)} disabled={busy} data-track="setup_judge"
@@ -268,7 +267,7 @@ export default function Setup() {
           <h2 className="mt-2 font-display text-lg font-semibold">Your tracker is alive</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {result.mode === "judge"
-              ? `Loaded the tracker of Abdullah Zubair Ghouri, who built Carpa: ${result.created} applications from his real inbox, prebuilt, every status carrying the sentence that proved it.`
+              ? `The owner's tracker is in your view: ${result.created} real applications, every status carrying the sentence that proved it.`
               : `Read ${result.emailsRead} new emails${result.alreadyKnown ? ` (${result.alreadyKnown} already remembered from earlier scans)` : ""}, found ${result.created} applications and updated ${result.updated}. Every status carries the sentence that proved it.`}
           </p>
           <div className="mt-4 grid gap-2 text-left sm:grid-cols-2">
@@ -311,10 +310,9 @@ export default function Setup() {
               <button onClick={() => setJudgePopup(false)} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              This loads the real application season of <strong className="text-foreground">Abdullah Zubair
-              Ghouri</strong>, who built and submitted Carpa. His Gmail was read once through a read only
-              app password; the tracker it produced lands in your own view instantly, and nothing of
-              yours is touched or granted.
+              So judges can see Carpa working on real mail: this opens the tracker of
+              <strong className="text-foreground"> Abdullah Zubair Ghouri</strong>, who built it, in
+              your own view. Nothing of yours is touched or granted.
             </p>
             <button
               onClick={() => { setJudgePopup(false); void scan("judge"); }}
