@@ -207,7 +207,9 @@ export default function Setup() {
               <span className="ml-1 rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">works for any Google account</span>
             </p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed text-muted-foreground">
-              <li>Open <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a> (needs 2 Step Verification on).</li>
+              <li>Turn on <strong>2 Step Verification</strong> first: Google account, Security, 2 Step
+                Verification. Google only offers app passwords once it is on.</li>
+              <li>Then open <a className="underline" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.</li>
               <li>Name it anything, press Create, and copy the 16 characters it shows.</li>
               <li>Paste them here. Carpa gets read only mail access you can revoke on that same page any time.</li>
             </ol>

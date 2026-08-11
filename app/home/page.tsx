@@ -243,9 +243,10 @@ export default function Home() {
             {imapOpen && (
               <div className="mt-2.5 space-y-1.5 rounded-lg bg-foreground/[0.03] p-2.5">
                 <p className="text-[11px] text-muted-foreground">
-                  Works for ANY Google account today, no approval lists. Google account &rarr;
-                  Security &rarr; 2 Step Verification &rarr; App passwords, sixteen characters, read
-                  only from here, revocable there any time.
+                  Works for ANY Google account, no approval lists. 2 Step Verification must be ON
+                  first; Google only offers app passwords once it is. Then: Google account &rarr;
+                  Security &rarr; App passwords, sixteen characters, read only from here, revocable
+                  there any time.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   <input value={imapEmail} onChange={(e) => setImapEmail(e.target.value)} placeholder="you@gmail.com"
