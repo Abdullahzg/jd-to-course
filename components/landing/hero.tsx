@@ -27,7 +27,10 @@ export function LandingHero() {
 
       <div className="relative z-10 flex min-h-[92svh] flex-col">
         <header className="flex items-center justify-between px-5 py-4 sm:px-8">
-          <p className="font-display text-sm font-semibold tracking-wide">Course Path</p>
+          <Link href="/" className="flex items-baseline gap-2">
+            <span className="font-display text-base font-bold tracking-tight">Carpa</span>
+            <span className="hidden text-[10px] uppercase tracking-widest text-white/35 sm:inline">plan it, track it, prove it</span>
+          </Link>
           <nav className="flex items-center gap-2">
             <Link href="/home" data-track="nav_signin"
                   className="rounded-full border border-white/20 px-4 py-1.5 text-xs text-white/80 transition-colors hover:border-white/60">

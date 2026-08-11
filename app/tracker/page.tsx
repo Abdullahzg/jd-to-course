@@ -3,28 +3,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ChevronDown, ExternalLink, Loader2, Trash2 } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Loader2, Trash2 } from "lucide-react";
 import { StatusPill } from "@/app/home/page";
 
 /**
- * The tracker in full: every application the inbox revealed, grouped the way
- * a student thinks about them, each status carrying the sentence from the
- * email that made it true. The receipts rule from the course planner applies
- * here unchanged: click any status and see the exact words.
+ * The tracker as the spreadsheet it replaces, minus the typing.
+ *
+ * A real table: every column visible, every cell that can sensibly change
+ * editable in place, one export button that produces a file Excel opens
+ * without complaint. The receipts rule holds: expand any row and each status
+ * in its journey carries the sentence from the email that made it true.
  */
 
 type Ev = { id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null };
 type Item = {
   id: string; company: string; role: string | null; kind: string; status: string;
   quote: string | null; subject: string | null; emailDate: number | null;
-  actionLink: string | null; deadline: string | null; updatedAt: number; events: Ev[];
+  actionLink: string | null; deadline: string | null; notes: string | null;
+  updatedAt: number; events: Ev[];
 };
 
-const KIND_ORDER = ["internship", "job", "research", "grad school", "scholarship", "hackathon", "program", "other"];
+const KINDS = ["internship", "job", "research", "grad school", "scholarship", "hackathon", "program", "other"];
+const STATUSES = ["applied", "assessment", "interview", "offer", "accepted", "rejected", "waitlisted", "action needed", "update"];
 const KIND_LABEL: Record<string, string> = {
-  internship: "Internships", job: "Jobs", research: "Research",
-  "grad school": "Grad school", scholarship: "Scholarships",
-  hackathon: "Hackathons", program: "Programs", other: "Everything else",
+  internship: "Internships", job: "Jobs", research: "Research", "grad school": "Grad school",
+  scholarship: "Scholarships", hackathon: "Hackathons", program: "Programs", other: "Everything else",
 };
 
 export default function TrackerPage() {
@@ -38,35 +41,64 @@ export default function TrackerPage() {
     void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); });
   }, [status]);
 
-  const groups = useMemo(() => {
-    const xs = (items ?? []).filter((i) => tab === "all" || i.kind === tab);
-    const g = new Map<string, Item[]>();
-    for (const i of xs) g.set(i.kind, [...(g.get(i.kind) ?? []), i]);
-    return [...g.entries()].sort((a, b) => KIND_ORDER.indexOf(a[0]) - KIND_ORDER.indexOf(b[0]));
-  }, [items, tab]);
+  const patch = (id: string, fields: Partial<Item>) => {
+    // Optimistic: the cell changes under the cursor, the server catches up,
+    // and a failure puts the truth back on the next load.
+    setItems((xs) => (xs ?? []).map((x) => (x.id === id ? { ...x, ...fields } : x)));
+    void fetch("/api/tracker", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...fields }) });
+  };
+
+  const visible = useMemo(
+    () => (items ?? []).filter((i) => tab === "all" || i.kind === tab),
+    [items, tab],
+  );
+
+  const exportCsv = () => {
+    // UTF-8 BOM so Excel opens it with the right encoding on double click.
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const head = ["Company", "Role", "Kind", "Status", "Last update", "Deadline", "Link", "Notes", "Proof (verbatim from the email)", "Timeline"];
+    const rows = (items ?? []).map((t) => [
+      t.company, t.role ?? "", t.kind, t.status,
+      t.emailDate ? new Date(t.emailDate).toISOString().slice(0, 10) : "",
+      t.deadline ?? "", t.actionLink ?? "", t.notes ?? "", t.quote ?? "",
+      t.events.map((e) => `${e.status}${e.emailDate ? ` (${new Date(e.emailDate).toISOString().slice(0, 10)})` : ""}`).join(" > "),
+    ]);
+    const csv = "﻿" + [head, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = "carpa-applications.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const actions = (items ?? []).filter((i) => i.status === "action needed" || (i.status === "assessment" && i.deadline));
 
-  if (status === "loading") return <main className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></main>;
+  if (status === "loading") return <Center><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></Center>;
   if (status !== "authenticated") {
     return (
-      <main className="mx-auto max-w-xl px-4 py-16 text-center">
-        <p className="text-sm text-muted-foreground">The tracker belongs to an account.</p>
-        <Link href="/home" className="mt-3 inline-block rounded-full bg-foreground px-5 py-2 text-sm text-background">Sign in</Link>
-      </main>
+      <Center>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">The tracker belongs to an account.</p>
+          <Link href="/home" className="mt-3 inline-block rounded-full bg-foreground px-5 py-2 text-sm text-background">Sign in</Link>
+        </div>
+      </Center>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <main className="mx-auto max-w-6xl px-4 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-display text-xl font-semibold">Applications</h1>
           <p className="text-xs text-muted-foreground">
-            {(items ?? []).length} tracked, every status proved by the email that announced it.
+            {(items ?? []).length} tracked. Click a cell to change it; expand a row for the receipts.
           </p>
         </div>
-        <Link href="/home" className="text-xs underline underline-offset-2 text-muted-foreground">back to home</Link>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCsv} disabled={!items?.length} data-track="tracker_export"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background disabled:opacity-40">
+            <Download className="h-3.5 w-3.5" /> Export for Excel (CSV)
+          </button>
+          <Link href="/home" className="text-xs text-muted-foreground underline underline-offset-2">home</Link>
+        </div>
       </div>
 
       {actions.length > 0 && (
@@ -88,75 +120,128 @@ export default function TrackerPage() {
       )}
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {["all", ...KIND_ORDER.filter((k) => (items ?? []).some((i) => i.kind === k))].map((k) => (
+        {["all", ...KINDS.filter((k) => (items ?? []).some((i) => i.kind === k))].map((k) => (
           <button key={k} onClick={() => setTab(k)} data-track="tracker_tab"
                   className={`rounded-full px-3 py-1 text-xs transition-colors ${tab === k ? "bg-foreground text-background" : "border border-border text-muted-foreground hover:text-foreground"}`}>
-            {k === "all" ? "All" : KIND_LABEL[k]}
+            {k === "all" ? `All · ${(items ?? []).length}` : `${KIND_LABEL[k]} · ${(items ?? []).filter((i) => i.kind === k).length}`}
           </button>
         ))}
       </div>
 
-      {items === null && <div className="mt-4 space-y-2">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-foreground/5" />)}</div>}
+      {items === null && (
+        <div className="mt-4 space-y-1.5">
+          {Array.from({ length: 6 }, (_, i) => <div key={i} className="h-11 animate-pulse rounded-lg bg-foreground/5" />)}
+        </div>
+      )}
       {items?.length === 0 && (
         <div className="mt-8 rounded-xl border border-dashed border-border p-8 text-center">
-          <p className="text-sm text-muted-foreground">Nothing here yet. Connect an inbox on the home page and the year you already lived fills this in.</p>
-          <Link href="/home" className="mt-3 inline-block rounded-full bg-foreground px-4 py-1.5 text-xs text-background">Connect an inbox</Link>
+          <p className="text-sm text-muted-foreground">Nothing here yet. Connect an inbox and the year you already lived fills this in.</p>
+          <Link href="/setup" className="mt-3 inline-block rounded-full bg-foreground px-4 py-1.5 text-xs text-background">Connect an inbox</Link>
         </div>
       )}
 
-      {groups.map(([kind, rows]) => (
-        <section key={kind} className="mt-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{KIND_LABEL[kind]} · {rows.length}</h2>
-          <div className="mt-2 space-y-1.5">
-            {rows.map((t) => (
-              <div key={t.id} className="rounded-xl border border-border bg-white">
-                <button onClick={() => setOpen(open === t.id ? null : t.id)} data-track="tracker_row"
-                        className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 p-3 text-left">
-                  <span className="text-sm font-medium">{t.company}</span>
-                  {t.role && <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{t.role}</span>}
-                  <StatusPill status={t.status} />
-                  {t.deadline && <span className="text-[10px]" style={{ color: "var(--amber)" }}>{t.deadline}</span>}
-                  <span className="ml-auto flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">{new Date(t.emailDate ?? t.updatedAt).toLocaleDateString()}</span>
-                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open === t.id ? "rotate-180" : ""}`} />
-                  </span>
-                </button>
-                {open === t.id && (
-                  <div className="border-t border-border p-3">
-                    <p className="text-[11px] font-medium text-muted-foreground">The journey, each step in the email&rsquo;s own words</p>
-                    <ol className="mt-1.5 space-y-1.5">
-                      {t.events.map((e) => (
-                        <li key={e.id} className="text-xs">
-                          <span className="font-medium">{e.status}</span>
-                          <span className="text-muted-foreground"> · {e.emailDate ? new Date(e.emailDate).toLocaleDateString() : ""}</span>
-                          {e.quote && <blockquote className="mt-0.5 border-l-2 border-border pl-2 italic text-muted-foreground">&ldquo;{e.quote}&rdquo;</blockquote>}
-                        </li>
-                      ))}
-                    </ol>
-                    <div className="mt-2.5 flex items-center gap-2">
-                      {t.actionLink && (
-                        <a href={t.actionLink} target="_blank" rel="noreferrer"
-                           className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]">
-                          open the link it sent <ExternalLink className="h-2.5 w-2.5" />
-                        </a>
-                      )}
-                      <button
-                        onClick={async () => {
-                          await fetch("/api/tracker", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: t.id }) });
-                          setItems((xs) => (xs ?? []).filter((x) => x.id !== t.id));
-                        }}
-                        data-track="tracker_delete"
-                        className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] text-muted-foreground hover:text-red-700">
-                        <Trash2 className="h-3 w-3" /> not mine
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+      {(items?.length ?? 0) > 0 && (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-white">
+          <table className="w-full min-w-[880px] text-left text-xs">
+            <thead className="bg-foreground/[0.03] text-muted-foreground">
+              <tr>
+                {["Company", "Role", "Kind", "Status", "Updated", "Deadline", "Notes", ""].map((h) => (
+                  <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((t) => (
+                <Row key={t.id} t={t} open={open === t.id}
+                     onToggle={() => setOpen(open === t.id ? null : t.id)}
+                     onPatch={(f) => patch(t.id, f)}
+                     onDelete={async () => {
+                       await fetch("/api/tracker", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: t.id }) });
+                       setItems((xs) => (xs ?? []).filter((x) => x.id !== t.id));
+                     }} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </main>
   );
+}
+
+function Row({ t, open, onToggle, onPatch, onDelete }: {
+  t: Item; open: boolean; onToggle: () => void;
+  onPatch: (f: Partial<Item>) => void; onDelete: () => void;
+}) {
+  const cell = "px-3 py-1.5 align-middle";
+  const inputCls = "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs transition-colors hover:border-border focus:border-[var(--blue)] focus:outline-none";
+  return (
+    <>
+      <tr className="border-t border-border">
+        <td className={cell}>
+          <input defaultValue={t.company} onBlur={(e) => e.target.value.trim() && e.target.value !== t.company && onPatch({ company: e.target.value.trim() })}
+                 className={`${inputCls} font-medium`} aria-label="Company" />
+        </td>
+        <td className={cell}>
+          <input defaultValue={t.role ?? ""} placeholder="add role" onBlur={(e) => e.target.value !== (t.role ?? "") && onPatch({ role: e.target.value })}
+                 className={inputCls} aria-label="Role" />
+        </td>
+        <td className={cell}>
+          <select value={t.kind} onChange={(e) => onPatch({ kind: e.target.value })} aria-label="Kind"
+                  className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-border focus:border-[var(--blue)] focus:outline-none">
+            {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </td>
+        <td className={cell}>
+          <select value={t.status} onChange={(e) => onPatch({ status: e.target.value })} aria-label="Status"
+                  className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-border focus:border-[var(--blue)] focus:outline-none">
+            {STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+          <StatusPill status={t.status} />
+        </td>
+        <td className={`${cell} tabular-nums text-muted-foreground`}>
+          {t.emailDate ? new Date(t.emailDate).toLocaleDateString() : new Date(t.updatedAt).toLocaleDateString()}
+        </td>
+        <td className={cell}>
+          <input defaultValue={t.deadline ?? ""} placeholder="add" onBlur={(e) => e.target.value !== (t.deadline ?? "") && onPatch({ deadline: e.target.value })}
+                 className={`${inputCls} w-24`} aria-label="Deadline" />
+        </td>
+        <td className={cell}>
+          <input defaultValue={t.notes ?? ""} placeholder="add a note" onBlur={(e) => e.target.value !== (t.notes ?? "") && onPatch({ notes: e.target.value })}
+                 className={inputCls} aria-label="Notes" />
+        </td>
+        <td className={`${cell} whitespace-nowrap text-right`}>
+          {t.actionLink && (
+            <a href={t.actionLink} target="_blank" rel="noreferrer" title="Open the link the email sent"
+               className="mr-1 inline-flex text-muted-foreground hover:text-foreground"><ExternalLink className="h-3.5 w-3.5" /></a>
+          )}
+          <button onClick={onToggle} aria-label="Show the receipts" title="The journey, with quotes"
+                  className="mr-1 inline-flex text-muted-foreground hover:text-foreground">
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+          </button>
+          <button onClick={onDelete} aria-label="Remove" title="Not mine"
+                  className="inline-flex text-muted-foreground hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
+        </td>
+      </tr>
+      {open && (
+        <tr className="border-t border-border bg-foreground/[0.02]">
+          <td colSpan={8} className="px-4 py-2.5">
+            <p className="text-[11px] font-medium text-muted-foreground">The journey, each step in the email&rsquo;s own words</p>
+            <ol className="mt-1 space-y-1">
+              {t.events.map((e) => (
+                <li key={e.id} className="text-xs">
+                  <span className="font-medium">{e.status}</span>
+                  <span className="text-muted-foreground"> · {e.emailDate ? new Date(e.emailDate).toLocaleDateString() : ""}</span>
+                  {e.quote && <blockquote className="mt-0.5 border-l-2 border-border pl-2 italic text-muted-foreground">&ldquo;{e.quote}&rdquo;</blockquote>}
+                </li>
+              ))}
+            </ol>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function Center({ children }: { children: React.ReactNode }) {
+  return <main className="flex min-h-[60vh] items-center justify-center px-4">{children}</main>;
 }

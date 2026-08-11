@@ -50,7 +50,7 @@ export default function Home() {
       prompt: "consent",
     });
 
-  const runScan = async (mode: "gmail" | "imap" | "demo") => {
+  const runScan = async (mode: "gmail" | "imap" | "demo" | "judge") => {
     setScan({ busy: true, note: mode === "demo" ? "Reading the demo inbox" : "Reading your mail. A first scan goes back a year and can take a couple of minutes." });
     const body: Record<string, unknown> = { mode };
     if (mode === "imap") { body.email = imapEmail; body.appPassword = imapPass; }
@@ -177,6 +177,10 @@ export default function Home() {
                       className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
                 <KeyRound className="h-3.5 w-3.5" /> App password
               </button>
+              <button onClick={() => runScan("judge")} disabled={scan.busy} data-track="scan_judge"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
+                <Play className="h-3.5 w-3.5" /> Judges&rsquo; inbox
+              </button>
               <button onClick={() => runScan("demo")} disabled={scan.busy} data-track="scan_demo"
                       className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs text-muted-foreground disabled:opacity-40">
                 <Play className="h-3.5 w-3.5" /> Try the demo inbox
@@ -214,7 +218,107 @@ export default function Home() {
           </div>
         </section>
       </div>
+
+      {/* ── the two artifacts, visible without leaving home ─────────────── */}
+      {(tracker?.length ?? 0) > 0 && (
+        <section className="mt-8">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold">The spreadsheet, live</h2>
+            <Link href="/tracker" className="text-xs underline underline-offset-2 text-muted-foreground">open and edit</Link>
+          </div>
+          <div className="mt-2 overflow-x-auto rounded-xl border border-border bg-white">
+            <table className="w-full min-w-[640px] text-left text-xs">
+              <thead className="bg-foreground/[0.03] text-muted-foreground">
+                <tr>{["Company", "Role", "Kind", "Status", "Updated"].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {(tracker ?? []).slice(0, 6).map((t) => (
+                  <tr key={t.id} className="border-t border-border">
+                    <td className="px-3 py-1.5 font-medium">{t.company}</td>
+                    <td className="px-3 py-1.5 text-muted-foreground">{t.role ?? ""}</td>
+                    <td className="px-3 py-1.5 text-muted-foreground">{t.kind}</td>
+                    <td className="px-3 py-1.5"><StatusPill status={t.status} /></td>
+                    <td className="px-3 py-1.5 tabular-nums text-muted-foreground">{new Date(t.updatedAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <LatestPlan searches={searches} openSearch={openSearch} />
     </main>
+  );
+}
+
+/**
+ * The most recent degree plan, as a term table, on the dashboard itself. A
+ * student's two artifacts are the spreadsheet and the timetable; home shows a
+ * working snippet of each so neither is ever more than one glance away.
+ */
+function LatestPlan({ searches, openSearch }: {
+  searches: SearchRow[] | null;
+  openSearch: (id: string) => void;
+}) {
+  const [terms, setTerms] = useState<{ name: string; courses: string[] }[] | null>(null);
+  const latest = searches?.[0];
+  useEffect(() => {
+    if (!latest) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const [r, cat] = await Promise.all([
+          fetch(`/api/searches?id=${latest.id}`).then((x) => x.json()),
+          fetch("/api/catalog").then((x) => x.json()),
+        ]);
+        if (!alive || !r.ok) return;
+        const payload = r.search.snapshot.payload as {
+          result?: { plans?: { placements: { courseId: string; term: number }[]; termCredits: number[] }[] };
+          state?: { activePlan?: number };
+        };
+        const plan = payload.result?.plans?.[payload.state?.activePlan ?? 0] ?? payload.result?.plans?.[0];
+        if (!plan) return;
+        const titles = new Map<string, string>();
+        for (const sch of cat?.schools ?? []) for (const c of sch.courses ?? []) titles.set(c.id, c.title);
+        const out = Array.from({ length: plan.termCredits.length }, (_, t) => ({
+          name: `Semester ${t + 1}`,
+          courses: plan.placements.filter((pl) => pl.term === t).map((pl) => titles.get(pl.courseId) ?? pl.courseId.split(":").pop() ?? ""),
+        })).filter((x) => x.courses.length);
+        setTerms(out);
+      } catch { /* the card simply does not render */ }
+    })();
+    return () => { alive = false; };
+  }, [latest]);
+
+  if (!latest || !terms?.length) return null;
+  return (
+    <section className="mt-8">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold">Latest plan: {latest.title.slice(0, 70)}</h2>
+        <button onClick={() => openSearch(latest.id)} className="text-xs underline underline-offset-2 text-muted-foreground">
+          open the full plan
+        </button>
+      </div>
+      <div className="mt-2 overflow-x-auto rounded-xl border border-border bg-white">
+        <table className="w-full text-left text-xs" style={{ minWidth: `${terms.length * 170}px` }}>
+          <thead className="bg-foreground/[0.03] text-muted-foreground">
+            <tr>{terms.map((t) => <th key={t.name} className="px-3 py-2 font-medium">{t.name}</th>)}</tr>
+          </thead>
+          <tbody>
+            <tr className="border-t border-border align-top">
+              {terms.map((t) => (
+                <td key={t.name} className="px-3 py-2">
+                  <ul className="space-y-1">
+                    {t.courses.map((c) => <li key={c} className="text-muted-foreground">{c}</li>)}
+                  </ul>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -246,7 +350,7 @@ function SignIn() {
           <div className="mt-3 h-9 animate-pulse rounded-full bg-foreground/5" />
         ) : hasGoogle ? (
           <button
-            onClick={() => { setBusy(true); void signIn("google", { callbackUrl: "/home" }); }}
+            onClick={() => { setBusy(true); void signIn("google", { callbackUrl: "/setup" }); }}
             disabled={busy} data-track="signin_google"
             className="mt-3 w-full rounded-full bg-foreground py-2 text-sm font-medium text-background disabled:opacity-50"
           >
@@ -268,7 +372,7 @@ function SignIn() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@school.edu"
                  className="w-full rounded-lg border border-border px-3 py-2 text-sm" inputMode="email" />
           <button
-            onClick={async () => { setBusy(true); await signIn("demo", { name, email, callbackUrl: "/home" }); setBusy(false); }}
+            onClick={async () => { setBusy(true); await signIn("demo", { name, email, callbackUrl: "/setup" }); setBusy(false); }}
             disabled={busy || !name || !email.includes("@")} data-track="signin_demo"
             className="w-full rounded-full border border-border py-2 text-sm disabled:opacity-40"
           >

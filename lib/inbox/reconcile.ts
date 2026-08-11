@@ -67,7 +67,7 @@ export function reconcile(
         id, userId, company: s.company, role: s.role || null, kind: s.kind,
         status: s.status, quote: s.quote, subject: email?.subject ?? null,
         emailDate: when, actionLink: s.actionLink ?? null, deadline: s.deadline ?? null,
-        createdAt: when, updatedAt: when,
+        notes: null, createdAt: when, updatedAt: when,
       });
       created++;
       continue;

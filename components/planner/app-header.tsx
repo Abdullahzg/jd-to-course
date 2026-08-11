@@ -31,6 +31,7 @@ export function AppHeader() {
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-4 lg:px-8">
+        <Link href="/" className="font-display text-sm font-bold tracking-tight">Carpa</Link>
         <Link
           href="/start"
           className="group flex min-w-0 items-center gap-2 rounded-full border border-border px-3 py-1 transition-colors hover:border-[var(--blue)] hover:bg-[var(--blue-soft)]"

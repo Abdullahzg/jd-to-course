@@ -17,6 +17,10 @@ mkdirSync(DIR, { recursive: true });
 const db = new Database(join(DIR, "app.db"));
 db.pragma("journal_mode = WAL");
 
+// Columns added after first ship. CREATE TABLE IF NOT EXISTS never alters,
+// so late columns arrive here, idempotently.
+try { db.exec("ALTER TABLE tracker ADD COLUMN notes TEXT"); } catch { /* exists */ }
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -119,7 +123,8 @@ export function getSearch(userId: string, id: string) {
 export type TrackerItem = {
   id: string; userId: string; company: string; role: string | null; kind: string;
   status: string; quote: string | null; subject: string | null; emailDate: number | null;
-  actionLink: string | null; deadline: string | null; createdAt: number; updatedAt: number;
+  actionLink: string | null; deadline: string | null; notes: string | null;
+  createdAt: number; updatedAt: number;
 };
 export function listTracker(userId: string): TrackerItem[] {
   return db.prepare("SELECT * FROM tracker WHERE userId = ? ORDER BY updatedAt DESC LIMIT 500").all(userId) as TrackerItem[];
@@ -128,22 +133,22 @@ export function trackerEvents(itemId: string) {
   return db.prepare("SELECT * FROM tracker_events WHERE itemId = ? ORDER BY COALESCE(emailDate, createdAt) ASC").all(itemId) as
     { id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null }[];
 }
-export function insertTrackerItem(t: Omit<TrackerItem, "id" | "createdAt" | "updatedAt">) {
+export function insertTrackerItem(t: Omit<TrackerItem, "id" | "createdAt" | "updatedAt" | "notes"> & { notes?: string | null }) {
   const id = uid();
-  db.prepare(`INSERT INTO tracker (id, userId, company, role, kind, status, quote, subject, emailDate, actionLink, deadline, createdAt, updatedAt)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, t.userId, t.company, t.role, t.kind, t.status, t.quote, t.subject, t.emailDate, t.actionLink, t.deadline, now(), now());
+  db.prepare(`INSERT INTO tracker (id, userId, company, role, kind, status, quote, subject, emailDate, actionLink, deadline, notes, createdAt, updatedAt)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, t.userId, t.company, t.role, t.kind, t.status, t.quote, t.subject, t.emailDate, t.actionLink, t.deadline, t.notes ?? null, now(), now());
   addTrackerEvent(id, { status: t.status, quote: t.quote, subject: t.subject, emailDate: t.emailDate });
   return id;
 }
-export function updateTrackerItem(id: string, patch: Partial<Pick<TrackerItem, "status" | "quote" | "subject" | "emailDate" | "actionLink" | "deadline" | "role" | "kind">>) {
+export function updateTrackerItem(id: string, patch: Partial<Pick<TrackerItem, "status" | "quote" | "subject" | "emailDate" | "actionLink" | "deadline" | "role" | "kind" | "notes" | "company">>) {
   const cur = db.prepare("SELECT * FROM tracker WHERE id = ?").get(id) as TrackerItem | undefined;
   if (!cur) return;
-  db.prepare(`UPDATE tracker SET status=?, quote=?, subject=?, emailDate=?, actionLink=?, deadline=?, role=?, kind=?, updatedAt=? WHERE id=?`)
+  db.prepare(`UPDATE tracker SET status=?, quote=?, subject=?, emailDate=?, actionLink=?, deadline=?, role=?, kind=?, notes=?, company=?, updatedAt=? WHERE id=?`)
     .run(
       patch.status ?? cur.status, patch.quote ?? cur.quote, patch.subject ?? cur.subject,
       patch.emailDate ?? cur.emailDate, patch.actionLink ?? cur.actionLink, patch.deadline ?? cur.deadline,
-      patch.role ?? cur.role, patch.kind ?? cur.kind, now(), id,
+      patch.role ?? cur.role, patch.kind ?? cur.kind, patch.notes ?? cur.notes, patch.company ?? cur.company, now(), id,
     );
   if (patch.status && patch.status !== cur.status) {
     addTrackerEvent(id, { status: patch.status, quote: patch.quote ?? null, subject: patch.subject ?? null, emailDate: patch.emailDate ?? null });

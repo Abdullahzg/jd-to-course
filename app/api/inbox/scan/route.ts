@@ -44,6 +44,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "The app password route needs your address and a 16 character Google app password." }, { status: 400 });
       }
       emails = await fetchImap(body.email, body.appPassword, { backfill });
+    } else if (mode === "judge") {
+      // The judges' shared inbox: the owner's real Gmail, read through an app
+      // password held server side. A judge sees the tracker work on real mail
+      // without connecting anything of their own.
+      const jEmail = process.env.JUDGE_INBOX_EMAIL;
+      const jPass = process.env.JUDGE_INBOX_APP_PASSWORD;
+      if (!jEmail || !jPass) {
+        return NextResponse.json({ ok: false, error: "The judges' inbox is not connected yet. The owner adds an app password to enable it; meanwhile the demo inbox shows the same flow." }, { status: 400 });
+      }
+      emails = await fetchImap(jEmail, jPass, { backfill: true });
     } else {
       emails = demoInbox();
     }

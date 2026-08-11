@@ -16,6 +16,9 @@ export default function Page() {
 
   return (
     <main className="bg-[#07090f] text-white">
+      <div className="border-b border-white/10 bg-gradient-to-r from-sky-500/15 via-transparent to-emerald-500/15 px-4 py-1.5 text-center text-[11px] text-white/60">
+        <strong className="text-white/85">Carpa</strong> · built for the Stellic challenge · every claim on this page carries a receipt
+      </div>
       <LandingHero />
 
       {/* ── the numbers, computed not claimed ─────────────────────────────── */}

@@ -94,10 +94,20 @@ export async function fetchImap(email: string, appPassword: string, opts: { back
   const { simpleParser } = await import("mailparser");
   const client = new ImapFlow({
     host: "imap.gmail.com", port: 993, secure: true,
-    auth: { user: email, pass: appPassword },
+    // Google displays app passwords in groups of four with spaces, and every
+    // second person pastes them that way. The spaces are cosmetic.
+    auth: { user: email.trim(), pass: appPassword.replace(/\s+/g, "") },
     logger: false,
   });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/auth|credential|invalid|application-specific/i.test(msg)) {
+      throw new Error("Gmail rejected the sign in. Check the address, and that the app password is the 16 character one from Google's App passwords page, not the account password. Spaces do not matter.");
+    }
+    throw new Error("Could not reach Gmail's mail server. Check the connection and try again.");
+  }
   const out: RawEmail[] = [];
   try {
     await client.mailboxOpen("[Gmail]/All Mail").catch(() => client.mailboxOpen("INBOX"));

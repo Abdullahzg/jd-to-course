@@ -31,7 +31,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Job description \u2192 best course path",
+  title: "Carpa: plan the degree, track every application",
   description:"Paste a job posting and the courses you have finished. A solver picks the classes that get you closest to that job while satisfying every degree rule, then shows you what classes cannot teach you.",
 };
 
