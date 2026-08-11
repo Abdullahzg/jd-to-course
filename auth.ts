@@ -44,7 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(creds?.email ?? "").trim().toLowerCase();
         const name = String(creds?.name ?? "").trim();
         if (!email.includes("@") || !name) return null;
-        const id = upsertUser({ email, name });
+        const id = await upsertUser({ email, name });
         return { id, email, name };
       },
     }),
@@ -52,8 +52,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, account, user }) {
       if (user?.email) {
-        token.uid = upsertUser({ email: user.email, name: user.name, image: user.image });
-        logEvent(token.uid as string, "login", { provider: account?.provider ?? "demo" });
+        token.uid = await upsertUser({ email: user.email, name: user.name, image: user.image });
+        await logEvent(token.uid as string, "login", { provider: account?.provider ?? "demo" });
       }
       // The Gmail token rides in the JWT so the scan route can read mail
       // without a token table. Short lived by design; a stale token surfaces

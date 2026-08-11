@@ -634,3 +634,23 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .chart-track { flex-wrap: wrap !important; min-width: 0 !important; }
   .chart-track > div { border: 1px solid #ddd; page-break-inside: avoid; }
 }
+
+/* Landing glow drift: transform-only animation, nothing repaints but the
+   compositor layer, so it cannot stutter the way the old canvas did. */
+@keyframes carpa-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(44px, -28px, 0) scale(1.08); }
+}
+@keyframes carpa-drift-2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-52px, 26px, 0) scale(1.12); }
+}
+.card-lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+.card-lift:hover { transform: translateY(-2px); box-shadow: 0 12px 32px -14px rgb(15 23 42 / 0.22); }
+/* A one line gradient ring, used where a card should read as "the special one". */
+.ring-gradient {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--background, #fff), var(--background, #fff)) padding-box,
+    linear-gradient(90deg, #38bdf8, #2dd4bf, #34d399) border-box;
+}

@@ -101,6 +101,26 @@ export default function TrackerPage() {
         </div>
       </div>
 
+      {/* the season at a glance, before any scrolling */}
+      {(items ?? []).length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "In motion", dot: "#3b82f6", n: (items ?? []).filter((i) => ["applied", "assessment", "update", "waitlisted"].includes(i.status)).length },
+            { label: "Interviews", dot: "#8b5cf6", n: (items ?? []).filter((i) => i.status === "interview").length },
+            { label: "Offers and accepts", dot: "#10b981", n: (items ?? []).filter((i) => ["offer", "accepted"].includes(i.status)).length },
+            { label: "Needs your hands", dot: "var(--amber)", n: (items ?? []).filter((i) => i.status === "action needed").length },
+          ].map((c) => (
+            <div key={c.label} className="card-lift rounded-xl border border-border bg-white px-3 py-2.5">
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: c.dot }} />
+                {c.label}
+              </p>
+              <p className="mt-0.5 font-display text-xl font-semibold">{c.n}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {actions.length > 0 && (
         <div className="mt-4 rounded-xl border p-3" style={{ borderColor: "color-mix(in oklab, var(--amber) 45%, transparent)" }}>
           <p className="text-xs font-medium" style={{ color: "var(--amber)" }}>Needs your hands</p>
@@ -143,7 +163,7 @@ export default function TrackerPage() {
       {(items?.length ?? 0) > 0 && (
         <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-white">
           <table className="w-full min-w-[880px] text-left text-xs">
-            <thead className="bg-foreground/[0.03] text-muted-foreground">
+            <thead className="sticky top-0 z-10 bg-[#f3f4f6] text-muted-foreground">
               <tr>
                 {["Company", "Role", "Kind", "Status", "Updated", "Deadline", "Notes", ""].map((h) => (
                   <th key={h} className="px-3 py-2 font-medium">{h}</th>

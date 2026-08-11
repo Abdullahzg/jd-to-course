@@ -32,12 +32,12 @@ const DEPTH: Record<string, number> = {
   interview: 5, offer: 6, rejected: 6, accepted: 7,
 };
 
-export function reconcile(
+export async function reconcile(
   userId: string,
   signals: AppSignal[],
   emailsById: Map<string, RawEmail>,
-): { created: number; updated: number; unchanged: number } {
-  const rows = listTracker(userId);
+): Promise<{ created: number; updated: number; unchanged: number }> {
+  const rows = await listTracker(userId);
   let created = 0, updated = 0, unchanged = 0;
 
   // Oldest first, so a backfill replays history in order and the final status
@@ -51,7 +51,7 @@ export function reconcile(
     const match = rows.find((r) => norm(r.company) === norm(s.company) && sameRole(r.role, s.role));
 
     if (!match) {
-      const id = insertTrackerItem({
+      const id = await insertTrackerItem({
         userId,
         company: s.company,
         role: s.role || null,
@@ -77,7 +77,7 @@ export function reconcile(
     const newDepth = DEPTH[s.status] ?? 0;
     const progresses = newDepth > curDepth || (newDepth === curDepth && (match.emailDate ?? 0) < when);
     if (progresses) {
-      updateTrackerItem(match.id, {
+      await updateTrackerItem(match.id, {
         status: s.status, quote: s.quote, subject: email?.subject ?? null,
         emailDate: when,
         actionLink: s.actionLink ?? match.actionLink,
@@ -88,7 +88,7 @@ export function reconcile(
       updated++;
     } else {
       // Old news still belongs in the timeline, just not on the headline.
-      addTrackerEvent(match.id, { status: s.status, quote: s.quote, subject: email?.subject, emailDate: when });
+      await addTrackerEvent(match.id, { status: s.status, quote: s.quote, subject: email?.subject, emailDate: when });
       unchanged++;
     }
   }

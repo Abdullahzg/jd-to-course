@@ -23,11 +23,14 @@ const strip = (html: string) =>
     .trim();
 
 // ── Gmail over REST, bearer token from the OAuth session ────────────────────
-export async function fetchGmail(accessToken: string, opts: { backfill: boolean }): Promise<RawEmail[]> {
+export async function fetchGmail(accessToken: string, opts: { sinceMs: number; cap: number }): Promise<RawEmail[]> {
   // Application mail, not the whole life. The query trims the obvious
   // non-candidates server side; triage does the honest filtering after.
+  // sinceMs comes from the scan state: a first scan passes a year ago, every
+  // later scan passes the newest message already processed, so re-scans only
+  // pull what actually arrived since.
   const q = [
-    opts.backfill ? "newer_than:365d" : "newer_than:14d",
+    `after:${Math.floor(opts.sinceMs / 1000)}`,
     "-category:promotions",
     "-category:social",
   ].join(" ");
@@ -36,7 +39,7 @@ export async function fetchGmail(accessToken: string, opts: { backfill: boolean 
 
   const ids: string[] = [];
   let pageToken = "";
-  while (ids.length < (opts.backfill ? 400 : 120)) {
+  while (ids.length < opts.cap) {
     const url = `${base}/messages?q=${encodeURIComponent(q)}&maxResults=100${pageToken ? `&pageToken=${pageToken}` : ""}`;
     const r = await fetch(url, { headers, cache: "no-store" });
     if (!r.ok) throw new Error(`Gmail said ${r.status}. ${r.status === 401 ? "Reconnect Google to renew access." : await r.text().then((t) => t.slice(0, 120))}`);
@@ -89,7 +92,7 @@ function extractGmailBody(payload?: { parts?: unknown[]; body?: { data?: string 
 }
 
 // ── IMAP with a Gmail app password ──────────────────────────────────────────
-export async function fetchImap(email: string, appPassword: string, opts: { backfill: boolean }): Promise<RawEmail[]> {
+export async function fetchImap(email: string, appPassword: string, opts: { sinceMs: number; cap: number }): Promise<RawEmail[]> {
   const { ImapFlow } = await import("imapflow");
   const { simpleParser } = await import("mailparser");
   const client = new ImapFlow({
@@ -110,11 +113,23 @@ export async function fetchImap(email: string, appPassword: string, opts: { back
   }
   const out: RawEmail[] = [];
   try {
-    await client.mailboxOpen("[Gmail]/All Mail").catch(() => client.mailboxOpen("INBOX"));
-    const since = new Date(Date.now() - (opts.backfill ? 365 : 14) * 24 * 3600 * 1000);
+    // Open All Mail by its special-use flag, not by its English name: a
+    // mailbox in another display language calls the same folder something
+    // else, and the silent INBOX fallback turned that into "Read 0 emails".
+    const boxes = await client.list();
+    const allMail = boxes.find((b) => b.specialUse === "\\All")?.path ?? "INBOX";
+    const box = await client.mailboxOpen(allMail).catch(() => client.mailboxOpen("INBOX"));
+    // IMAP SINCE is day granular; the caller overlaps by two days and dedupes
+    // by message id, so the coarseness cannot lose or double-count anything.
+    const since = new Date(opts.sinceMs);
     const uids = await client.search({ since }, { uid: true });
-    const take = (uids || []).slice(-1 * (opts.backfill ? 400 : 120));
-    for await (const msg of client.fetch(take, { uid: true, envelope: true, source: true })) {
+    console.log(`[imap] box=${typeof box === "object" ? box.path : allMail} exists=${typeof box === "object" ? box.exists : "?"} since=${since.toISOString().slice(0, 10)} matched=${uids === false ? "SEARCH-FAILED" : uids.length}`);
+    if (uids === false) throw new Error("Gmail accepted the sign in but refused the mailbox search. Try again in a minute.");
+    const take = (uids || []).slice(-1 * opts.cap);
+    // The third argument's uid flag says the range IS uids; without it the
+    // numbers would be read as sequence positions, silently fetching the
+    // wrong messages.
+    for await (const msg of client.fetch(take, { uid: true, envelope: true, source: true }, { uid: true })) {
       const parsed = await simpleParser(msg.source as Buffer);
       out.push({
         id: String(msg.uid),

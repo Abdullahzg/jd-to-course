@@ -12,14 +12,14 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ ok: false, reason: "signed out" });
   const b = await req.json();
   if (!b?.jd || !b?.snapshot) return NextResponse.json({ ok: false }, { status: 400 });
-  const id = saveSearch(userId, {
+  const id = await saveSearch(userId, {
     title: String(b.title ?? "Untitled search").slice(0, 160),
     jd: String(b.jd).slice(0, 20000),
     snapshot: JSON.stringify(b.snapshot).slice(0, 900000),
     coursesPicked: Number(b.coursesPicked) || 0,
     partsAnswered: Number(b.partsAnswered) || 0,
   });
-  logEvent(userId, "search_saved", { id });
+  await logEvent(userId, "search_saved", { id });
   return NextResponse.json({ ok: true, id });
 }
 
@@ -29,9 +29,9 @@ export async function GET(req: Request) {
   if (!userId) return NextResponse.json({ ok: false }, { status: 401 });
   const id = new URL(req.url).searchParams.get("id");
   if (id) {
-    const s = getSearch(userId, id);
+    const s = await getSearch(userId, id);
     if (!s) return NextResponse.json({ ok: false }, { status: 404 });
     return NextResponse.json({ ok: true, search: { ...s, snapshot: JSON.parse(s.snapshot) } });
   }
-  return NextResponse.json({ ok: true, searches: listSearches(userId) });
+  return NextResponse.json({ ok: true, searches: await listSearches(userId) });
 }

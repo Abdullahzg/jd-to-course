@@ -14,5 +14,5 @@ export async function GET() {
   if (!email || (allowed.length && !allowed.includes(email.toLowerCase()))) {
     return NextResponse.json({ ok: false, error: "Not yours to see." }, { status: 403 });
   }
-  return NextResponse.json({ ok: true, ...adminStats() });
+  return NextResponse.json({ ok: true, ...(await adminStats()) });
 }

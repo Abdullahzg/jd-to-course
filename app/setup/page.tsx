@@ -23,7 +23,7 @@ export default function Setup() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [log, setLog] = useState<Verbose[]>([]);
-  const [result, setResult] = useState<{ created: number; updated: number; emailsRead: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; updated: number; emailsRead: number; alreadyKnown?: number } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [imapEmail, setImapEmail] = useState("");
@@ -135,7 +135,7 @@ export default function Setup() {
             genuine mail without granting anything.
           </p>
           <button onClick={() => setStep(1)} data-track="setup_next"
-                  className="mt-4 w-full rounded-full bg-foreground py-2.5 text-sm font-medium text-background">
+                  className="mt-4 w-full rounded-full bg-foreground py-2.5 text-sm font-medium text-background shadow-lg shadow-foreground/20 transition-transform hover:scale-[1.01]">
             Set up my inbox
           </button>
           <Link href="/home" className="mt-2 block text-center text-xs text-muted-foreground underline underline-offset-2">
@@ -147,8 +147,8 @@ export default function Setup() {
       {step === 1 && (
         <section className="mt-6 space-y-3">
           {/* app password: the route that works for everyone, tutorial included */}
-          <div className="rounded-2xl border border-border bg-white p-4">
-            <p className="flex items-center gap-1.5 text-sm font-semibold"><KeyRound className="h-4 w-4" /> App password
+          <div className="card-lift rounded-2xl border border-border bg-white p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600/10"><KeyRound className="h-3.5 w-3.5 text-emerald-700" /></span> App password
               <span className="ml-1 rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">works for any Google account</span>
             </p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed text-muted-foreground">
@@ -170,8 +170,8 @@ export default function Setup() {
           </div>
 
           {/* google oauth */}
-          <div className="rounded-2xl border border-border bg-white p-4">
-            <p className="flex items-center gap-1.5 text-sm font-semibold"><Mail className="h-4 w-4" /> Google sign in</p>
+          <div className="card-lift rounded-2xl border border-border bg-white p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-600/10"><Mail className="h-3.5 w-3.5 text-sky-700" /></span> Google sign in</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               One authorize tab, read only scope, no password handling at all.
             </p>
@@ -184,8 +184,8 @@ export default function Setup() {
           </div>
 
           {/* the judges' inbox */}
-          <div className="rounded-2xl border-2 border-dashed border-border bg-white p-4">
-            <p className="flex items-center gap-1.5 text-sm font-semibold"><Play className="h-4 w-4" /> Judging Carpa?</p>
+          <div className="card-lift ring-gradient rounded-2xl bg-white p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600/10"><Play className="h-3.5 w-3.5 text-violet-700" /></span> Judging Carpa?</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Scan the owner&rsquo;s real inbox instead, or the scripted demo inbox. Both show the whole
               flow without touching your own mail.
@@ -228,7 +228,7 @@ export default function Setup() {
           <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
           <h2 className="mt-2 font-display text-lg font-semibold">Your tracker is alive</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Read {result.emailsRead} emails, found {result.created} applications and updated {result.updated}.
+            Read {result.emailsRead} new emails{result.alreadyKnown ? ` (${result.alreadyKnown} already remembered from earlier scans)` : ""}, found {result.created} applications and updated {result.updated}.
             Every status carries the sentence that proved it.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">

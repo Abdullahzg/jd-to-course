@@ -11,8 +11,8 @@ const nextConfig = {
   },
   // Node native and worker-thread packages must not be bundled: Turbopack
   // chases pino's test files inside imapflow's logger and dies on them, and
-  // better-sqlite3 is a compiled binary.
-  serverExternalPackages: ["imapflow", "mailparser", "better-sqlite3"],
+  // pg keeps optional native bindings behind a dynamic require.
+  serverExternalPackages: ["imapflow", "mailparser", "pg"],
 };
 
 export default nextConfig;

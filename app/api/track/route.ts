@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
   try {
     const { name, meta } = await req.json();
-    if (typeof name === "string" && name.length <= 80) logEvent(userId, name.slice(0, 80), meta);
+    if (typeof name === "string" && name.length <= 80) await logEvent(userId, name.slice(0, 80), meta);
   } catch { /* a lost beacon is a lost beacon */ }
   return NextResponse.json({ ok: true });
 }

@@ -56,7 +56,7 @@ export default function Home() {
     if (mode === "imap") { body.email = imapEmail; body.appPassword = imapPass; }
     const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e) }));
     if (r.ok) {
-      setScan({ busy: false, note: `Read ${r.emailsRead} emails, found ${r.signals} signals, ${r.created} new applications, ${r.updated} updated.` });
+      setScan({ busy: false, note: `Read ${r.emailsRead} new emails${r.alreadyKnown ? ` (${r.alreadyKnown} already remembered)` : ""}, found ${r.signals} signals, ${r.created} new applications, ${r.updated} updated.` });
       void load();
     } else {
       setScan({ busy: false, note: r.error ?? "The scan failed." });
