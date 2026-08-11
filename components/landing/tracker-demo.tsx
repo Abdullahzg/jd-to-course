@@ -14,40 +14,44 @@ import { useEffect, useState } from "react";
 type Row = { company: string; role: string; status: string; tone: string };
 
 const START: Row[] = [
-  { company: "Stripe", role: "SWE Intern", status: "assessment", tone: "blue" },
-  { company: "Figma", role: "Product Engineer", status: "applied", tone: "grey" },
-  { company: "NSF REU", role: "ML Research", status: "applied", tone: "grey" },
-  { company: "HackMIT", role: "", status: "applied", tone: "grey" },
+  { company: "Columbia University", role: "MS Computer Science", status: "applied", tone: "grey" },
+  { company: "Johns Hopkins", role: "MSE Computer Science", status: "applied", tone: "grey" },
+  { company: "Mitacs Globalink", role: "Research Internship", status: "applied", tone: "grey" },
+  { company: "Knight-Hennessy", role: "Scholars", status: "action needed", tone: "blue" },
 ];
 
+// Every line below is a real row from the owner's tracker, built from their
+// real inbox: the same acceptances, offers and rejections a judge sees after
+// one click on "use the owner's inbox". The demo stopped inventing companies
+// the day the real season became more convincing than fiction.
 const SCRIPT: { mail: string; from: string; apply: (rows: Row[]) => Row[]; quote: string }[] = [
   {
-    from: "Stripe Recruiting",
-    mail: "Interview scheduling: SWE Intern",
-    quote: "Congratulations, you passed the online assessment.",
-    apply: (r) => r.map((x) => (x.company === "Stripe" ? { ...x, status: "interview", tone: "blue" } : x)),
+    from: "Columbia Engineering",
+    mail: "Welcome to the MS in Computer Science",
+    quote: "We are delighted to welcome you to Columbia Engineering and the MS in Computer Science.",
+    apply: (r) => r.map((x) => (x.company.startsWith("Columbia") ? { ...x, status: "accepted", tone: "green" } : x)),
   },
   {
-    from: "Greenhouse",
-    mail: "Figma: online assessment",
-    quote: "Please complete a take home exercise within 5 days.",
-    apply: (r) => r.map((x) => (x.company === "Figma" ? { ...x, status: "assessment", tone: "blue" } : x)),
+    from: "JHU Graduate Admissions",
+    mail: "Your application decision",
+    quote: "Congratulations! It is my pleasure to inform you that you have been admitted.",
+    apply: (r) => r.map((x) => (x.company.startsWith("Johns") ? { ...x, status: "offer", tone: "green" } : x)),
   },
   {
-    from: "Databricks",
-    mail: "Your Databricks application",
-    quote: "We will not be proceeding to the next stage at this time.",
+    from: "NUS Graduate Office",
+    mail: "Application outcome",
+    quote: "We regret to inform you that your application was unsuccessful.",
     // The row that did not exist until its rejection arrived: the mechanism
     // on display, not just described.
-    apply: (r) => (r.some((x) => x.company === "Databricks")
+    apply: (r) => (r.some((x) => x.company.startsWith("NUS"))
       ? r
-      : [...r, { company: "Databricks", role: "SWE Intern", status: "rejected", tone: "red" }]),
+      : [...r, { company: "NUS", role: "MComp Artificial Intelligence", status: "rejected", tone: "red" }]),
   },
   {
-    from: "HackMIT Team",
-    mail: "HackMIT decision inside",
-    quote: "You have been accepted to HackMIT 2027!",
-    apply: (r) => r.map((x) => (x.company === "HackMIT" ? { ...x, status: "accepted", tone: "green" } : x)),
+    from: "Mitacs",
+    mail: "Globalink Research Internship",
+    quote: "Congratulations on receiving the MITACS GRI Award!",
+    apply: (r) => r.map((x) => (x.company.startsWith("Mitacs") ? { ...x, status: "accepted", tone: "green" } : x)),
   },
 ];
 
@@ -116,6 +120,9 @@ export function TrackerDemo() {
         </ul>
         <p className="mt-3 min-h-[2rem] border-l-2 border-white/15 pl-2 text-[11px] italic leading-snug text-white/45">
           {step >= 0 ? `"${SCRIPT[step].quote}"` : "every status carries the sentence that proved it"}
+        </p>
+        <p className="mt-2 text-[10px] text-white/30">
+          Real rows from the owner&rsquo;s season. Judges load this exact tracker in one click.
         </p>
       </div>
     </div>

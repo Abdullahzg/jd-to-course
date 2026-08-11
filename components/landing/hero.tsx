@@ -21,7 +21,7 @@ export function LandingHero() {
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
             <Link href="/" className="flex items-baseline gap-2">
               <span className="font-display text-base font-bold tracking-tight">Carpa</span>
-              <span className="hidden text-[10px] uppercase tracking-widest text-white/35 sm:inline">plan it, track it, prove it</span>
+              <span className="hidden text-[10px] uppercase tracking-widest text-white/35 sm:inline">plan it, track it, prove it · built for the Stellic challenge</span>
             </Link>
             <nav className="flex items-center gap-4">
               <Link href="/home" data-track="nav_signin"

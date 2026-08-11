@@ -1,4 +1,4 @@
-import { triageHeaders, extractSignals } from "./classify";
+import { triageHeaders, extractSignals, refuteSignals } from "./classify";
 import { reconcile } from "./reconcile";
 import {
   demoInbox, fetchGmailHeaders, fetchGmailBodies, fetchImapHeaders, fetchImapBodies,
@@ -90,8 +90,9 @@ export async function runScan(
 
     // ── extract, verify quotes, reconcile ────────────────────────────────
     await up({ phase: "extracting", total: bodies.length, done: 0 });
-    const { signals, costUsd: extractCost, dropped } = await extractSignals(key, bodies, (done) => void up({ done }));
+    const { signals: rawSignals, costUsd: extractCost, dropped } = await extractSignals(key, bodies, (done) => void up({ done }));
     const byId = new Map(bodies.map((e) => [e.id, e]));
+    const { kept: signals, refuted, costUsd: refuteCost } = await refuteSignals(key, rawSignals, byId);
     const result = await reconcile(userId, signals, byId);
 
     await markEmailsSeen(userId, mode, fresh.map((h) => h.id));
@@ -102,11 +103,11 @@ export async function runScan(
       status: "done", phase: "done",
       done: fresh.length, total: fresh.length,
       found: signals.length, created: result.created, updated: result.updated,
-      costUsd: triageCost + extractCost,
+      costUsd: triageCost + extractCost + refuteCost,
     });
     await logEvent(userId, "inbox_scan", {
       mode, backfill, headers: headers.length, fresh: fresh.length,
-      read: bodies.length, signals: signals.length, dropped, ...result,
+      read: bodies.length, signals: signals.length, dropped, refuted, ...result,
     });
   } catch (e) {
     await up({ status: "error", phase: "error", error: e instanceof Error ? e.message : String(e) });

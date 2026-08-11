@@ -127,10 +127,6 @@ export default function Home() {
                 className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs">
             <Inbox className="h-3.5 w-3.5" /> Tracker
           </Link>
-          <button onClick={() => signOut({ callbackUrl: "/" })}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground">
-            <LogOut className="h-3.5 w-3.5" /> Sign out
-          </button>
         </div>
       </div>
 

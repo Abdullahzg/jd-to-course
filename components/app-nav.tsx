@@ -29,7 +29,7 @@ export function AppNav() {
     <nav className="border-b border-border bg-white print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2">
         <div className="flex min-w-0 items-center gap-4 overflow-x-auto">
-          <Link href="/home" data-track="nav_brand" className="font-display text-sm font-bold tracking-tight">
+          <Link href="/" data-track="nav_brand" className="font-display text-sm font-bold tracking-tight">
             Carpa
           </Link>
           {LINKS.map((l) => (

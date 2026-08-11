@@ -16,10 +16,25 @@ export default function Page() {
 
   return (
     <main className="bg-[#07090f] text-white">
-      <div className="border-b border-white/10 bg-white/[0.03] px-4 py-1.5 text-center text-[11px] text-white/60">
-        <strong className="text-white/85">Carpa</strong> · built for the Stellic challenge · every claim on this page carries a receipt
-      </div>
       <LandingHero />
+
+      {/* ── how it works, in the order a student lives it ─────────────────── */}
+      <section className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
+        <p className="text-xs uppercase tracking-[0.2em] text-white/40">how it works</p>
+        <div className="mt-6 grid gap-8 sm:grid-cols-3">
+          {[
+            ["01", "Paste the posting", "Every course in the catalog is read against the whole posting. What survives carries a quoted line from the catalog proving it teaches what the job asks."],
+            ["02", "The solver builds the degree", "Prerequisites, terms offered, credit caps, every requirement bucket: a constraint solver places the winning courses inside your degree's real rules, and ranks every alternative it passed over."],
+            ["03", "Connect your inbox once", "Confirmations, assessments, interviews, offers, rejections: the tracker reads them, proves each status with a sentence from the email, and keeps the spreadsheet you used to keep by hand."],
+          ].map(([n, t, b]) => (
+            <div key={n} className="border-t border-white/15 pt-4">
+              <p className="font-display text-sm text-white/40">{n}</p>
+              <h3 className="mt-1 font-display text-lg font-semibold">{t}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/55">{b}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ── the numbers, computed not claimed ─────────────────────────────── */}
       <section id="proof" className="mx-auto max-w-6xl px-5 py-14 sm:py-20 scroll-mt-8">

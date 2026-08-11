@@ -20,6 +20,12 @@ recruiter replies about a specific application.
 
 Drop: newsletters, marketing, job ALERTS and digests (postings they did not
 apply to), course announcements, receipts, social notifications, spam.
+Also drop the mail that dresses up as an application: agencies and startup
+programs SOLICITING an application ("apply by September 1 to be considered",
+"applications are now open for cohort 4"), services selling themselves with
+an "offer" or "program", and recommendation emails ("we thought this job
+could be a match for you"). An application the owner never made cannot have
+a status.
 
 The subject "Your application to X" is a keep. "10 new jobs matching your
 profile" is a drop. When genuinely unsure, keep: the next pass reads bodies
@@ -81,6 +87,22 @@ Worked examples:
 
   Body: "Your OPT workshop registration is confirmed" from an international
   office -> NOT an application signal. Skip it entirely.
+
+  Body: "We have another program called the LaunchUp program, where we offer
+  the same services" from a capital firm -> marketing. The word "offer" in a
+  sales sentence is not a job offer. Skip it entirely.
+
+  Body: "We thought this job for a React Native Intern could be a match for
+  your background. Please submit a quick application if you have any
+  interest." -> a job ALERT about an application that does not exist. Skip.
+
+  Body: "Applications are now open for Cohort 4. Apply by September 1 to be
+  considered." -> an invitation to apply, not a status of an application the
+  owner made. Skip.
+
+The rule under all of these: a signal exists only when the OWNER'S OWN
+application, candidacy or enrollment moved. Mail asking, inviting or
+tempting them to apply moves nothing.
 
 One email can be skipped; skipping needs no entry at all. Never invent a
 company. Plain words, and never an em dash or en dash in any field.`;
@@ -213,4 +235,73 @@ export async function classifyEmails(
   const relevant = emails.filter((e) => t.keep.has(e.id));
   const x = await extractSignals(key, relevant);
   return { signals: x.signals, costUsd: t.costUsd + x.costUsd, triaged: relevant.length, dropped: x.dropped };
+}
+
+
+const REFUTE_SIGNALS_SYSTEM = `You are the skeptic in a student's application tracker. Each candidate row below was extracted from one email. Decide for each: did the OWNER'S OWN application, candidacy or enrollment produce this email, or did marketing?
+
+DROP when the email is: a job alert or recommendation ("we thought this job", "your background could be a match", "please submit a quick application"), a firm or program SOLICITING applications ("apply by...", "applications are now open", "cohort", "limited slots"), a service selling itself (an "offer" in a sales sentence is not a job offer), a newsletter, an event promo, or admissions marketing from a program the owner merely browsed ("we invite you to learn more").
+
+KEEP when the email is: a confirmation of something the owner submitted, an assessment, interview, offer, rejection or waitlist for their own candidacy, enrollment or onboarding steps for something they accepted, a reference-received notice for their application, a deadline notice for an application they demonstrably started.
+
+The test is always: did the owner's own action start this thread. When the quote alone cannot settle it, the sender and subject usually can.`;
+
+const REFUTE_SIGNALS_SCHEMA = {
+  name: "verdicts",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      verdicts: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: { n: { type: "integer" }, keep: { type: "boolean" } },
+          required: ["n", "keep"],
+        },
+      },
+    },
+    required: ["verdicts"],
+  },
+} as const;
+
+/**
+ * Stage 3: refute. Extraction with worked examples still lets the occasional
+ * solicitation through, because marketing is written to pass exactly this
+ * kind of reading. A second model call asked only "did the owner's own
+ * action start this thread" is cheap, and it is the difference between a
+ * tracker of applications and a tracker of ambition-themed spam.
+ */
+export async function refuteSignals(
+  key: string,
+  signals: AppSignal[],
+  emailsById: Map<string, RawEmail>,
+): Promise<{ kept: AppSignal[]; refuted: number; costUsd: number }> {
+  if (!signals.length) return { kept: [], refuted: 0, costUsd: 0 };
+  const kept: AppSignal[] = [];
+  let costUsd = 0;
+  const batches: AppSignal[][] = [];
+  for (let i = 0; i < signals.length; i += 12) batches.push(signals.slice(i, i + 12));
+  await waves(batches.map((batch) => async () => {
+    const listing = batch.map((sg, n) => {
+      const e = emailsById.get(sg.emailId);
+      return `${n + 1}. company: ${sg.company} | role: ${sg.role || "(none)"} | claimed status: ${sg.status}\n   FROM: ${e?.from ?? "?"}\n   SUBJECT: ${e?.subject ?? "?"}\n   QUOTE: "${sg.quote}"`;
+    }).join("\n");
+    try {
+      const { content, costUsd: c } = await haiku<{ verdicts: { n: number; keep: boolean }[] }>({
+        key, purpose: `refute ${batch.length} signals`,
+        system: REFUTE_SIGNALS_SYSTEM, user: listing,
+        schema: REFUTE_SIGNALS_SCHEMA as never, maxTokens: 700, temperature: 0,
+      });
+      costUsd += c;
+      const keepSet = new Set((content.verdicts ?? []).filter((v) => v.keep).map((v) => v.n));
+      batch.forEach((sg, n) => { if (keepSet.has(n + 1)) kept.push(sg); });
+    } catch {
+      // The skeptic failing open keeps the batch: a lost refute pass must
+      // not silently delete real rejections.
+      kept.push(...batch);
+    }
+  }), 4);
+  return { kept, refuted: signals.length - kept.length, costUsd };
 }
