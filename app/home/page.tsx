@@ -62,6 +62,11 @@ export default function Home() {
     if (mode === "imap") { body.email = imapEmail; body.appPassword = imapPass; }
     const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e) }));
     if (r.ok) {
+      if (r.done) {
+        setScan({ busy: false, note: `Loaded the owner's tracker: ${r.total} applications, ${r.created} new to your view.` });
+        void load();
+        return;
+      }
       window.dispatchEvent(new Event("carpa-scan-started"));
       const tick = async () => {
         const j = (await fetch(`/api/inbox/scan?job=${r.jobId}`).then((x) => x.json()).catch(() => null))?.job;
@@ -219,10 +224,6 @@ export default function Home() {
                       className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
                 <Play className="h-3.5 w-3.5" /> Judges&rsquo; inbox
               </button>
-              <button onClick={() => runScan("demo")} disabled={scan.busy} data-track="scan_demo"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs text-muted-foreground disabled:opacity-40">
-                <Play className="h-3.5 w-3.5" /> Try the demo inbox
-              </button>
               {(tracker?.length ?? 0) > 0 && (
                 <button onClick={() => void load()} className="ml-auto text-muted-foreground" title="Refresh">
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -370,14 +371,14 @@ function LatestPlan({ searches, openSearch }: {
   if (!latest || !data) return null;
   return (
     <section className="mt-6">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Latest plan: {latest.title.slice(0, 70)}</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="min-w-0 text-sm font-semibold [overflow-wrap:anywhere]">Latest plan: {latest.title}</h2>
         <button onClick={() => openSearch(latest.id)} data-track="home_open_latest_plan"
                 className="text-xs underline underline-offset-2 text-muted-foreground">
           open the full plan
         </button>
       </div>
-      <div className="mt-2 rounded-xl border border-border bg-white p-3">
+      <div className="mt-2">
         <SemesterChart
           names={data.names}
           plan={data.plan}

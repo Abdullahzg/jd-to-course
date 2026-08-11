@@ -41,29 +41,27 @@ export async function POST(req: Request) {
 
   if (mode === "judge") {
     // The owner's inbox was read in full once, into the shared judge user.
-    // A judge gets that copy in one round trip; only an admin's click also
-    // re-reads the real mailbox (incrementally) to refresh the shared copy
-    // before cloning, so the demo data ages with the real inbox, not with
-    // every visitor's patience.
-    const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-    const isAdmin = admins.includes((session?.user?.email ?? "").toLowerCase());
-    if (isAdmin) {
-      after(async () => {
-        await runScan(jobId, SHARED_JUDGE_USER, "judge", key, {});
-        const res = await cloneJudgeRows(userId);
-        await updateScanJob(jobId, { created: res.created });
-      });
-    } else {
-      after(async () => {
-        try {
-          const res = await cloneJudgeRows(userId);
-          await updateScanJob(jobId, { status: "done", phase: "done", done: res.total, total: res.total, created: res.created, found: res.total });
-        } catch (e) {
-          await updateScanJob(jobId, { status: "error", phase: "error", error: e instanceof Error ? e.message : String(e) });
-        }
-      });
+    // The clone happens HERE, inside the request, because it is a few
+    // database writes: the judge's "connect" answers in the time a page
+    // takes to load, with no polling theatre around a copy operation. An
+    // admin's click additionally refreshes the shared copy from the real
+    // mailbox, but in the background, after their own copy has answered.
+    try {
+      const res = await cloneJudgeRows(userId);
+      await updateScanJob(jobId, { status: "done", phase: "done", done: res.total, total: res.total, created: res.created, found: res.total });
+      const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (admins.includes((session?.user?.email ?? "").toLowerCase())) {
+        after(async () => {
+          const refreshJob = await createScanJob(SHARED_JUDGE_USER, "judge");
+          await runScan(refreshJob, SHARED_JUDGE_USER, "judge", key, {});
+          await cloneJudgeRows(userId);
+        });
+      }
+      return NextResponse.json({ ok: true, jobId, done: true, created: res.created, total: res.total });
+    } catch (e) {
+      await updateScanJob(jobId, { status: "error", phase: "error", error: e instanceof Error ? e.message : String(e) });
+      return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 502 });
     }
-    return NextResponse.json({ ok: true, jobId });
   }
 
   // after() keeps the runner alive once the response has gone out, which is

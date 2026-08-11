@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { AppHeader } from "@/components/planner/app-header";
 import { SCHOOLS } from "@/data";
 
 export const metadata = { title: "Sources" };
@@ -38,7 +37,6 @@ export default function Page() {
 
   return (
     <main className="min-h-screen">
-      <AppHeader />
       <div className="mx-auto max-w-[1100px] px-4 py-10 lg:px-8">
         <span className="inline-flex items-center gap-3  text-xs text-muted-foreground">
           <span className="h-px w-8 bg-foreground/30" />

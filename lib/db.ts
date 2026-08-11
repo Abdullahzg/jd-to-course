@@ -397,19 +397,20 @@ export async function cloneJudgeRows(toUserId: string): Promise<{ created: numbe
   });
   await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, "createdAt", "updatedAt") VALUES ${rowTuples.join(",")}`, rowVals);
 
-  const evs = await q<{ id: string; itemId: string; status: string; quote: string | null; subject: string | null; emailDate: number | null; body: string | null; fromAddr: string | null }>(
-    `SELECT id, "itemId", status, quote, subject, "emailDate", body, "fromAddr" FROM carpa_tracker_events WHERE "itemId" = ANY($1)`,
-    [fresh.map((r) => r.id)]);
-  for (let i = 0; i < evs.length; i += 40) {
-    const chunk = evs.slice(i, i + 40);
-    const vals: unknown[] = []; const tuples: string[] = [];
-    chunk.forEach((e) => {
-      const base = vals.length;
-      vals.push(uid(), idMap.get(e.itemId), e.status, e.quote, e.subject, e.emailDate, e.body, e.fromAddr, now());
-      tuples.push(`(${Array.from({ length: 9 }, (_, k) => `$${base + k + 1}`).join(",")})`);
-    });
-    await q(`INSERT INTO carpa_tracker_events (id, "itemId", status, quote, subject, "emailDate", body, "fromAddr", "createdAt") VALUES ${tuples.join(",")}`, vals);
+  // The events carry whole stored emails, megabytes of them. They are
+  // copied INSIDE Postgres with one INSERT..SELECT; pulling them across the
+  // wire and pushing them back was most of a judge's wait.
+  const mapVals: unknown[] = []; const mapTuples: string[] = [];
+  for (const [oldId, newId] of idMap) {
+    mapVals.push(oldId, newId);
+    mapTuples.push(`($${mapVals.length - 1}, $${mapVals.length})`);
   }
+  await q(
+    `INSERT INTO carpa_tracker_events (id, "itemId", status, quote, subject, "emailDate", body, "fromAddr", "createdAt")
+     SELECT gen_random_uuid()::text, m.new_id, e.status, e.quote, e.subject, e."emailDate", e.body, e."fromAddr", $${mapVals.length + 1}
+     FROM carpa_tracker_events e
+     JOIN (VALUES ${mapTuples.join(",")}) AS m(old_id, new_id) ON m.old_id = e."itemId"`,
+    [...mapVals, now()]);
   return { created: fresh.length, total: src.length };
 }
 

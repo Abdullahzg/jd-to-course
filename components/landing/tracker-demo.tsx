@@ -127,7 +127,8 @@ export function TrackerDemo() {
           {step >= 0 ? `"${SCRIPT[step].quote}"` : "every status carries the sentence that proved it"}
         </p>
         <p className="mt-2 text-[10px] text-white/30">
-          Real rows from the owner&rsquo;s season. Judges load this exact tracker in one click.
+          Real rows from the season of Abdullah Zubair Ghouri, who built Carpa. Judges load this
+          exact tracker in one click.
         </p>
       </div>
     </div>

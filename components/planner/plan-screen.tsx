@@ -384,6 +384,14 @@ export function PlanScreen() {
 
   return (
     <div className={`${planTint} mx-auto max-w-[1500px] px-4 py-5 lg:px-8 lg:py-6`}>
+      {/* What this plan is for: the school, the degree, the job. Used to be
+          its own bar; three bars deep, the page started below the fold. */}
+      <p className="mb-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{school?.shortName ?? school?.name}</span>
+        {program && <><span aria-hidden>·</span><span>{program.name}</span></>}
+        {state.roleSummary && <><span aria-hidden>·</span><span className="min-w-0">planning for: {state.roleSummary}</span></>}
+        <Link href="/start" className="underline underline-offset-2 hover:text-foreground" title="Change your school, degree or the job">change</Link>
+      </p>
       {/* ── can this degree even reach this job ───────────────────────────── */}
       {(() => {
         const ev = state.skillEvidence ?? {};

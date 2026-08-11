@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Carpa's mark: ink square, a bold C cut as an arc, one teal point where
+       the season's next update lands. Flat on purpose. -->
+  <rect width="64" height="64" rx="14" fill="#0b0c10"/>
+  <path d="M 45.5 21.5 A 17 17 0 1 0 45.5 42.5" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="46" cy="32" r="4.5" fill="#2dd4bf"/>
+</svg>

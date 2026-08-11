@@ -60,6 +60,14 @@ export default function Setup() {
       .then((x) => x.json())
       .catch(() => ({ ok: false, error: "The connection dropped before the scan could start. Run it again." }));
     if (!r.ok) { setBusy(false); setError(r.error ?? "That did not work, and it is not your fault. Try another route below."); return; }
+    if (r.done) {
+      // The owner's tracker arrives with the response itself.
+      setLog((xs) => xs.map((x) => ({ ...x, done: true })));
+      setBusy(false);
+      setResult({ created: r.created, updated: 0, emailsRead: 0, mode });
+      setStep(2);
+      return;
+    }
     window.dispatchEvent(new Event("carpa-scan-started"));
 
     // The log below is the job's real progress, not a scripted animation:
@@ -125,8 +133,9 @@ export default function Setup() {
             One click and the tracker is full: use the owner&rsquo;s inbox.
           </h1>
           <p className="mt-2 text-sm leading-relaxed opacity-80">
-            The owner&rsquo;s real Gmail was read once, in full: 55 applications with every status
-            proven by a sentence from the email. You connect nothing and wait for nothing.
+            The owner is <strong>Abdullah Zubair Ghouri</strong>, who built and submitted Carpa. His
+            real Gmail was read once, in full: a whole application season with every status proven by
+            a sentence from the email. You connect nothing and wait for nothing.
           </p>
           <button onClick={() => { setStep(1); setJudgePopup(true); }} data-track="setup_judge_banner"
                   className="mt-3 rounded-full bg-background px-6 py-2.5 text-sm font-semibold text-foreground transition-transform hover:scale-[1.02]">
@@ -179,18 +188,14 @@ export default function Setup() {
               <span className="ml-1 rounded-full bg-violet-600/10 px-2 py-0.5 text-[10px] font-medium text-violet-700">instant, for judges</span>
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              The owner&rsquo;s real Gmail was read once, in full; you get that tracker immediately,
-              every status carrying the sentence from the email that proved it. Nothing of yours is
-              touched. The scripted demo inbox shows the same flow with invented mail.
+              The owner, <strong>Abdullah Zubair Ghouri</strong>, who built and submitted Carpa, read
+              his real Gmail into Carpa once, in full; you get that tracker immediately, every status
+              carrying the sentence from the email that proved it. Nothing of yours is touched.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <button onClick={() => setJudgePopup(true)} disabled={busy} data-track="setup_judge"
                       className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background disabled:opacity-40">
                 Use the owner&rsquo;s inbox
-              </button>
-              <button onClick={() => void scan("demo")} disabled={busy} data-track="setup_demo"
-                      className="rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground disabled:opacity-40">
-                Demo inbox
               </button>
             </div>
           </div>
@@ -263,7 +268,7 @@ export default function Setup() {
           <h2 className="mt-2 font-display text-lg font-semibold">Your tracker is alive</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {result.mode === "judge"
-              ? `Loaded the owner's tracker: ${result.created} applications from their real inbox, prebuilt, every status carrying the sentence that proved it.`
+              ? `Loaded the tracker of Abdullah Zubair Ghouri, who built Carpa: ${result.created} applications from his real inbox, prebuilt, every status carrying the sentence that proved it.`
               : `Read ${result.emailsRead} new emails${result.alreadyKnown ? ` (${result.alreadyKnown} already remembered from earlier scans)` : ""}, found ${result.created} applications and updated ${result.updated}. Every status carries the sentence that proved it.`}
           </p>
           <div className="mt-4 grid gap-2 text-left sm:grid-cols-2">
@@ -306,10 +311,10 @@ export default function Setup() {
               <button onClick={() => setJudgePopup(false)} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              This button scans the <strong className="text-foreground">owner&rsquo;s real Gmail</strong>, connected by them
-              through a read only app password, so you can watch Carpa build a tracker from genuine mail
-              without granting access to anything of yours. The results land in your own view and touch
-              nothing else.
+              This loads the real application season of <strong className="text-foreground">Abdullah Zubair
+              Ghouri</strong>, who built and submitted Carpa. His Gmail was read once through a read only
+              app password; the tracker it produced lands in your own view instantly, and nothing of
+              yours is touched or granted.
             </p>
             <button
               onClick={() => { setJudgePopup(false); void scan("judge"); }}

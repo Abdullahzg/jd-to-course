@@ -23,7 +23,9 @@ export function AppNav() {
   if (pathname === "/") return null;
 
   const isAdmin = Boolean((session as { isAdmin?: boolean } | null)?.isAdmin);
-  const active = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const active = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/") ||
+    (href === "/start" && (pathname.startsWith("/plan") || pathname.startsWith("/sources")));
 
   return (
     <nav className="border-b border-border bg-white print:hidden">
