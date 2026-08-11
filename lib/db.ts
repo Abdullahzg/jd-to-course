@@ -265,6 +265,21 @@ export async function logEvent(userId: string | null, name: string, meta?: unkno
   await q(`INSERT INTO carpa_events ("userId", name, meta, "createdAt") VALUES ($1,$2,$3,$4)`,
     [userId, name, meta ? JSON.stringify(meta).slice(0, 2000) : null, now()]);
 }
+/** Everything one person ever did here, oldest first, to the end. */
+export async function userTrail(userId: string) {
+  const [user, events, searches, tracker] = await Promise.all([
+    q<{ id: string; email: string; name: string | null; createdAt: number }>(
+      `SELECT id, email, name, "createdAt" FROM carpa_users WHERE id = $1`, [userId]),
+    q<{ name: string; meta: string | null; createdAt: number }>(
+      `SELECT name, meta, "createdAt" FROM carpa_events WHERE "userId" = $1 ORDER BY "createdAt" ASC LIMIT 5000`, [userId]),
+    q<{ title: string; createdAt: number }>(
+      `SELECT title, "createdAt" FROM carpa_searches WHERE "userId" = $1 ORDER BY "createdAt" ASC`, [userId]),
+    q<{ company: string; status: string; kind: string; "updatedAt": number }>(
+      `SELECT company, status, kind, "updatedAt" FROM carpa_tracker WHERE "userId" = $1 ORDER BY "updatedAt" DESC`, [userId]),
+  ]);
+  return { user: user[0], events, searches, tracker };
+}
+
 export async function adminStats() {
   const users = await q<{ id: string; email: string; name: string | null; createdAt: number; events: number; searches: number; applications: number; lastSeen: number | null }>(
     `SELECT u.id, u.email, u.name, u."createdAt",
