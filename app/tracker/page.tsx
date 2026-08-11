@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { ChevronDown, Download, ExternalLink, Loader2, Search, Trash2 } from "lucide-react";
+import { InboxActions } from "@/components/inbox-actions";
 
 /**
  * The tracker as the spreadsheet it replaces, minus the typing.
@@ -137,6 +138,10 @@ export default function TrackerPage() {
           </button>
           <Link href="/home" className="text-xs text-muted-foreground underline underline-offset-2">home</Link>
         </div>
+      </div>
+
+      <div className="mt-3">
+        <InboxActions onDone={() => { void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); }); }} />
       </div>
 
       {/* the season at a glance, before any scrolling */}
