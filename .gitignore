@@ -47,3 +47,6 @@ next-env.d.ts
 
 # per-machine database
 .data/
+
+# throwaway probe scripts; they read secrets from .env.local at runtime and never carry them
+scratch/
