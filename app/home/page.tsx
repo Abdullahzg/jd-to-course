@@ -40,6 +40,16 @@ export default function Home() {
   }, []);
   useEffect(() => { if (status === "authenticated") void load(); }, [status, load]);
 
+  const gmailConnected = Boolean((session as { gmailConnected?: boolean } | null)?.gmailConnected);
+  const connectGmail = () =>
+    // The incremental ask: same provider, wider scope, explicit consent. Only
+    // people who choose this route ever see Google's Gmail permission screen.
+    signIn("google", { callbackUrl: "/home" }, {
+      scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly",
+      access_type: "offline",
+      prompt: "consent",
+    });
+
   const runScan = async (mode: "gmail" | "imap" | "demo") => {
     setScan({ busy: true, note: mode === "demo" ? "Reading the demo inbox" : "Reading your mail. A first scan goes back a year and can take a couple of minutes." });
     const body: Record<string, unknown> = { mode };
@@ -158,9 +168,10 @@ export default function Home() {
               where each one stands, grouped by kind. Nothing is written to your mailbox, ever.
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              <button onClick={() => runScan("gmail")} disabled={scan.busy} data-track="scan_gmail"
+              <button onClick={() => (gmailConnected ? void runScan("gmail") : void connectGmail())}
+                      disabled={scan.busy} data-track="scan_gmail"
                       className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-xs font-medium text-background disabled:opacity-40">
-                <Mail className="h-3.5 w-3.5" /> Scan Gmail
+                <Mail className="h-3.5 w-3.5" /> {gmailConnected ? "Scan Gmail" : "Connect Gmail"}
               </button>
               <button onClick={() => setImapOpen((v) => !v)} disabled={scan.busy} data-track="scan_imap_open"
                       className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
@@ -179,8 +190,9 @@ export default function Home() {
             {imapOpen && (
               <div className="mt-2.5 space-y-1.5 rounded-lg bg-foreground/[0.03] p-2.5">
                 <p className="text-[11px] text-muted-foreground">
-                  Google account &rarr; Security &rarr; 2 Step Verification &rarr; App passwords. Sixteen
-                  characters, read only access from here, revocable there any time.
+                  Works for ANY Google account today, no approval lists. Google account &rarr;
+                  Security &rarr; 2 Step Verification &rarr; App passwords, sixteen characters, read
+                  only from here, revocable there any time.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   <input value={imapEmail} onChange={(e) => setImapEmail(e.target.value)} placeholder="you@gmail.com"

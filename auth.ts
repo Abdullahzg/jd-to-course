@@ -21,12 +21,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       ? [Google({
           clientId: process.env.AUTH_GOOGLE_ID,
           clientSecret: process.env.AUTH_GOOGLE_SECRET ?? "",
+          // Basic scopes only at sign in. gmail.readonly is a RESTRICTED
+          // scope: while the app is unverified, Google blocks it for anyone
+          // not hand listed as a test user, which walled the whole product
+          // off behind a list. Sign in now asks for nothing Google gates, so
+          // every Google account on earth can enter; the Gmail scope is
+          // requested separately, by the Connect Gmail button, only from
+          // people who choose the OAuth route.
           authorization: {
-            params: {
-              scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly",
-              access_type: "offline",
-              prompt: "consent",
-            },
+            params: { scope: "openid email profile", prompt: "select_account" },
           },
         })]
       : []),
