@@ -61,7 +61,7 @@ export function PlanScreen() {
     state, setState, result, solving, reflowing, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
-    repair, clearRepair, tryArrangement,
+    repair, clearRepair, tryArrangement, removeCourse, addCourse, lastRemovedTerm,
   } = usePlanner();
   const [doctorOpen, setDoctorOpen] = useState(false);
   const { noteSpend } = useBudget();
@@ -314,6 +314,35 @@ export function PlanScreen() {
 
   const termKinds = termKindsFor(state.student.startTerm as Term, plan.termCredits.length);
   const v = program ? verifyPlan(plan, program, courses, state.student.completed, termKinds) : null;
+
+  // The always-on health readout. Manual edits change placements, placements
+  // change these numbers, same render. No dialog to open, no solver to wait
+  // for: the sidebar is the monitor and the board carries the lights.
+  const placedIdsLive = new Set(plan.placements.map((p) => p.courseId));
+  const doneSetLive = new Set(state.student.completed);
+  const reqLive = (program?.buckets ?? []).map((b) => {
+    const has = b.eligible.filter((id) => placedIdsLive.has(id) || doneSetLive.has(id));
+    const needC = b.needCourses ?? null;
+    const needCr = b.needCredits ?? null;
+    const creditsHave = has.reduce((s, id) => s + (courses.get(id)?.credits ?? 0), 0);
+    const ok = needC != null ? has.length >= needC : needCr != null ? creditsHave >= needCr : true;
+    const gap = needC != null ? Math.max(0, needC - has.length) : needCr != null ? Math.max(0, needCr - creditsHave) : 0;
+    return { id: b.id, label: b.label, ok, gap, unit: needC != null ? "course" : "credit", eligible: new Set(b.eligible) };
+  });
+  const unmetLive = reqLive.filter((r) => !r.ok);
+  const failedLive = (v?.checks ?? []).filter((c) => !c.passed);
+  const termOfLive = new Map(plan.placements.map((p) => [p.courseId, p.term]));
+  const problemTerms = new Set<number>();
+  for (const c of failedLive) for (const id of c.offenders) { const t = termOfLive.get(id); if (t != null) problemTerms.add(t); }
+  if (failedLive.some((c) => c.id === "full-time")) {
+    plan.termCredits.forEach((cr, t) => {
+      if (cr + (plan.openCreditsNeeded?.[t] ?? 0) < (program?.minCreditsPerTerm ?? 0)) problemTerms.add(t);
+    });
+  }
+  // A shortfall is an absence; absences have no offender to point at. The
+  // semester the removal happened in carries the light instead.
+  if (unmetLive.length && lastRemovedTerm != null) problemTerms.add(lastRemovedTerm);
+  const healthy = !failedLive.length && !unmetLive.length;
   const slotByCourse = new Map(plan.slotChoices.map((s) => [s.chosen, s]));
   // "Not covered" was hiding two completely different answers behind one
   // outlined chip. Either this catalog teaches the thing and the plan simply
@@ -850,6 +879,14 @@ export function PlanScreen() {
             fill={filledByTerm}
             completed={state.student.completed}
             onJump={jumpToCourse}
+            problemTerms={problemTerms}
+            addSearch={{
+              catalog: school?.courses ?? [],
+              termKinds: termKinds as unknown as string[],
+              completed: doneSetLive,
+              unmetBuckets: unmetLive.map((r) => ({ id: r.id, label: r.label, eligible: r.eligible })),
+              onAdd: (id, t) => addCourse(id, t, courses.get(id)?.code),
+            }}
           />
           <div className="mt-2 flex justify-end">
             <button onClick={() => setDoctorOpen(true)} data-track="plan_doctor_open"
@@ -1162,7 +1199,7 @@ export function PlanScreen() {
                         shortlistCount={shortlistCount}
                         whyConsidered={(id) => considerationWhy.get(id) ?? null}
                         onLock={() => toggleLock(p.courseId, p.term, courses.get(p.courseId)?.code)}
-                        onRemove={() => exclude(p.courseId, courses.get(p.courseId)?.code)}
+                        onRemove={() => removeCourse(p.courseId, courses.get(p.courseId)?.code)}
                         onChoose={(id) => {
                           setOpenAlts(null);
                           chooseSlot(p.bucketId, p.courseId, id, courses.get(p.courseId)?.code, courses.get(id)?.code);
@@ -1275,6 +1312,55 @@ export function PlanScreen() {
         {/* ── sidebar: the checklist ───────────────────────────────────────── */}
         <aside className="w-full min-w-0 shrink-0 lg:w-[360px]">
           <div className="stagger space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:pr-1 lg:pb-20 rail-scroll">
+            <section className="rounded-3xl border p-4"
+                     style={healthy
+                       ? { borderColor: "color-mix(in oklab, var(--teal) 45%, transparent)", background: "color-mix(in oklab, var(--teal) 5%, white)" }
+                       : { borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }}>
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="font-display text-sm font-semibold">Plan health, live</h2>
+                <span className="text-xs font-medium" style={{ color: healthy ? "var(--teal)" : "#dc2626" }}>
+                  {healthy ? "all clear" : `${failedLive.length + unmetLive.length} open`}
+                </span>
+              </div>
+              {healthy ? (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Every rule passes and every requirement is on track. Edit freely; this panel and the
+                  board's lights update with every change.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2">
+                  {failedLive.map((c) => (
+                    <li key={c.id} className="text-xs">
+                      <p className="font-medium" style={{ color: "#dc2626" }}>{c.rule}</p>
+                      <p className="text-muted-foreground">{c.detail}</p>
+                      {!!c.offenders.length && (
+                        <p className="mt-0.5 flex flex-wrap gap-1">
+                          {c.offenders.map((id) => (
+                            <button key={id} onClick={() => jumpToCourse(termOfLive.get(id) ?? 0, id)}
+                                    className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] hover:border-[var(--blue)]"
+                                    title="Go to the semester causing this">
+                              {courses.get(id)?.code ?? id}
+                            </button>
+                          ))}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                  {unmetLive.map((r) => (
+                    <li key={r.id} className="text-xs">
+                      <button onClick={() => document.getElementById(`bucket-${r.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                              className="text-left font-medium underline-offset-2 hover:underline" style={{ color: "#dc2626" }}>
+                        {r.label}: {r.gap} {r.unit}{r.gap === 1 ? "" : "s"} short
+                      </button>
+                      <p className="text-muted-foreground">
+                        A red semester on the board has a search box; it marks the courses that fill this.
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
             <section className="rounded-3xl border border-border bg-card p-5 glow">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="font-display text-lg font-semibold">What the degree needs</h2>
@@ -1288,7 +1374,7 @@ export function PlanScreen() {
                   const fills = plan.placements.filter((p) => p.bucketId === b.bucketId);
                   const already = b.fromCompletedCourses;
                   return (
-                    <li key={b.bucketId} className="rounded-2xl bg-[var(--blue-soft)]/60 p-3">
+                    <li key={b.bucketId} id={`bucket-${b.bucketId}`} className="rounded-2xl bg-[var(--blue-soft)]/60 p-3">
                       <div className="flex items-start gap-2.5">
                         <span
                           className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full"

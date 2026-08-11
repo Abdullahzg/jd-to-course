@@ -20,7 +20,7 @@ import { WhatIsIt } from "./what-is-it";
  * evidence attached. This is the map, not the controls.
  */
 export function SemesterChart({
-  names, plan, courses, fill, completed = [], onJump,
+  names, plan, courses, fill, completed = [], onJump, problemTerms, addSearch,
 }: {
   names: string[];
   plan: Plan;
@@ -39,7 +39,19 @@ export function SemesterChart({
   completed?: string[];
   /** Jump to a semester, or to one specific course inside it. */
   onJump: (term: number, courseId?: string) => void;
+  /** Semesters the health monitor flags; they glow red until repaired. */
+  problemTerms?: Set<number>;
+  /** Everything the in-column add box needs to say whether a course helps. */
+  addSearch?: {
+    catalog: Course[];
+    termKinds: string[];
+    completed: Set<string>;
+    unmetBuckets: { id: string; label: string; eligible: Set<string> }[];
+    onAdd: (courseId: string, term: number) => void;
+  };
 }) {
+  const [adding, setAdding] = useState<number | null>(null);
+  const [addQ, setAddQ] = useState("");
   const [open, setOpen] = useState<number | null>(null);
 
   // How many other courses the solver found for the same requirement. The chart
@@ -278,9 +290,11 @@ export function SemesterChart({
             return (
               <div
                 key={name}
+                id={`term-col-${t}`}
                 className={`w-[168px] shrink-0 p-2.5 align-top transition-colors ${
                   on ? "plan-wash" : ""
                 }`}
+                style={problemTerms?.has(t) ? { boxShadow: "inset 0 0 0 2px #dc2626", background: "rgba(220,38,38,0.05)" } : undefined}
               >
                 <button
                   onClick={() => { setOpen(on ? null : t); onJump(t); }}
@@ -300,6 +314,48 @@ export function SemesterChart({
                         title="Advanced courses carry heavier reading and project loads. Spreading them out is usually kinder">
                     {heavy} courses at the 4000 level
                   </span>
+                )}
+
+                {addSearch && (
+                  <div className="mt-1.5">
+                    {adding === t ? (
+                      <div>
+                        <input autoFocus value={addQ} onChange={(e) => setAddQ(e.target.value)}
+                               onKeyDown={(e) => { if (e.key === "Escape") { setAdding(null); setAddQ(""); } }}
+                               placeholder="code or title"
+                               className="w-full rounded border border-border px-1.5 py-1 text-[10px] focus:border-[var(--blue)] focus:outline-none" />
+                        {addQ.trim().length >= 2 && (
+                          <ul className="mt-1 space-y-0.5">
+                            {addSearch.catalog
+                              .filter((c) => !plan.placements.some((p) => p.courseId === c.id) && !addSearch.completed.has(c.id))
+                              .filter((c) => c.termsOffered.includes(addSearch.termKinds[t] as never))
+                              .filter((c) => c.code.toLowerCase().includes(addQ.trim().toLowerCase()) || c.title.toLowerCase().includes(addQ.trim().toLowerCase()))
+                              .slice(0, 5)
+                              .map((c) => {
+                                const fills = addSearch.unmetBuckets.filter((b) => b.eligible.has(c.id));
+                                return (
+                                  <li key={c.id}>
+                                    <button onClick={() => { addSearch.onAdd(c.id, t); setAdding(null); setAddQ(""); }}
+                                            className="w-full rounded border border-border bg-white px-1.5 py-1 text-left text-[10px] hover:border-[var(--blue)]">
+                                      <span className="block truncate font-medium">{c.title} <span className="code opacity-60">{c.code}</span></span>
+                                      <span className="block" style={{ color: fills.length ? "var(--teal)" : "var(--muted-foreground, #6b7280)" }}>
+                                        {fills.length ? `fills: ${fills[0].label}` : "fills no open requirement"} · {c.credits} cr
+                                      </span>
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                          </ul>
+                        )}
+                        <button onClick={() => { setAdding(null); setAddQ(""); }} className="mt-0.5 text-[9px] text-muted-foreground underline">close</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setAdding(t); setAddQ(""); }}
+                              className="w-full rounded border border-dashed border-border py-0.5 text-[10px] text-muted-foreground hover:border-[var(--blue)] hover:text-foreground">
+                        + add a course here
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 <ul className="mt-1.5 space-y-1">

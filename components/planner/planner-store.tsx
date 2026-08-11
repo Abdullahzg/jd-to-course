@@ -151,6 +151,9 @@ type Ctx = {
   exclude: (courseId: string, label?: string) => void;
   repair: { attempted: string; message: string; blockingBuckets: { bucketId: string; label: string; detail: string }[]; suggestions: string[]; dropCourseId?: string } | null;
   clearRepair: () => void;
+  removeCourse: (courseId: string, label?: string) => void;
+  lastRemovedTerm: number | null;
+  addCourse: (courseId: string, term: number, label?: string) => void;
   tryArrangement: (placements: { courseId: string; term: number }[], dropId?: string) => void;
   unexclude: (courseId: string, label?: string) => void;
   chooseSlot: (bucketId: string, replace: string, withCourse: string, replaceLabel?: string, withLabel?: string) => void;
@@ -570,6 +573,70 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   );
 
   const clearRepair = useCallback(() => setRepair(null), []);
+  const [lastRemovedTerm, setLastRemovedTerm] = useState<number | null>(null);
+
+  /**
+   * Manual edits, the whole point of them: removing one course removes ONE
+   * course. No solver, no reshuffle, no cascade of nine moved cards. The
+   * health monitor and the board's own lights say what the removal opened
+   * up, and the semester's search fills it by hand. Undo restores the exact
+   * previous board because the record carries the whole result.
+   */
+  const recordManual = useCallback((action: string, reason: string, nextState: PlannerState, nextResult: SolveResponse, effects: string[]) => {
+    if (!baseline.current && resultRef.current) {
+      baseline.current = { state: stateRef.current, result: resultRef.current };
+    }
+    stateRef.current = nextState;
+    setStateRaw(nextState);
+    setResult(nextResult);
+    resultRef.current = nextResult;
+    const rec: ChangeRecord = { id: ++changeId.current, action, reason, effects, state: nextState, result: nextResult };
+    setHistory((h) => {
+      const trimmed = h.slice(0, historyIndexRef.current + 1);
+      const nextH = [...trimmed, rec];
+      historyIndexRef.current = nextH.length - 1;
+      setHistoryIndex(historyIndexRef.current);
+      return nextH;
+    });
+  }, []);
+
+  const removeCourse = useCallback((courseId: string, label = courseId) => {
+    const res = resultRef.current;
+    const st = stateRef.current;
+    const planIdx = st.activePlan ?? 0;
+    const plan = res?.plans?.[planIdx];
+    if (!res || !plan) return;
+    setLastRemovedTerm(plan.placements.find((p) => p.courseId === courseId)?.term ?? null);
+    const placements = plan.placements.filter((p) => p.courseId !== courseId);
+    const termCredits = plan.termCredits.map((_, t) =>
+      placements.filter((p) => p.term === t).reduce((s, p) => s + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
+    const nextPlan = { ...plan, placements, termCredits, slotChoices: plan.slotChoices.filter((sc) => sc.chosen !== courseId) };
+    const nextResult = { ...res, plans: res.plans.map((p, i) => (i === planIdx ? nextPlan : p)) };
+    const nextState = { ...st, student: { ...st.student, excluded: [...new Set([...st.student.excluded, courseId])], locked: st.student.locked.filter((l) => l.courseId !== courseId) } };
+    setChanged(new Set([courseId]));
+    recordManual(`Removed ${label}`, "Removed by hand. Nothing else was touched; the health panel says what this opened up.", nextState, nextResult, [`Took out ${label}, and only ${label}`]);
+  }, [recordManual]);
+
+  const addCourse = useCallback((courseId: string, term: number, label = courseId) => {
+    const res = resultRef.current;
+    const st = stateRef.current;
+    const planIdx = st.activePlan ?? 0;
+    const plan = res?.plans?.[planIdx];
+    if (!res || !plan || plan.placements.some((p) => p.courseId === courseId)) return;
+    const covers = (st.relevance?.[courseId] ?? []).map((h) => ({ skill: h.skill, evidence: h.evidence, kind: "teachable" })) as never[];
+    const placement = {
+      courseId, term, bucketId: "", locked: false, needsAdvisorCheck: false,
+      unverifiableText: [], covers, earliestTerm: 0, earliestReason: "",
+    } as unknown as (typeof plan.placements)[number];
+    const placements = [...plan.placements, placement];
+    const termCredits = plan.termCredits.map((_, t) =>
+      placements.filter((p) => p.term === t).reduce((s, p) => s + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
+    const nextPlan = { ...plan, placements, termCredits };
+    const nextResult = { ...res, plans: res.plans.map((p, i) => (i === planIdx ? nextPlan : p)) };
+    const nextState = { ...st, student: { ...st.student, excluded: st.student.excluded.filter((x) => x !== courseId) } };
+    setChanged(new Set([courseId]));
+    recordManual(`Added ${label} by hand`, "Placed exactly where you put it; the health panel checks the rest.", nextState, nextResult, [`Added ${label} to semester ${term + 1}, and nothing else`]);
+  }, [recordManual]);
 
   /**
    * The repair room's commit: every draft course locked to its term, the
@@ -918,7 +985,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     state, setState, catalog, courses, school, program,
     result, solving, reflowing, changed, error,
-    repair, clearRepair, tryArrangement,
+    repair, clearRepair, tryArrangement, removeCourse, addCourse, lastRemovedTerm,
     history, historyIndex,
     canUndo: historyIndex >= 0,
     canRedo: historyIndex < history.length - 1,
