@@ -233,6 +233,11 @@ export default function Home() {
                         className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
                   <KeyRound className="h-3.5 w-3.5" /> {inboxStatus?.savedImap ? "Update app password" : "Use an app password instead"}
                 </button>
+                <button onClick={() => runScan("judge")} disabled={scan.busy} data-track="scan_judge"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs text-muted-foreground disabled:opacity-40"
+                        title="Adds the owner's rows to your view, so you can judge Carpa on real mail">
+                  <Play className="h-3.5 w-3.5" /> See the owner&rsquo;s tracker
+                </button>
               </div>
             ) : inboxStatus?.lastMode === "judge" ? (
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
