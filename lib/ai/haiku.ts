@@ -56,6 +56,11 @@ function record(key: string, rec: CallRecord): void {
   ledgers.set(fp, list);
   const t = totals.get(fp) ?? { usd: 0, calls: 0 };
   totals.set(fp, { usd: t.usd + rec.costUsd, calls: t.calls + 1 });
+  // Write-through: the deployable copy of the ledger lives in Postgres.
+  // Fire and forget; a lost row costs a cent of bookkeeping, not a feature.
+  void import("@/lib/db").then((db) => db.recordAiCall(fp, {
+    purpose: rec.purpose, model: rec.model, costUsd: rec.costUsd, at: rec.at ?? Date.now(),
+  })).catch(() => undefined);
 }
 
 export class HaikuError extends Error {

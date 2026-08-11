@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import {
   clearActiveKey, fetchKeyStatus, getActiveKey, keyFingerprint, maskKey, setActiveKey,
 } from "@/lib/ai/keystore";
-import { clearLedger, ledgerFor, ledgerTotal } from "@/lib/ai/haiku";
+import { clearLedger } from "@/lib/ai/haiku";
+import { aiLedger, aiTotal, clearAiLedger } from "@/lib/db";
 import { detectProvider, providerLabel } from "@/lib/ai/provider";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,8 @@ async function snapshot() {
     };
   }
   const status = await fetchKeyStatus(key);
-  const spent = ledgerTotal(key);
+  const fp = keyFingerprint(key);
+  const [spent, recentRows] = await Promise.all([aiTotal(fp), aiLedger(fp, 8)]);
   return {
     connected: status.valid,
     source,
@@ -35,7 +37,7 @@ async function snapshot() {
     balanceUnavailable: status.balanceUnavailable,
     spentHere: spent.usd,
     callsHere: spent.calls,
-    recent: ledgerFor(key).slice(-8).reverse(),
+    recent: recentRows.map((r) => ({ purpose: r.purpose ?? "", model: r.model ?? "", costUsd: r.costUsd, at: r.createdAt })),
     error: status.error,
   };
 }

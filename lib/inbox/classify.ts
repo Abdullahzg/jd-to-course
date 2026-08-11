@@ -1,5 +1,5 @@
 import { haiku } from "@/lib/ai/haiku";
-import type { RawEmail, AppSignal } from "./types";
+import type { RawEmail, EmailHeader, AppSignal } from "./types";
 
 /**
  * Inbox to application signals, with the same discipline as the course
@@ -118,18 +118,27 @@ const flat = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 /** The quote must actually be in the email, same rule as catalog quotes. */
 const quoted = (body: string, q: string) => q.length >= 8 && flat(body).includes(flat(q).slice(0, 120));
 
-export async function classifyEmails(
-  key: string,
-  emails: RawEmail[],
-  onProgress?: (done: number, total: number) => void,
-): Promise<{ signals: AppSignal[]; costUsd: number; triaged: number; dropped: number }> {
-  let costUsd = 0;
-  let dropped = 0;
+/** Run thunks in waves of `width`, so ten thousand emails do not serialize. */
+async function waves<T>(thunks: (() => Promise<T>)[], width: number): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < thunks.length; i += width) {
+    out.push(...await Promise.all(thunks.slice(i, i + width).map((t) => t())));
+  }
+  return out;
+}
 
-  // ── stage 1: headers only, 60 at a time ─────────────────────────────
+/** Stage 1 over headers alone: which of these are plausibly about applications. */
+export async function triageHeaders(
+  key: string,
+  headers: EmailHeader[],
+  onProgress?: (done: number) => void,
+): Promise<{ keep: Set<string>; costUsd: number }> {
   const keep = new Set<string>();
-  for (let i = 0; i < emails.length; i += 60) {
-    const batch = emails.slice(i, i + 60);
+  let costUsd = 0;
+  let done = 0;
+  const batches: EmailHeader[][] = [];
+  for (let i = 0; i < headers.length; i += 60) batches.push(headers.slice(i, i + 60));
+  await waves(batches.map((batch) => async () => {
     const listing = batch.map((e, n) => `${n + 1}. FROM: ${e.from.slice(0, 60)} | SUBJECT: ${e.subject.slice(0, 110)}`).join("\n");
     try {
       const { content, costUsd: c } = await haiku<{ keep: number[] }>({
@@ -144,15 +153,25 @@ export async function classifyEmails(
       // silently skipping a rejection costs trust.
       for (const e of batch) keep.add(e.id);
     }
-    onProgress?.(Math.min(i + 60, emails.length), emails.length);
-  }
+    done += batch.length;
+    onProgress?.(done);
+  }), 6);
+  return { keep, costUsd };
+}
 
-  const relevant = emails.filter((e) => keep.has(e.id));
-
-  // ── stage 2: full bodies, 8 at a time ────────────────────────────────
+/** Stage 2 over full bodies: what does each relevant email establish, with proof. */
+export async function extractSignals(
+  key: string,
+  relevant: RawEmail[],
+  onProgress?: (done: number) => void,
+): Promise<{ signals: AppSignal[]; costUsd: number; dropped: number }> {
   const signals: AppSignal[] = [];
-  for (let i = 0; i < relevant.length; i += 8) {
-    const batch = relevant.slice(i, i + 8);
+  let costUsd = 0;
+  let dropped = 0;
+  let done = 0;
+  const batches: RawEmail[][] = [];
+  for (let i = 0; i < relevant.length; i += 8) batches.push(relevant.slice(i, i + 8));
+  await waves(batches.map((batch) => async () => {
     const listing = batch.map((e, n) =>
       `### EMAIL ${n + 1}\nFROM: ${e.from}\nSUBJECT: ${e.subject}\nDATE: ${new Date(e.date).toISOString().slice(0, 10)}\nBODY:\n${e.body.slice(0, 2400)}`,
     ).join("\n\n");
@@ -163,24 +182,35 @@ export async function classifyEmails(
         schema: EXTRACT_SCHEMA as never, maxTokens: 1600, temperature: 0,
       });
       costUsd += c;
-      for (const s of content.signals ?? []) {
-        const e = batch[s.n - 1];
-        if (!e || !s.company?.trim()) continue;
-        if (!quoted(e.body, s.quote)) { dropped++; continue; }
+      for (const sg of content.signals ?? []) {
+        const e = batch[sg.n - 1];
+        if (!e || !sg.company?.trim()) continue;
+        if (!quoted(e.body, sg.quote)) { dropped++; continue; }
         signals.push({
-          company: s.company.trim().slice(0, 80),
-          role: (s.role ?? "").trim().slice(0, 120),
-          kind: s.kind,
-          status: s.status,
-          quote: s.quote.trim().slice(0, 300),
-          actionLink: s.actionLink?.startsWith("http") ? s.actionLink.slice(0, 500) : undefined,
-          deadline: s.deadline?.slice(0, 80),
+          company: sg.company.trim().slice(0, 80),
+          role: (sg.role ?? "").trim().slice(0, 120),
+          kind: sg.kind,
+          status: sg.status,
+          quote: sg.quote.trim().slice(0, 300),
+          actionLink: sg.actionLink?.startsWith("http") ? sg.actionLink.slice(0, 500) : undefined,
+          deadline: sg.deadline?.slice(0, 80),
           emailId: e.id,
         });
       }
     } catch { /* a lost batch surfaces as fewer rows, never as wrong rows */ }
-    onProgress?.(emails.length, emails.length);
-  }
+    done += batch.length;
+    onProgress?.(done);
+  }), 4);
+  return { signals, costUsd, dropped };
+}
 
-  return { signals, costUsd, triaged: relevant.length, dropped };
+/** The composed pair, for inboxes whose bodies are already in hand (the demo). */
+export async function classifyEmails(
+  key: string,
+  emails: RawEmail[],
+): Promise<{ signals: AppSignal[]; costUsd: number; triaged: number; dropped: number }> {
+  const t = await triageHeaders(key, emails);
+  const relevant = emails.filter((e) => t.keep.has(e.id));
+  const x = await extractSignals(key, relevant);
+  return { signals: x.signals, costUsd: t.costUsd + x.costUsd, triaged: relevant.length, dropped: x.dropped };
 }

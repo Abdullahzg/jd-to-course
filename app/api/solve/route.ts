@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { solve } from "@/lib/solver";
+import { solve, solveResilient } from "@/lib/solver";
 import type { SolveRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 90;
 
 // No model is imported into this file, and that is the point. Courses are
 // chosen here, by the solver, and nowhere else in the product.
@@ -38,14 +38,10 @@ export async function POST(req: Request) {
   try {
     const request = { ...body, student, targetSkills: (body.targetSkills ?? []).slice(0, 40) };
     const budget = clamp(Number((body as { budgetMs?: number }).budgetMs) || 8000, 4000, 22000);
-    let result = solve(request, budget);
-    // The retry button was being handed to the student. "Took too long, try
-    // again" is an instruction software can follow by itself, so it does: one
-    // escalation, much larger budget, node cap raised to match, and the
-    // student only ever sees a failure both attempts earned.
-    if (!result.ok && result.infeasibility?.timedOut && budget < 20000) {
-      result = solve(request, 20000, 2_000_000);
-    }
+    // One call, the whole ladder: normal attempt, one big escalation, then
+    // shedding the schedule-poisoned job course rather than shipping an
+    // error. See solveResilient for why that last rung exists.
+    const result = solveResilient(request, budget);
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

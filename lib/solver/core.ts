@@ -560,6 +560,86 @@ export function buildModel(
   const jobRelevant = new Set<string>();
   for (const c of school.courses) if (maskOf(c) !== 0) jobRelevant.add(c.id);
 
+  // Reachability, standalone and relaxed: the earliest term a course could
+  // possibly sit in, assuming its whole prerequisite chain is scheduled as
+  // fast as offering patterns allow and ignoring credit caps. Relaxed means
+  // sound: if even THIS says the horizon is too short, no feasible plan can
+  // ever include the course. Leaving such a course in the value function is
+  // what turned one fall-only course with three prerequisites into a search
+  // the solver could only finish by exhausting its node budget: every subset
+  // containing it had to be disproved one schedule at a time.
+  const reachMemo = new Map<string, number>();
+  const earliestStandalone = (id: string, stack: Set<string>): number => {
+    if (completed.has(id)) return -1;
+    if (reachMemo.has(id)) return reachMemo.get(id)!;
+    if (stack.has(id)) return Infinity;
+    const c = catalog.get(id);
+    if (!c) return Infinity;
+    stack.add(id);
+    const prereqLo = (function evalNode(node: PrereqNode | null): number {
+      if (!node) return 0;
+      if (node.op === "COURSE") {
+        const p = earliestStandalone(node.courseId, stack);
+        return p === Infinity ? Infinity : p + 1;
+      }
+      if (node.op === "AND") return Math.max(0, ...node.children.map(evalNode));
+      if (node.op === "OR") return Math.min(...node.children.map(evalNode));
+      return 0; // UNVERIFIABLE gates nothing here, same as the scheduler
+    })(c.prereq);
+    stack.delete(id);
+    let t = Math.max(0, prereqLo);
+    while (t < T && !c.termsOffered.includes(termKinds[t])) t++;
+    const out = t >= T ? Infinity : t;
+    reachMemo.set(id, out);
+    return out;
+  };
+  for (const id of [...jobRelevant]) {
+    if (earliestStandalone(id, new Set()) === Infinity) jobRelevant.delete(id);
+  }
+
+  // The relaxation misses one killer: a course whose chain fits the horizon
+  // only on paper. So each surviving job course is packed FOR REAL, once:
+  // its prerequisite closure alone, through the actual scheduler. A course
+  // that cannot be scheduled even with the whole timetable to itself will
+  // never be schedulable alongside a degree, and pruning it here costs
+  // milliseconds where leaving it cost the entire node budget downstream.
+  const closureOf = (id: string, out: Set<string>): void => {
+    if (completed.has(id) || out.has(id)) return;
+    out.add(id);
+    const c = catalog.get(id);
+    if (!c) return;
+    const walk = (node: PrereqNode | null): void => {
+      if (!node) return;
+      if (node.op === "COURSE") { closureOf(node.courseId, out); return; }
+      if (node.op === "AND") { node.children.forEach(walk); return; }
+      if (node.op === "OR") {
+        // Take the branch the relaxation says lands earliest; the point is a
+        // sound-enough witness, not an exhaustive one.
+        const best = [...node.children].sort((a, b) => {
+          const ea = a.op === "COURSE" ? earliestStandalone(a.courseId, new Set()) : 0;
+          const eb = b.op === "COURSE" ? earliestStandalone(b.courseId, new Set()) : 0;
+          return ea - eb;
+        })[0];
+        walk(best);
+      }
+    };
+    walk(c.prereq);
+  };
+  {
+    // schedule() reads exactly these fields; the probe supplies them plus a
+    // generous cap so only prerequisite structure can fail the packing.
+    const probeModel = {
+      catalog, completed, T, termKinds,
+      lockedByCourse: new Map(),
+      maxCredits: 99,
+    } as unknown as Model;
+    for (const id of [...jobRelevant]) {
+      const closure = new Set<string>();
+      closureOf(id, closure);
+      if (!schedule(probeModel, closure, Date.now() + 250)) jobRelevant.delete(id);
+    }
+  }
+
   // The judge's order, carried to every place a course is offered as an
   // alternative. "Which of these six should I take" has an answer, and it is
   // not alphabetical.

@@ -1237,6 +1237,38 @@ export async function POST(req: Request) {
       // empty list here makes every rank badge downstream hide rather than
       // lie.
       shortlistCodes: candidates === targets ? [] : candidates.map((c) => c.code),
+      /**
+       * Every course in the catalog, ranked for this posting, with the reason
+       * for its rank. The shortlist leads in the reader's order; everything
+       * the reader passed over is then ordered by how much of the posting's
+       * own vocabulary its catalog entry shares, so a free elective is never
+       * "random": the next best thing is always the next row. Empty on
+       * shortlist failure for the same honesty reason as shortlistCodes.
+       */
+      considerationAll: candidates === targets ? [] : (() => {
+        const stop = new Set(["the", "and", "for", "with", "that", "this", "you", "your", "are", "our", "will", "have", "from", "they", "them", "their", "what", "when", "where", "which", "while", "would", "could", "should", "about", "into", "over", "such", "than", "then", "these", "those", "been", "being", "both", "each", "other", "some", "more", "most", "must", "also", "able", "well", "work", "team", "role", "years", "experience", "skills", "strong", "including", "required", "preferred", "course", "courses", "students", "topics", "introduction", "study", "studies"]);
+        const toks = (s: string) => new Set(
+          s.toLowerCase().replace(/[^a-z0-9+# ]/g, " ").split(/\s+/).filter((w) => w.length > 3 && !stop.has(w)),
+        );
+        const jdToks = toks(`${jd} ${[...aspects.values()].map((a) => a.label).join(" ")}`);
+        const inShort = new Set(candidates.map((c) => c.code));
+        const rest = targets
+          .filter((c) => !inShort.has(c.code))
+          .map((c) => {
+            const hits = [...toks(`${c.title} ${c.description}`)].filter((t) => jdToks.has(t));
+            return { code: c.code, hits };
+          })
+          .sort((a, b) => b.hits.length - a.hits.length || (a.code < b.code ? -1 : 1));
+        return [
+          ...candidates.map((c) => ({ code: c.code, why: "made the reader's shortlist for this posting" })),
+          ...rest.map((r) => ({
+            code: r.code,
+            why: r.hits.length
+              ? `its catalog entry shares ${r.hits.slice(0, 3).map((h) => `"${h}"`).join(", ")} with the posting`
+              : "",
+          })),
+        ];
+      })(),
     };
   };
 

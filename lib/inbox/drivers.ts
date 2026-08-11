@@ -1,14 +1,15 @@
-import type { RawEmail } from "./types";
+import type { EmailHeader, RawEmail } from "./types";
 
 /**
- * Three ways into a mailbox, one output shape.
+ * Three ways into a mailbox, one output shape, and two passes everywhere.
  *
- * Gmail OAuth is the door we want everyone through: the connect step is one
- * authorize tab, the same consent that signs them in. The app password path
- * exists for anyone whose Google Cloud consent screen is not set up yet,
- * which during a competition is most people. The demo inbox exists so the
- * feature can be seen working in thirty seconds by someone who will not
- * connect anything, and so the pipeline can be tested without a human's mail.
+ * The old single pass downloaded full message sources for everything it
+ * would later triage away, which is why it had to cap itself at 400 emails
+ * and why the owner's inbox looked half read. Now the header pass lists the
+ * ENTIRE window cheaply (envelopes only), triage decides what matters, and
+ * the body pass downloads just those. Reading a whole year of a 38,000
+ * message mailbox costs one envelope sweep plus bodies for the few hundred
+ * that are actually about applications.
  */
 
 const strip = (html: string) =>
@@ -22,25 +23,20 @@ const strip = (html: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+/** Everything the scan will consider, whatever the mailbox holds. */
+const HARD_CAP = 20000;
+
 // ── Gmail over REST, bearer token from the OAuth session ────────────────────
-export async function fetchGmail(accessToken: string, opts: { sinceMs: number; cap: number }): Promise<RawEmail[]> {
-  // Application mail, not the whole life. The query trims the obvious
-  // non-candidates server side; triage does the honest filtering after.
-  // sinceMs comes from the scan state: a first scan passes a year ago, every
-  // later scan passes the newest message already processed, so re-scans only
-  // pull what actually arrived since.
-  const q = [
-    `after:${Math.floor(opts.sinceMs / 1000)}`,
-    "-category:promotions",
-    "-category:social",
-  ].join(" ");
+export async function fetchGmailHeaders(accessToken: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {
+  const q = [`after:${Math.floor(opts.sinceMs / 1000)}`, "-category:promotions", "-category:social"].join(" ");
   const base = "https://gmail.googleapis.com/gmail/v1/users/me";
   const headers = { Authorization: `Bearer ${accessToken}` };
 
   const ids: string[] = [];
   let pageToken = "";
-  while (ids.length < opts.cap) {
-    const url = `${base}/messages?q=${encodeURIComponent(q)}&maxResults=100${pageToken ? `&pageToken=${pageToken}` : ""}`;
+  const cap = opts.cap ?? HARD_CAP;
+  while (ids.length < cap) {
+    const url = `${base}/messages?q=${encodeURIComponent(q)}&maxResults=500${pageToken ? `&pageToken=${pageToken}` : ""}`;
     const r = await fetch(url, { headers, cache: "no-store" });
     if (!r.ok) throw new Error(`Gmail said ${r.status}. ${r.status === 401 ? "Reconnect Google to renew access." : await r.text().then((t) => t.slice(0, 120))}`);
     const j = (await r.json()) as { messages?: { id: string }[]; nextPageToken?: string };
@@ -49,11 +45,27 @@ export async function fetchGmail(accessToken: string, opts: { sinceMs: number; c
     pageToken = j.nextPageToken;
   }
 
+  const out: EmailHeader[] = [];
+  // metadata format: headers only, ~1KB per message instead of the full body.
+  for (let i = 0; i < ids.length; i += 25) {
+    const chunk = await Promise.all(ids.slice(i, i + 25).map(async (id) => {
+      const r = await fetch(`${base}/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`, { headers, cache: "no-store" });
+      if (!r.ok) return null;
+      const m = (await r.json()) as { id: string; internalDate?: string; payload?: { headers?: { name: string; value: string }[] } };
+      const h = (name: string) => m.payload?.headers?.find((x) => x.name.toLowerCase() === name)?.value ?? "";
+      return { id: m.id, from: h("from"), subject: h("subject"), date: Number(m.internalDate ?? 0) } as EmailHeader;
+    }));
+    out.push(...chunk.filter((x): x is EmailHeader => Boolean(x)));
+  }
+  return out;
+}
+
+export async function fetchGmailBodies(accessToken: string, ids: string[], onChunk?: (done: number) => void): Promise<RawEmail[]> {
+  const base = "https://gmail.googleapis.com/gmail/v1/users/me";
+  const headers = { Authorization: `Bearer ${accessToken}` };
   const out: RawEmail[] = [];
-  // Sequential-ish batches: Gmail rate limits bursts, and a backfill that 429s
-  // half way is worse than one that takes forty seconds.
-  for (let i = 0; i < ids.length; i += 20) {
-    const chunk = await Promise.all(ids.slice(i, i + 20).map(async (id) => {
+  for (let i = 0; i < ids.length; i += 15) {
+    const chunk = await Promise.all(ids.slice(i, i + 15).map(async (id) => {
       const r = await fetch(`${base}/messages/${id}?format=full`, { headers, cache: "no-store" });
       if (!r.ok) return null;
       const m = (await r.json()) as {
@@ -61,22 +73,22 @@ export async function fetchGmail(accessToken: string, opts: { sinceMs: number; c
         payload?: { headers?: { name: string; value: string }[]; parts?: unknown[]; body?: { data?: string }; mimeType?: string };
       };
       const h = (name: string) => m.payload?.headers?.find((x) => x.name.toLowerCase() === name)?.value ?? "";
-      const body = extractGmailBody(m.payload);
+      const { text, html } = extractGmailBody(m.payload);
       return {
-        id: m.id,
-        from: h("from"),
-        subject: h("subject"),
+        id: m.id, from: h("from"), subject: h("subject"),
         date: Number(m.internalDate ?? Date.now()),
-        body: body.slice(0, 6000),
+        body: text.slice(0, 6000),
+        html: html ? html.slice(0, 150000) : undefined,
       } as RawEmail;
     }));
     out.push(...chunk.filter((x): x is RawEmail => Boolean(x)));
+    onChunk?.(out.length);
   }
   return out;
 }
 
-function extractGmailBody(payload?: { parts?: unknown[]; body?: { data?: string }; mimeType?: string }): string {
-  if (!payload) return "";
+function extractGmailBody(payload?: { parts?: unknown[]; body?: { data?: string }; mimeType?: string }): { text: string; html: string } {
+  if (!payload) return { text: "", html: "" };
   const decode = (data?: string) => (data ? Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8") : "");
   type Part = { mimeType?: string; body?: { data?: string }; parts?: Part[] };
   const walk = (p: Part, want: string): string => {
@@ -86,15 +98,14 @@ function extractGmailBody(payload?: { parts?: unknown[]; body?: { data?: string 
   };
   const root = payload as Part;
   const plain = walk(root, "text/plain");
-  if (plain) return plain.replace(/\s+/g, " ").trim();
-  const html = walk(root, "text/html") || decode(payload.body?.data);
-  return strip(html);
+  const html = walk(root, "text/html") || (payload.mimeType === "text/html" ? decode(payload.body?.data) : "");
+  const text = plain ? plain.replace(/\s+/g, " ").trim() : strip(html || decode(payload.body?.data));
+  return { text, html };
 }
 
 // ── IMAP with a Gmail app password ──────────────────────────────────────────
-export async function fetchImap(email: string, appPassword: string, opts: { sinceMs: number; cap: number }): Promise<RawEmail[]> {
+async function imapClient(email: string, appPassword: string) {
   const { ImapFlow } = await import("imapflow");
-  const { simpleParser } = await import("mailparser");
   const client = new ImapFlow({
     host: "imap.gmail.com", port: 993, secure: true,
     // Google displays app passwords in groups of four with spaces, and every
@@ -111,33 +122,62 @@ export async function fetchImap(email: string, appPassword: string, opts: { sinc
     }
     throw new Error("Could not reach Gmail's mail server. Check the connection and try again.");
   }
-  const out: RawEmail[] = [];
+  // Open All Mail by its special-use flag, not by its English name: a mailbox
+  // in another display language calls the same folder something else, and the
+  // silent INBOX fallback once turned that into "Read 0 emails".
+  const boxes = await client.list();
+  const allMail = boxes.find((b) => b.specialUse === "\\All")?.path ?? "INBOX";
+  await client.mailboxOpen(allMail).catch(() => client.mailboxOpen("INBOX"));
+  return client;
+}
+
+export async function fetchImapHeaders(email: string, appPassword: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {
+  const client = await imapClient(email, appPassword);
+  const out: EmailHeader[] = [];
   try {
-    // Open All Mail by its special-use flag, not by its English name: a
-    // mailbox in another display language calls the same folder something
-    // else, and the silent INBOX fallback turned that into "Read 0 emails".
-    const boxes = await client.list();
-    const allMail = boxes.find((b) => b.specialUse === "\\All")?.path ?? "INBOX";
-    const box = await client.mailboxOpen(allMail).catch(() => client.mailboxOpen("INBOX"));
     // IMAP SINCE is day granular; the caller overlaps by two days and dedupes
     // by message id, so the coarseness cannot lose or double-count anything.
-    const since = new Date(opts.sinceMs);
-    const uids = await client.search({ since }, { uid: true });
-    console.log(`[imap] box=${typeof box === "object" ? box.path : allMail} exists=${typeof box === "object" ? box.exists : "?"} since=${since.toISOString().slice(0, 10)} matched=${uids === false ? "SEARCH-FAILED" : uids.length}`);
+    const uids = await client.search({ since: new Date(opts.sinceMs) }, { uid: true });
     if (uids === false) throw new Error("Gmail accepted the sign in but refused the mailbox search. Try again in a minute.");
-    const take = (uids || []).slice(-1 * opts.cap);
-    // The third argument's uid flag says the range IS uids; without it the
-    // numbers would be read as sequence positions, silently fetching the
-    // wrong messages.
-    for await (const msg of client.fetch(take, { uid: true, envelope: true, source: true }, { uid: true })) {
-      const parsed = await simpleParser(msg.source as Buffer);
+    const take = (uids || []).slice(-1 * (opts.cap ?? HARD_CAP));
+    for await (const msg of client.fetch(take, { uid: true, envelope: true }, { uid: true })) {
+      const env = msg.envelope;
+      const from = env?.from?.[0] ? `${env.from[0].name ?? ""} <${env.from[0].address ?? ""}>`.trim() : "";
       out.push({
         id: String(msg.uid),
-        from: parsed.from?.text ?? "",
-        subject: parsed.subject ?? "",
-        date: parsed.date?.getTime() ?? Date.now(),
-        body: (parsed.text ?? strip(String(parsed.html || ""))).replace(/\s+/g, " ").slice(0, 6000),
+        from,
+        subject: env?.subject ?? "",
+        date: env?.date?.getTime() ?? 0,
       });
+    }
+  } finally {
+    await client.logout().catch(() => undefined);
+  }
+  return out;
+}
+
+export async function fetchImapBodies(email: string, appPassword: string, ids: string[], onChunk?: (done: number) => void): Promise<RawEmail[]> {
+  if (!ids.length) return [];
+  const { simpleParser } = await import("mailparser");
+  const client = await imapClient(email, appPassword);
+  const out: RawEmail[] = [];
+  try {
+    const uids = ids.map(Number).filter((n) => Number.isFinite(n));
+    for (let i = 0; i < uids.length; i += 40) {
+      const chunk = uids.slice(i, i + 40);
+      for await (const msg of client.fetch(chunk, { uid: true, source: true }, { uid: true })) {
+        const parsed = await simpleParser(msg.source as Buffer);
+        const html = typeof parsed.html === "string" ? parsed.html : "";
+        out.push({
+          id: String(msg.uid),
+          from: parsed.from?.text ?? "",
+          subject: parsed.subject ?? "",
+          date: parsed.date?.getTime() ?? Date.now(),
+          body: (parsed.text ?? strip(html)).replace(/\s+/g, " ").slice(0, 6000),
+          html: html ? html.slice(0, 150000) : undefined,
+        });
+      }
+      onChunk?.(out.length);
     }
   } finally {
     await client.logout().catch(() => undefined);

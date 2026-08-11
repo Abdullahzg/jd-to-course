@@ -1,0 +1,17 @@
+import { readFileSync } from "fs";
+process.env.DATABASE_URL = readFileSync(".env.local","utf8").match(/^DATABASE_URL="?([^"\n]+)"?$/m)![1];
+const { Pool } = await import("pg");
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl:{rejectUnauthorized:false}, max:1 });
+const uid = (await pool.query(`SELECT id FROM carpa_users WHERE email='judge.real@carpa.demo'`)).rows[0].id;
+await pool.query(`INSERT INTO carpa_users (id, email, name, "createdAt") VALUES ('judge-shared','judges@carpa.shared','The owner''s inbox', $1) ON CONFLICT (email) DO NOTHING`, [Date.now()]);
+const t = await pool.query(`UPDATE carpa_tracker SET "userId"='judge-shared' WHERE "userId"=$1`, [uid]);
+const st = await pool.query(`UPDATE carpa_mail_state SET "userId"='judge-shared' WHERE "userId"=$1`, [uid]);
+const se = await pool.query(`UPDATE carpa_seen_emails SET "userId"='judge-shared' WHERE "userId"=$1`, [uid]);
+console.log("moved rows:", t.rowCount, "| state:", st.rowCount, "| seen:", se.rowCount);
+const s = (await pool.query(`SELECT status, COUNT(*) n FROM carpa_tracker WHERE "userId"='judge-shared' GROUP BY status ORDER BY n DESC`)).rows;
+console.log("shared tracker by status:", JSON.stringify(s));
+const withBody = (await pool.query(`SELECT COUNT(*) n FROM carpa_tracker_events e JOIN carpa_tracker t ON t.id=e."itemId" WHERE t."userId"='judge-shared' AND e.body IS NOT NULL`)).rows[0].n;
+console.log("events with stored emails:", withBody);
+const searches = (await pool.query(`SELECT COUNT(*) n FROM carpa_searches WHERE "userId"=$1`, [uid])).rows[0].n;
+console.log("judge.real saved searches:", searches);
+await pool.end();

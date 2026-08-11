@@ -7,6 +7,16 @@ export type RawEmail = {
   date: number;
   /** plain text body, already stripped of markup */
   body: string;
+  /** the original HTML when the email had one, kept so a row can show its receipt rendered */
+  html?: string;
+};
+
+/** The header pass: enough to triage, nothing more fetched than that. */
+export type EmailHeader = {
+  id: string;
+  from: string;
+  subject: string;
+  date: number;
 };
 
 /**

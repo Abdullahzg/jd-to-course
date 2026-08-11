@@ -912,8 +912,10 @@ export function fillOpenCredits(args: {
   termKinds: Term[];
   relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   targetSkills?: string[];
-  /** courseId -> position in the reader's consideration order, 0 is best. */
+  /** courseId -> position in the consideration order, 0 is best. */
   shortlistRank?: Record<string, number>;
+  /** Ranks below this came from the reader; at or beyond it, from text closeness. */
+  shortlistCount?: number;
 }): FilledTerm[] {
   const { catalog, plan, termKinds } = args;
   const taken = new Set<string>();
@@ -1138,8 +1140,11 @@ export function fillOpenCredits(args: {
           const reasons: string[] = [];
           const cRank = args.shortlistRank?.[best.courseId];
           if (cRank != null) {
+            const total = Object.keys(args.shortlistRank ?? {}).length;
             reasons.push(
-              `the reader weighed it for this posting and placed it ${cRank + 1} of ${Object.keys(args.shortlistRank ?? {}).length} courses considered, even though it proves no single part`,
+              cRank < (args.shortlistCount ?? total)
+                ? `the reader weighed it for this posting and placed it ${cRank + 1} of ${total} courses considered, even though it proves no single part`
+                : `of everything the reader passed over, its catalog text sits closest to your posting, rank ${cRank + 1} of ${total}`,
             );
           }
           if (!dept.get(d)) reasons.push(`it is the first ${d} course in the plan`);
@@ -1302,4 +1307,52 @@ export function overlapGroups(catalog: Course[]): Map<string, Set<string>> {
   // only place they can be read reliably is the committed snapshot.
   for (const c of catalog) for (const other of c.overlapsWith ?? []) link(c.id, other);
   return conflicts;
+}
+
+
+/**
+ * solve(), with a way out of the corner solve() cannot leave.
+ *
+ * Some postings hand the optimizer a course that is technically placeable
+ * but so schedule-constrained (one offered term, a deep prerequisite chain,
+ * a short horizon) that proving whether the best plan includes it exhausts
+ * any node budget. The honest escape is to shed exactly that course and
+ * answer the posting a little less completely: every attempt is bounded,
+ * the ladder always terminates, and what was shed is reported so the UI
+ * never pretends the posting had nothing more to say.
+ */
+export function solveResilient(req: SolveRequest, budgetMs: number): SolveResponse & { shedForTime?: string[] } {
+  let result = solve(req, budgetMs);
+  if (result.ok || !result.infeasibility?.timedOut) return result;
+
+  result = solve(req, 20000, 2_000_000);
+  if (result.ok || !result.infeasibility?.timedOut) return result;
+
+  const school = getSchool(req.schoolId);
+  const byId = new Map((school?.courses ?? []).map((c) => [c.id, c]));
+  const leaves = (n: import("@/lib/types").PrereqNode | null): number => {
+    if (!n) return 0;
+    if (n.op === "COURSE") return 1;
+    if (n.op === "AND" || n.op === "OR") return n.children.reduce((s, c) => s + leaves(c), 0);
+    return 0;
+  };
+  // Most constrained first: fewest offered terms, then heaviest prereq tree.
+  const order = Object.keys(req.relevance ?? {})
+    .filter((id) => byId.has(id))
+    .sort((a, b) => {
+      const ca = byId.get(a)!, cb = byId.get(b)!;
+      return ca.termsOffered.length - cb.termsOffered.length || leaves(cb.prereq) - leaves(ca.prereq);
+    });
+
+  const shed: string[] = [];
+  let relevance = { ...(req.relevance ?? {}) };
+  for (const id of order.slice(0, 4)) {
+    delete relevance[id];
+    shed.push(byId.get(id)?.code ?? id);
+    const attempt = solve({ ...req, relevance }, 12000, 3_000_000);
+    if (attempt.ok || !attempt.infeasibility?.timedOut) return { ...attempt, shedForTime: [...shed] };
+  }
+  // Last rung: the plain degree plan, which a sane catalog always has.
+  const bare = solve({ ...req, relevance: {} }, 12000, 3_000_000);
+  return { ...bare, shedForTime: [...shed] };
 }

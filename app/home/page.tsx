@@ -6,6 +6,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePlanner } from "@/components/planner/planner-store";
 import { Inbox, KeyRound, Loader2, LogOut, Mail, Play, RefreshCw, Search } from "lucide-react";
+import { SemesterChart } from "@/components/planner/semester-chart";
+import { semesterNames } from "@/components/planner/plan-screen";
+import { termKindsFor } from "@/lib/verify";
+import { fillOpenCredits, type FilledTerm } from "@/lib/solver";
+import type { Course, Plan, Term } from "@/lib/types";
 
 /**
  * The signed in front room: your past searches on one side, your inbox
@@ -52,13 +57,34 @@ export default function Home() {
     });
 
   const runScan = async (mode: "gmail" | "imap" | "demo" | "judge") => {
-    setScan({ busy: true, note: mode === "demo" ? "Reading the demo inbox" : "Reading your mail. A first scan goes back a year and can take a couple of minutes." });
+    setScan({ busy: true, note: "Starting the scan" });
     const body: Record<string, unknown> = { mode };
     if (mode === "imap") { body.email = imapEmail; body.appPassword = imapPass; }
     const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e) }));
     if (r.ok) {
-      setScan({ busy: false, note: `Read ${r.emailsRead} new emails${r.alreadyKnown ? ` (${r.alreadyKnown} already remembered)` : ""}, found ${r.signals} signals, ${r.created} new applications, ${r.updated} updated.` });
-      void load();
+      window.dispatchEvent(new Event("carpa-scan-started"));
+      const tick = async () => {
+        const j = (await fetch(`/api/inbox/scan?job=${r.jobId}`).then((x) => x.json()).catch(() => null))?.job;
+        if (!j) { setTimeout(() => void tick(), 3000); return; }
+        if (j.status === "running") {
+          const n = (x: number) => Number(x).toLocaleString();
+          const line =
+            j.phase === "triage" ? `Sorting ${n(j.total)} emails by headers: ${n(j.done)} done` :
+            j.phase === "reading" ? `Reading the ${n(j.total)} that matter: ${n(j.done)} done` :
+            j.phase === "extracting" ? `Extracting statuses: ${n(j.done)} of ${n(j.total)}` :
+            "Connecting to the mailbox";
+          setScan({ busy: true, note: `${line}. Runs in the background; feel free to keep working.` });
+          setTimeout(() => void tick(), 3000);
+          return;
+        }
+        if (j.status === "done") {
+          setScan({ busy: false, note: `Read ${Number(j.total).toLocaleString()} new emails${j.alreadyKnown ? ` (${Number(j.alreadyKnown).toLocaleString()} already remembered)` : ""}, ${j.created} new applications, ${j.updated} updated.` });
+        } else {
+          setScan({ busy: false, note: j.error ?? "The scan failed." });
+        }
+        void load();
+      };
+      void tick();
     } else {
       setScan({ busy: false, note: r.error ?? "The scan failed." });
     }
@@ -106,6 +132,8 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      <LatestPlan searches={searches} openSearch={openSearch} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* ── saved searches ─────────────────────────────────────────────── */}
@@ -266,21 +294,25 @@ export default function Home() {
         </section>
       )}
 
-      <LatestPlan searches={searches} openSearch={openSearch} />
     </main>
   );
 }
 
 /**
- * The most recent degree plan, as a term table, on the dashboard itself. A
- * student's two artifacts are the spreadsheet and the timetable; home shows a
- * working snippet of each so neither is ever more than one glance away.
+ * The most recent degree plan, on the dashboard, as the same board the
+ * planner page draws: prerequisite arrows, what-is-it popovers, filler
+ * courses, the lot. A snippet table looked related to the plan; this IS the
+ * plan, reconstructed from the saved snapshot, and clicking through opens it
+ * in full.
  */
 function LatestPlan({ searches, openSearch }: {
   searches: SearchRow[] | null;
   openSearch: (id: string) => void;
 }) {
-  const [terms, setTerms] = useState<{ name: string; courses: string[] }[] | null>(null);
+  const [data, setData] = useState<{
+    plan: Plan; names: string[]; courses: Map<string, Course>;
+    fill: Map<number, FilledTerm>; completed: string[];
+  } | null>(null);
   const latest = searches?.[0];
   useEffect(() => {
     if (!latest) return;
@@ -293,49 +325,70 @@ function LatestPlan({ searches, openSearch }: {
         ]);
         if (!alive || !r.ok) return;
         const payload = r.search.snapshot.payload as {
-          result?: { plans?: { placements: { courseId: string; term: number }[]; termCredits: number[] }[] };
-          state?: { activePlan?: number };
+          result?: { plans?: Plan[] };
+          state?: {
+            activePlan?: number;
+            student?: { startTerm?: string; completed?: string[]; excluded?: string[] };
+            relevance?: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
+            targetSkills?: string[];
+            shortlist?: string[];
+            considerationAll?: { code: string; why: string }[];
+          };
         };
-        const plan = payload.result?.plans?.[payload.state?.activePlan ?? 0] ?? payload.result?.plans?.[0];
+        const st = payload.state ?? {};
+        const plan = payload.result?.plans?.[st.activePlan ?? 0] ?? payload.result?.plans?.[0];
         if (!plan) return;
-        const titles = new Map<string, string>();
-        for (const sch of cat?.schools ?? []) for (const c of sch.courses ?? []) titles.set(c.id, c.title);
-        const out = Array.from({ length: plan.termCredits.length }, (_, t) => ({
-          name: `Semester ${t + 1}`,
-          courses: plan.placements.filter((pl) => pl.term === t).map((pl) => titles.get(pl.courseId) ?? pl.courseId.split(":").pop() ?? ""),
-        })).filter((x) => x.courses.length);
-        setTerms(out);
-      } catch { /* the card simply does not render */ }
+        const placed = new Set(plan.placements.map((pl) => pl.courseId));
+        type CatSchool = { courses?: Course[] };
+        const schools: CatSchool[] = cat?.schools ?? [];
+        const school = schools.find((sc) => (sc.courses ?? []).some((c) => placed.has(c.id))) ?? schools[0];
+        const catalog = school?.courses ?? [];
+        const courses = new Map(catalog.map((c) => [c.id, c]));
+        const startTerm = (st.student?.startTerm ?? "fall") as Term;
+        const names = semesterNames(startTerm, plan.termCredits.length);
+        const termKinds = termKindsFor(startTerm, plan.termCredits.length);
+        const codeToId = new Map(catalog.map((c) => [c.code, c.id]));
+        const order = st.considerationAll?.length
+          ? st.considerationAll.map((x) => x.code)
+          : st.shortlist ?? [];
+        const shortlistRank = Object.fromEntries(
+          order.map((code, i) => [codeToId.get(code), i] as const).filter(([id]) => id),
+        ) as Record<string, number>;
+        const fill = new Map(fillOpenCredits({
+          catalog, plan,
+          completed: st.student?.completed ?? [],
+          excluded: st.student?.excluded,
+          termKinds,
+          relevance: st.relevance,
+          targetSkills: st.targetSkills,
+          shortlistRank,
+          shortlistCount: (st.shortlist ?? []).length,
+        }).map((f) => [f.term, f]));
+        setData({ plan, names, courses, fill, completed: st.student?.completed ?? [] });
+      } catch { /* the board simply does not render */ }
     })();
     return () => { alive = false; };
   }, [latest]);
 
-  if (!latest || !terms?.length) return null;
+  if (!latest || !data) return null;
   return (
-    <section className="mt-8">
+    <section className="mt-6">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold">Latest plan: {latest.title.slice(0, 70)}</h2>
-        <button onClick={() => openSearch(latest.id)} className="text-xs underline underline-offset-2 text-muted-foreground">
+        <button onClick={() => openSearch(latest.id)} data-track="home_open_latest_plan"
+                className="text-xs underline underline-offset-2 text-muted-foreground">
           open the full plan
         </button>
       </div>
-      <div className="mt-2 overflow-x-auto rounded-xl border border-border bg-white">
-        <table className="w-full text-left text-xs" style={{ minWidth: `${terms.length * 170}px` }}>
-          <thead className="bg-foreground/[0.03] text-muted-foreground">
-            <tr>{terms.map((t) => <th key={t.name} className="px-3 py-2 font-medium">{t.name}</th>)}</tr>
-          </thead>
-          <tbody>
-            <tr className="border-t border-border align-top">
-              {terms.map((t) => (
-                <td key={t.name} className="px-3 py-2">
-                  <ul className="space-y-1">
-                    {t.courses.map((c) => <li key={c} className="text-muted-foreground">{c}</li>)}
-                  </ul>
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+      <div className="mt-2 rounded-xl border border-border bg-white p-3">
+        <SemesterChart
+          names={data.names}
+          plan={data.plan}
+          courses={data.courses}
+          fill={data.fill}
+          completed={data.completed}
+          onJump={() => openSearch(latest.id)}
+        />
       </div>
     </section>
   );

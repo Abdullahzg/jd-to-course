@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { listTracker, trackerEvents, updateTrackerItem, deleteTrackerItem, logEvent } from "@/lib/db";
+import { listTracker, trackerEventsFor, trackerEventBody, updateTrackerItem, deleteTrackerItem, logEvent } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) return NextResponse.json({ ok: false, error: "Sign in first." }, { status: 401 });
+  // ?eventBody=<id>: the stored email for one receipt, fetched only when a
+  // person opens it. Keeping bodies out of the list keeps the list light.
+  const evId = new URL(req.url).searchParams.get("eventBody");
+  if (evId) {
+    const body = await trackerEventBody(userId, evId);
+    return NextResponse.json({ ok: true, body });
+  }
   const rows = await listTracker(userId);
-  const items = await Promise.all(rows.map(async (t) => ({ ...t, events: await trackerEvents(t.id) })));
+  const evMap = await trackerEventsFor(rows.map((t) => t.id));
+  const items = rows.map((t) => ({ ...t, events: evMap.get(t.id) ?? [] }));
   return NextResponse.json({ ok: true, items });
 }
 

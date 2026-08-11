@@ -24,7 +24,7 @@ import { TakeIt } from "./take-it";
 
 const BASE_YEAR = 2026;
 
-function semesterNames(start: Term, n: number): string[] {
+export function semesterNames(start: Term, n: number): string[] {
   const out: string[] = [];
   let t = start, y = BASE_YEAR;
   for (let i = 0; i < n; i++) {
@@ -334,11 +334,18 @@ export function PlanScreen() {
   // the metric behind every "which of these" list on the page: matched courses
   // carry the judge's rank, and courses considered but not matched carry their
   // shortlist position, so nothing below is ordered by taste alone.
+  const orderedCodes = (state.considerationAll?.length
+    ? state.considerationAll.map((x) => x.code)
+    : state.shortlist ?? []);
+  const codeToId = new Map([...courses.values()].map((c) => [c.code, c.id]));
   const consideration: Record<string, number> = Object.fromEntries(
-    (state.shortlist ?? [])
-      .map((code, i) => [[...courses.values()].find((c) => c.code === code)?.id, i] as const)
-      .filter(([id]) => id),
+    orderedCodes.map((code, i) => [codeToId.get(code), i] as const).filter(([id]) => id),
   ) as Record<string, number>;
+  /** Why a course sits where it sits in the order, by course id. */
+  const considerationWhy = new Map(
+    (state.considerationAll ?? []).map((x) => [codeToId.get(x.code) ?? x.code, x.why]),
+  );
+  const shortlistCount = (state.shortlist ?? []).length;
 
   const filledByTerm = new Map(
     fillOpenCredits({
@@ -350,6 +357,7 @@ export function PlanScreen() {
       relevance: state.relevance,
       targetSkills: state.targetSkills,
       shortlistRank: consideration,
+      shortlistCount,
     }).map((f) => [f.term, f]),
   );
   const cov = result.coverage;
@@ -1099,7 +1107,9 @@ export function PlanScreen() {
                           return any ? `For "${any.skill}": ${any.why}` : undefined;
                         }}
                         posOf={(id) => consideration[id]}
-                        consideredTotal={(state.shortlist ?? []).length}
+                        consideredTotal={orderedCodes.length}
+                        shortlistCount={shortlistCount}
+                        whyConsidered={(id) => considerationWhy.get(id) ?? null}
                         onLock={() => toggleLock(p.courseId, p.term, courses.get(p.courseId)?.code)}
                         onRemove={() => exclude(p.courseId, courses.get(p.courseId)?.code)}
                         onChoose={(id) => {
@@ -1111,7 +1121,7 @@ export function PlanScreen() {
 
                     {other > 0 && (
                       <OpenSlot fill={filledByTerm.get(t)} courses={courses} revealCourse={openAlts}
-                                jobParts={(state.facets ?? []).length} consideredTotal={(state.shortlist ?? []).length} />
+                                jobParts={(state.facets ?? []).length} consideredTotal={orderedCodes.length} whyConsidered={(id) => considerationWhy.get(id) ?? null} />
                     )}
 
                     {!inTerm.length && other === 0 && (
@@ -1422,7 +1432,7 @@ function swapNote(alt: SlotAlternative, chosenCode: string): string {
 
 function CourseRow({
   placement, course, plan, changed, choice, altOpen, onToggleAlts,
-  courses, onLock, onRemove, onChoose, planned, completed, onJump, whyOf, posOf, consideredTotal,
+  courses, onLock, onRemove, onChoose, planned, completed, onJump, whyOf, posOf, consideredTotal, shortlistCount, whyConsidered,
 }: {
   placement: Placement;
   course: Course;
@@ -1444,6 +1454,8 @@ function CourseRow({
   /** Position in the reader's consideration order, when it was considered. */
   posOf: (courseId: string) => number | undefined;
   consideredTotal: number;
+  shortlistCount?: number;
+  whyConsidered?: (id: string) => string | null;
 }) {
   const isSupport = placement.bucketId === "SUPPORT";
   const bucket = plan.buckets.find((b) => b.bucketId === placement.bucketId);
@@ -1652,8 +1664,10 @@ function CourseRow({
                             )}
                             <span className="tabular ml-auto text-xs text-muted-foreground">
                               {pos != null
-                                ? `reader's pick ${pos + 1} of ${consideredTotal}`
-                                : consideredTotal > 0 ? "not weighed for this job" : ""}
+                                ? pos < (shortlistCount ?? consideredTotal)
+                                  ? `reader's pick ${pos + 1} of ${consideredTotal}`
+                                  : `closeness rank ${pos + 1} of ${consideredTotal}`
+                                : consideredTotal > 0 ? "not ranked for this job" : ""}
                               {" · "}{creditNote(alt)}
                             </span>
                           </span>
@@ -1666,15 +1680,18 @@ function CourseRow({
                               const loss = !sharedLoss && alt.losesSkills.length
                                 ? `Drops ${listOf(alt.losesSkills)}. `
                                 : "";
+                              const ranked = whyConsidered?.(alt.courseId);
                               const own = why
                                 ?? (pos != null
-                                  ? pos + 1 > (consideredTotal * 2) / 3
-                                    ? `Near the bottom of the reader's list for this posting.`
-                                    : ""
+                                  ? pos < (shortlistCount ?? 0)
+                                    ? `Made the reader's shortlist at spot ${pos + 1} for this posting, but on the full read its text answered no specific line of it; it outranks the rows below on that shortlisting alone.`
+                                    : ranked
+                                      ? `Never shortlisted, but ${ranked}; that is what places it here.`
+                                      : `Its catalog entry shares nothing with this posting; it fits the degree slot only.`
                                   : consideredTotal > 0
                                     ? `It fits the degree slot; the posting never asked for it.`
                                     : "");
-                              return `${gains}${loss}${own}`.trim() || "Fits the same requirement for the same credits.";
+                              return `${gains}${loss}${own}`.trim() || "Fits the same requirement for the same credits; nothing in the posting separates them.";
                             })()}
                           </span>
                           {alt.stopsSatisfying.length > 0 && (
@@ -1725,13 +1742,15 @@ function Empty() {
  * Courses that answer nothing are still listed, because a semester with a hole
  * in it is not a plan, but they are visibly the quiet ones.
  */
-function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal }: {
+function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal, whyConsidered }: {
   fill?: FilledTerm;
   courses: Map<string, Course>;
   /** How many parts of the job exist, so "answers 2 of 5" has a denominator. */
   jobParts: number;
-  /** how many courses the reader weighed for this posting */
+  /** how many courses were ranked for this posting, catalog wide */
   consideredTotal: number;
+  /** why a course sits where it sits in that ranking */
+  whyConsidered?: (id: string) => string | null;
   /** A course the page is jumping to; if it is one of the quiet ones, unfold them. */
   revealCourse?: string | null;
 }) {
@@ -1847,7 +1866,11 @@ function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal }: {
                       <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
                         {o.fillerReason
                           ? `The closest remaining match: of the ${o.fillerPool ?? "other"} courses that could take this slot it came first because ${o.fillerReason}.`
-                          : "Every course in the catalog was read against your posting and this one answers none of it. It is here to complete the credits."}
+                          : "Every course in the catalog was ranked against your posting and this one answers none of it outright. It is here to complete the credits."}
+                        {(() => {
+                          const w = whyConsidered?.(o.courseId);
+                          return w ? ` Its rank comes from the text: ${w}.` : "";
+                        })()}
                       </span>
                     </li>
                   ))}

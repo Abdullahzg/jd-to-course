@@ -165,6 +165,7 @@ export function Survey({
       aspects?: { key: string; label: string; courses: string[] }[];
       costUsd?: number; coursesRead?: number; coursesUnread?: number; unquotable?: number;
       shortlisted?: number; ruledOutEarly?: number; notFullyRead?: number; shortlistCodes?: string[];
+      considerationAll?: { code: string; why: string }[];
     } = { ok: false };
     try {
       // The whole posting goes to every course, rather than a keyword distilled
@@ -261,6 +262,7 @@ export function Survey({
       // posting was weighed against it, and "weighed and placed 23rd" is a
       // metric where "spread across departments" was a shrug.
       shortlist: rl.shortlistCodes ?? [],
+      considerationAll: rl.considerationAll ?? [],
       skillEvidence: sk.evidence ?? {},
       roleSummary: sk.roleSummary ?? "",
       customSkills: [],

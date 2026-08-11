@@ -112,6 +112,35 @@ CREATE TABLE IF NOT EXISTS carpa_seen_emails (
   "emailId" TEXT NOT NULL,
   PRIMARY KEY ("userId", source, "emailId")
 );
+CREATE TABLE IF NOT EXISTS carpa_scan_jobs (
+  id TEXT PRIMARY KEY,
+  "userId" TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  status TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  done BIGINT NOT NULL DEFAULT 0,
+  total BIGINT NOT NULL DEFAULT 0,
+  found BIGINT NOT NULL DEFAULT 0,
+  created BIGINT NOT NULL DEFAULT 0,
+  updated BIGINT NOT NULL DEFAULT 0,
+  "alreadyKnown" BIGINT NOT NULL DEFAULT 0,
+  "costUsd" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  error TEXT,
+  "createdAt" BIGINT NOT NULL,
+  "updatedAt" BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS carpa_jobs_user ON carpa_scan_jobs("userId", "createdAt" DESC);
+CREATE TABLE IF NOT EXISTS carpa_ai_calls (
+  id BIGSERIAL PRIMARY KEY,
+  fp TEXT NOT NULL,
+  purpose TEXT,
+  model TEXT,
+  "costUsd" DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "createdAt" BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS carpa_ai_fp ON carpa_ai_calls(fp, "createdAt" DESC);
+ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS body TEXT;
+ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS "fromAddr" TEXT;
 `);
   })();
   return ready;
@@ -178,18 +207,37 @@ export async function listTracker(userId: string): Promise<TrackerItem[]> {
   return q<TrackerItem>(`SELECT * FROM carpa_tracker WHERE "userId" = $1 ORDER BY "updatedAt" DESC LIMIT 500`, [userId]);
 }
 export async function trackerEvents(itemId: string) {
-  return q<{ id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null }>(
-    `SELECT * FROM carpa_tracker_events WHERE "itemId" = $1 ORDER BY COALESCE("emailDate", "createdAt") ASC`, [itemId]);
+  return q<{ id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null; fromAddr: string | null; hasBody: boolean }>(
+    `SELECT id, status, quote, subject, "emailDate", "fromAddr", (body IS NOT NULL) AS "hasBody"
+     FROM carpa_tracker_events WHERE "itemId" = $1 ORDER BY COALESCE("emailDate", "createdAt") ASC`, [itemId]);
 }
-export async function insertTrackerItem(t: Omit<TrackerItem, "id" | "createdAt" | "updatedAt" | "notes"> & { notes?: string | null }): Promise<string> {
+/** Every event for a set of rows in one query; 55 rows was 55 round trips. */
+export async function trackerEventsFor(itemIds: string[]) {
+  if (!itemIds.length) return new Map<string, { id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null; fromAddr: string | null; hasBody: boolean }[]>();
+  const rows = await q<{ itemId: string; id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null; fromAddr: string | null; hasBody: boolean }>(
+    `SELECT "itemId", id, status, quote, subject, "emailDate", "fromAddr", (body IS NOT NULL) AS "hasBody"
+     FROM carpa_tracker_events WHERE "itemId" = ANY($1) ORDER BY COALESCE("emailDate", "createdAt") ASC`, [itemIds]);
+  const out = new Map<string, typeof rows>();
+  for (const r of rows) { const list = out.get(r.itemId) ?? []; list.push(r); out.set(r.itemId, list); }
+  return out;
+}
+
+/** One event's stored email, fetched only when someone opens it. */
+export async function trackerEventBody(userId: string, eventId: string) {
+  const rows = await q<{ body: string | null }>(
+    `SELECT e.body FROM carpa_tracker_events e JOIN carpa_tracker t ON t.id = e."itemId"
+     WHERE e.id = $1 AND t."userId" = $2`, [eventId, userId]);
+  return rows[0]?.body ?? null;
+}
+export async function insertTrackerItem(t: Omit<TrackerItem, "id" | "createdAt" | "updatedAt" | "notes"> & { notes?: string | null; eventBody?: string | null; eventFrom?: string | null }): Promise<string> {
   const id = uid();
   await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, "createdAt", "updatedAt")
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
     [id, t.userId, t.company, t.role, t.kind, t.status, t.quote, t.subject, t.emailDate, t.actionLink, t.deadline, t.notes ?? null, now(), now()]);
-  await addTrackerEvent(id, { status: t.status, quote: t.quote, subject: t.subject, emailDate: t.emailDate });
+  await addTrackerEvent(id, { status: t.status, quote: t.quote, subject: t.subject, emailDate: t.emailDate, body: t.eventBody ?? null, fromAddr: t.eventFrom ?? null });
   return id;
 }
-export async function updateTrackerItem(id: string, patch: Partial<Pick<TrackerItem, "status" | "quote" | "subject" | "emailDate" | "actionLink" | "deadline" | "role" | "kind" | "notes" | "company">>) {
+export async function updateTrackerItem(id: string, patch: Partial<Pick<TrackerItem, "status" | "quote" | "subject" | "emailDate" | "actionLink" | "deadline" | "role" | "kind" | "notes" | "company">>, eventExtra?: { body?: string | null; fromAddr?: string | null }) {
   const rows = await q<TrackerItem>(`SELECT * FROM carpa_tracker WHERE id = $1`, [id]);
   const cur = rows[0];
   if (!cur) return;
@@ -200,12 +248,12 @@ export async function updateTrackerItem(id: string, patch: Partial<Pick<TrackerI
       patch.role ?? cur.role, patch.kind ?? cur.kind, patch.notes ?? cur.notes, patch.company ?? cur.company, now(), id,
     ]);
   if (patch.status && patch.status !== cur.status) {
-    await addTrackerEvent(id, { status: patch.status, quote: patch.quote ?? null, subject: patch.subject ?? null, emailDate: patch.emailDate ?? null });
+    await addTrackerEvent(id, { status: patch.status, quote: patch.quote ?? null, subject: patch.subject ?? null, emailDate: patch.emailDate ?? null, body: eventExtra?.body ?? null, fromAddr: eventExtra?.fromAddr ?? null });
   }
 }
-export async function addTrackerEvent(itemId: string, e: { status: string; quote?: string | null; subject?: string | null; emailDate?: number | null }) {
-  await q(`INSERT INTO carpa_tracker_events (id, "itemId", status, quote, subject, "emailDate", "createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [uid(), itemId, e.status, e.quote ?? null, e.subject ?? null, e.emailDate ?? null, now()]);
+export async function addTrackerEvent(itemId: string, e: { status: string; quote?: string | null; subject?: string | null; emailDate?: number | null; body?: string | null; fromAddr?: string | null }) {
+  await q(`INSERT INTO carpa_tracker_events (id, "itemId", status, quote, subject, "emailDate", body, "fromAddr", "createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [uid(), itemId, e.status, e.quote ?? null, e.subject ?? null, e.emailDate ?? null, e.body ?? null, e.fromAddr ?? null, now()]);
 }
 export async function deleteTrackerItem(userId: string, id: string) {
   await q(`DELETE FROM carpa_tracker WHERE "userId" = $1 AND id = $2`, [userId, id]);
@@ -277,15 +325,109 @@ export async function setMailState(userId: string, source: string, lastDate: num
     [userId, source, lastDate, now()]);
 }
 export async function seenEmailIds(userId: string, source: string, ids: string[]): Promise<Set<string>> {
-  if (!ids.length) return new Set();
-  const rows = await q<{ emailId: string }>(
-    `SELECT "emailId" FROM carpa_seen_emails WHERE "userId" = $1 AND source = $2 AND "emailId" = ANY($3)`,
-    [userId, source, ids]);
-  return new Set(rows.map((r) => r.emailId));
+  const seen = new Set<string>();
+  for (let i = 0; i < ids.length; i += 5000) {
+    const rows = await q<{ emailId: string }>(
+      `SELECT "emailId" FROM carpa_seen_emails WHERE "userId" = $1 AND source = $2 AND "emailId" = ANY($3)`,
+      [userId, source, ids.slice(i, i + 5000)]);
+    for (const r of rows) seen.add(r.emailId);
+  }
+  return seen;
 }
 export async function markEmailsSeen(userId: string, source: string, ids: string[]) {
-  if (!ids.length) return;
-  await q(`INSERT INTO carpa_seen_emails ("userId", source, "emailId")
-           SELECT $1, $2, unnest($3::text[]) ON CONFLICT DO NOTHING`,
-    [userId, source, ids]);
+  for (let i = 0; i < ids.length; i += 5000) {
+    await q(`INSERT INTO carpa_seen_emails ("userId", source, "emailId")
+             SELECT $1, $2, unnest($3::text[]) ON CONFLICT DO NOTHING`,
+      [userId, source, ids.slice(i, i + 5000)]);
+  }
+}
+
+// ── scan jobs: the background work a scan became ─────────────────────────────
+export type ScanJob = {
+  id: string; userId: string; mode: string; status: "running" | "done" | "error";
+  phase: string; done: number; total: number; found: number; created: number;
+  updated: number; alreadyKnown: number; costUsd: number; error: string | null;
+  createdAt: number; updatedAt: number;
+};
+export async function createScanJob(userId: string, mode: string): Promise<string> {
+  const id = uid();
+  await q(`INSERT INTO carpa_scan_jobs (id, "userId", mode, status, phase, "createdAt", "updatedAt")
+           VALUES ($1,$2,$3,'running','connecting',$4,$4)`, [id, userId, mode, now()]);
+  return id;
+}
+export async function updateScanJob(id: string, patch: Partial<Omit<ScanJob, "id" | "userId" | "mode" | "createdAt">>) {
+  const cols: string[] = []; const vals: unknown[] = [];
+  for (const [k, v] of Object.entries(patch)) { vals.push(v); cols.push(`"${k}" = $${vals.length}`); }
+  vals.push(now()); cols.push(`"updatedAt" = $${vals.length}`);
+  vals.push(id);
+  await q(`UPDATE carpa_scan_jobs SET ${cols.join(", ")} WHERE id = $${vals.length}`, vals);
+}
+export async function getScanJob(userId: string, id: string): Promise<ScanJob | undefined> {
+  return (await q<ScanJob>(`SELECT * FROM carpa_scan_jobs WHERE id = $1 AND "userId" = $2`, [id, userId]))[0];
+}
+export async function latestScanJob(userId: string): Promise<ScanJob | undefined> {
+  return (await q<ScanJob>(`SELECT * FROM carpa_scan_jobs WHERE "userId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, [userId]))[0];
+}
+
+// ── the shared judges' tracker ──────────────────────────────────────────────
+/**
+ * The owner's inbox is read in full exactly once, into this synthetic user.
+ * A judge choosing "use the owner's inbox" gets these rows copied into their
+ * own account in one round trip: no IMAP, no model calls, no waiting. Only
+ * an admin's judge-mode scan re-reads the real mailbox, incrementally, to
+ * refresh this copy.
+ */
+export const SHARED_JUDGE_USER = "judge-shared";
+
+export async function cloneJudgeRows(toUserId: string): Promise<{ created: number; total: number }> {
+  const src = await q<TrackerItem>(`SELECT * FROM carpa_tracker WHERE "userId" = $1`, [SHARED_JUDGE_USER]);
+  const mine = await q<{ company: string; role: string | null }>(
+    `SELECT company, role FROM carpa_tracker WHERE "userId" = $1`, [toUserId]);
+  const norm = (s: string | null) => (s ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const have = new Set(mine.map((r) => `${norm(r.company)}|${norm(r.role)}`));
+  const fresh = src.filter((r) => !have.has(`${norm(r.company)}|${norm(r.role)}`));
+  if (!fresh.length) return { created: 0, total: src.length };
+
+  const idMap = new Map(fresh.map((r) => [r.id, uid()]));
+  const rowVals: unknown[] = []; const rowTuples: string[] = [];
+  fresh.forEach((r) => {
+    const base = rowVals.length;
+    rowVals.push(idMap.get(r.id), toUserId, r.company, r.role, r.kind, r.status, r.quote, r.subject, r.emailDate, r.actionLink, r.deadline, r.notes, now(), now());
+    rowTuples.push(`(${Array.from({ length: 14 }, (_, k) => `$${base + k + 1}`).join(",")})`);
+  });
+  await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, "createdAt", "updatedAt") VALUES ${rowTuples.join(",")}`, rowVals);
+
+  const evs = await q<{ id: string; itemId: string; status: string; quote: string | null; subject: string | null; emailDate: number | null; body: string | null; fromAddr: string | null }>(
+    `SELECT id, "itemId", status, quote, subject, "emailDate", body, "fromAddr" FROM carpa_tracker_events WHERE "itemId" = ANY($1)`,
+    [fresh.map((r) => r.id)]);
+  for (let i = 0; i < evs.length; i += 40) {
+    const chunk = evs.slice(i, i + 40);
+    const vals: unknown[] = []; const tuples: string[] = [];
+    chunk.forEach((e) => {
+      const base = vals.length;
+      vals.push(uid(), idMap.get(e.itemId), e.status, e.quote, e.subject, e.emailDate, e.body, e.fromAddr, now());
+      tuples.push(`(${Array.from({ length: 9 }, (_, k) => `$${base + k + 1}`).join(",")})`);
+    });
+    await q(`INSERT INTO carpa_tracker_events (id, "itemId", status, quote, subject, "emailDate", body, "fromAddr", "createdAt") VALUES ${tuples.join(",")}`, vals);
+  }
+  return { created: fresh.length, total: src.length };
+}
+
+// ── the AI spend ledger, per key fingerprint, durable across deploys ────────
+export async function recordAiCall(fp: string, rec: { purpose?: string; model?: string; costUsd: number; at: number }) {
+  await q(`INSERT INTO carpa_ai_calls (fp, purpose, model, "costUsd", "createdAt") VALUES ($1,$2,$3,$4,$5)`,
+    [fp, rec.purpose ?? null, rec.model ?? null, rec.costUsd, rec.at]);
+}
+export async function aiLedger(fp: string, limit = 8) {
+  return q<{ purpose: string | null; model: string | null; costUsd: number; createdAt: number }>(
+    `SELECT purpose, model, "costUsd", "createdAt" FROM carpa_ai_calls WHERE fp = $1 ORDER BY "createdAt" DESC LIMIT $2`,
+    [fp, limit]);
+}
+export async function aiTotal(fp: string): Promise<{ usd: number; calls: number }> {
+  const rows = await q<{ usd: number | null; calls: number }>(
+    `SELECT SUM("costUsd") AS usd, COUNT(*) AS calls FROM carpa_ai_calls WHERE fp = $1`, [fp]);
+  return { usd: rows[0]?.usd ?? 0, calls: rows[0]?.calls ?? 0 };
+}
+export async function clearAiLedger(fp: string) {
+  await q(`DELETE FROM carpa_ai_calls WHERE fp = $1`, [fp]);
 }

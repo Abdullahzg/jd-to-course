@@ -36,6 +36,8 @@ export type PlannerState = {
   relevance: Record<string, { skill: string; evidence: string; strength?: "central" | "useful" | "tangential"; why?: string; rank?: number }[]>;
   /** Course codes in the reader's consideration order, strongest first. */
   shortlist?: string[];
+  /** Whole catalog ranked for this posting: shortlist first, then text closeness, each with its why. */
+  considerationAll?: { code: string; why: string }[];
   /**
    * skill -> the sentence in the posting that asked for it, and whether a class
    * can actually supply it. This is what makes the requirement list checkable
@@ -105,6 +107,7 @@ const INITIAL: PlannerState = {
   skillMatches: {},
   relevance: {},
   shortlist: [],
+  considerationAll: [],
   skillEvidence: {},
   roleSummary: "",
   customSkills: [],

@@ -48,6 +48,10 @@ export async function reconcile(
   for (const s of ordered) {
     const email = emailsById.get(s.emailId);
     const when = email?.date ?? Date.now();
+    // The receipt keeps the whole email, HTML preferred, so a row can show
+    // the message it came from, rendered, not just the proving sentence.
+    const evBody = (email?.html || email?.body || "").slice(0, 150000) || null;
+    const evFrom = email?.from ?? null;
     const match = rows.find((r) => norm(r.company) === norm(s.company) && sameRole(r.role, s.role));
 
     if (!match) {
@@ -62,6 +66,8 @@ export async function reconcile(
         emailDate: when,
         actionLink: s.actionLink ?? null,
         deadline: s.deadline ?? null,
+        eventBody: evBody,
+        eventFrom: evFrom,
       });
       rows.push({
         id, userId, company: s.company, role: s.role || null, kind: s.kind,
@@ -83,12 +89,12 @@ export async function reconcile(
         actionLink: s.actionLink ?? match.actionLink,
         deadline: s.deadline ?? match.deadline,
         role: match.role || s.role || null,
-      });
+      }, { body: evBody, fromAddr: evFrom });
       match.status = s.status; match.emailDate = when;
       updated++;
     } else {
       // Old news still belongs in the timeline, just not on the headline.
-      await addTrackerEvent(match.id, { status: s.status, quote: s.quote, subject: email?.subject, emailDate: when });
+      await addTrackerEvent(match.id, { status: s.status, quote: s.quote, subject: email?.subject, emailDate: when, body: evBody, fromAddr: evFrom });
       unchanged++;
     }
   }

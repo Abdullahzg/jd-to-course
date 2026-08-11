@@ -23,7 +23,7 @@ export default function Setup() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [log, setLog] = useState<Verbose[]>([]);
-  const [result, setResult] = useState<{ created: number; updated: number; emailsRead: number; alreadyKnown?: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; updated: number; emailsRead: number; alreadyKnown?: number; mode?: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [imapEmail, setImapEmail] = useState("");
@@ -49,44 +49,53 @@ export default function Setup() {
 
   const scan = async (mode: "imap" | "gmail" | "demo" | "judge") => {
     setBusy(true); setError(""); setResult(null);
-    narrate(
-      mode === "imap" || mode === "judge"
-        ? [
-            `Connecting to imap.gmail.com as ${mode === "judge" ? "the judges' inbox" : imapEmail.trim() || "you"}`,
-            "Signed in read only. Listing the last year of mail",
-            "Reading headers first: sorting applications from newsletters",
-            "Reading the bodies that matter, extracting statuses with their proving sentences",
-            "Checking every quote against the email it claims to come from",
-            "Building your tracker rows",
-          ]
-        : mode === "gmail"
-          ? [
-              "Asking Google for the last year of messages",
-              "Reading headers first: sorting applications from newsletters",
-              "Reading the bodies that matter, extracting statuses with their proving sentences",
-              "Checking every quote against the email it claims to come from",
-              "Building your tracker rows",
-            ]
-          : [
-              "Opening the demo inbox: twenty two realistic emails",
-              "Reading headers, then bodies, extracting statuses with proof",
-              "Building your tracker rows",
-            ],
-    );
+    setLog([{ line: mode === "imap" || mode === "judge"
+      ? `Connecting to imap.gmail.com as ${mode === "judge" ? "the judges' inbox" : imapEmail.trim() || "you"}, read only`
+      : mode === "gmail" ? "Asking Google for the mailbox, read only"
+      : "Opening the demo inbox: twenty two realistic emails", done: false }]);
+
     const body: Record<string, unknown> = { mode };
     if (mode === "imap") { body.email = imapEmail; body.appPassword = imapPass; }
     const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then((x) => x.json())
-      .catch(() => ({ ok: false, error: "The connection dropped mid scan. Nothing was lost; run it again." }));
-    timers.current.forEach((t) => window.clearTimeout(t));
-    setLog((xs) => xs.map((x) => ({ ...x, done: true })));
-    setBusy(false);
-    if (r.ok) {
-      setResult(r);
-      setStep(2);
-    } else {
-      setError(r.error ?? "That did not work, and it is not your fault. Try another route below.");
-    }
+      .catch(() => ({ ok: false, error: "The connection dropped before the scan could start. Run it again." }));
+    if (!r.ok) { setBusy(false); setError(r.error ?? "That did not work, and it is not your fault. Try another route below."); return; }
+    window.dispatchEvent(new Event("carpa-scan-started"));
+
+    // The log below is the job's real progress, not a scripted animation:
+    // the numbers are what the runner has actually done, polled live.
+    let lastPhase = "";
+    const phaseLine = (j: { phase: string; done: number; total: number; alreadyKnown?: number }) => {
+      const n = (x: number) => x.toLocaleString();
+      if (j.phase === "connecting") return "Connected. Listing every email in the window";
+      if (j.phase === "triage") return `Sorting ${n(j.total)} emails by their headers${j.alreadyKnown ? ` (${n(j.alreadyKnown)} remembered from earlier scans and skipped)` : ""}: ${n(j.done)} of ${n(j.total)}`;
+      if (j.phase === "reading") return `Downloading the ${n(j.total)} emails that matter: ${n(j.done)} done`;
+      if (j.phase === "extracting") return `Extracting statuses with their proving sentences: ${n(j.done)} of ${n(j.total)}`;
+      return "Working";
+    };
+    const tick = async () => {
+      const jr = await fetch(`/api/inbox/scan?job=${r.jobId}`).then((x) => x.json()).catch(() => null);
+      const j = jr?.job as { status: string; phase: string; done: number; total: number; created: number; updated: number; alreadyKnown: number; error: string | null } | null;
+      if (!j) { timers.current.push(window.setTimeout(() => void tick(), 3000)); return; }
+      const line = phaseLine(j);
+      setLog((xs) => {
+        if (j.phase !== lastPhase) {
+          lastPhase = j.phase;
+          return [...xs.map((x) => ({ ...x, done: true })), { line, done: false }];
+        }
+        return [...xs.slice(0, -1), { line, done: false }];
+      });
+      if (j.status === "running") { timers.current.push(window.setTimeout(() => void tick(), 2500)); return; }
+      setLog((xs) => xs.map((x) => ({ ...x, done: true })));
+      setBusy(false);
+      if (j.status === "done") {
+        setResult({ created: j.created, updated: j.updated, emailsRead: j.total, alreadyKnown: j.alreadyKnown, mode });
+        setStep(2);
+      } else {
+        setError(j.error ?? "That did not work, and it is not your fault. Try another route below.");
+      }
+    };
+    void tick();
   };
 
   if (status !== "authenticated") {
@@ -146,6 +155,38 @@ export default function Setup() {
 
       {step === 1 && (
         <section className="mt-6 space-y-3">
+          <div>
+            <h1 className="font-display text-lg font-semibold">Whose inbox should the tracker read?</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              The owner&rsquo;s is already read and takes one click. Your own takes a minute to connect
+              and then maintains itself.
+            </p>
+          </div>
+
+          {/* the owner's inbox: prebuilt, instant, first on purpose */}
+          <div className="card-lift rounded-2xl border-2 border-foreground/20 bg-white p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600/10"><Play className="h-3.5 w-3.5 text-violet-700" /></span> Use the owner&rsquo;s inbox
+              <span className="ml-1 rounded-full bg-violet-600/10 px-2 py-0.5 text-[10px] font-medium text-violet-700">instant, for judges</span>
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              The owner&rsquo;s real Gmail was read once, in full; you get that tracker immediately,
+              every status carrying the sentence from the email that proved it. Nothing of yours is
+              touched. The scripted demo inbox shows the same flow with invented mail.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button onClick={() => setJudgePopup(true)} disabled={busy} data-track="setup_judge"
+                      className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background disabled:opacity-40">
+                Use the owner&rsquo;s inbox
+              </button>
+              <button onClick={() => void scan("demo")} disabled={busy} data-track="setup_demo"
+                      className="rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground disabled:opacity-40">
+                Demo inbox
+              </button>
+            </div>
+          </div>
+
+          <p className="pt-1 text-center text-[11px] uppercase tracking-widest text-muted-foreground">or set up your own</p>
+
           {/* app password: the route that works for everyone, tutorial included */}
           <div className="card-lift rounded-2xl border border-border bg-white p-4">
             <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600/10"><KeyRound className="h-3.5 w-3.5 text-emerald-700" /></span> App password
@@ -183,24 +224,7 @@ export default function Setup() {
             </button>
           </div>
 
-          {/* the judges' inbox */}
-          <div className="card-lift rounded-2xl border-2 border-foreground/20 bg-white p-4">
-            <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600/10"><Play className="h-3.5 w-3.5 text-violet-700" /></span> Judging Carpa?</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Scan the owner&rsquo;s real inbox instead, or the scripted demo inbox. Both show the whole
-              flow without touching your own mail.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <button onClick={() => setJudgePopup(true)} disabled={busy} data-track="setup_judge"
-                      className="rounded-full border border-border px-4 py-1.5 text-sm disabled:opacity-40">
-                Use the judges&rsquo; inbox
-              </button>
-              <button onClick={() => void scan("demo")} disabled={busy} data-track="setup_demo"
-                      className="rounded-full border border-border px-4 py-1.5 text-sm text-muted-foreground disabled:opacity-40">
-                Demo inbox
-              </button>
-            </div>
-          </div>
+          
 
           {(busy || log.length > 0) && (
             <div className="rounded-2xl border border-border bg-white p-4">
@@ -228,9 +252,28 @@ export default function Setup() {
           <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
           <h2 className="mt-2 font-display text-lg font-semibold">Your tracker is alive</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Read {result.emailsRead} new emails{result.alreadyKnown ? ` (${result.alreadyKnown} already remembered from earlier scans)` : ""}, found {result.created} applications and updated {result.updated}.
-            Every status carries the sentence that proved it.
+            {result.mode === "judge"
+              ? `Loaded the owner's tracker: ${result.created} applications from their real inbox, prebuilt, every status carrying the sentence that proved it.`
+              : `Read ${result.emailsRead} new emails${result.alreadyKnown ? ` (${result.alreadyKnown} already remembered from earlier scans)` : ""}, found ${result.created} applications and updated ${result.updated}. Every status carries the sentence that proved it.`}
           </p>
+          <div className="mt-4 grid gap-2 text-left sm:grid-cols-2">
+            <Link href="/start" data-track="setup_done_planner"
+                  className="card-lift rounded-xl border-2 border-foreground/20 bg-white p-3">
+              <p className="text-sm font-semibold">Plan a degree from a posting</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                The other half of Carpa: paste any job posting and get the exact courses that answer
+                it, inside your degree&rsquo;s real rules, every pick quoting the catalog.
+              </p>
+            </Link>
+            <Link href="/tracker" data-track="setup_done_tracker2"
+                  className="card-lift rounded-xl border border-border bg-white p-3">
+              <p className="text-sm font-semibold">Your application tracker</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                The spreadsheet that maintains itself: edit any cell, expand any row for receipts,
+                export to Excel whenever.
+              </p>
+            </Link>
+          </div>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Link href="/tracker" data-track="setup_done_tracker"
                   className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background">

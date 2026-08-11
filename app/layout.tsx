@@ -5,6 +5,7 @@ import { BudgetBar } from "@/components/budget/budget-bar";
 import { BudgetProvider } from "@/components/budget/budget-provider";
 import { AuthProvider, Beacon } from "@/components/session";
 import { AppNav } from "@/components/app-nav";
+import { ScanNotifier } from "@/components/scan-notifier";
 import { PlannerProvider } from "@/components/planner/planner-store";
 import "./globals.css";
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <div className="flex h-dvh flex-col overflow-hidden">
             <BudgetBar />
             <AppNav />
+            <ScanNotifier />
             <div className="min-h-0 flex-1 overflow-y-auto">
               <PlannerProvider>{children}</PlannerProvider>
             </div>

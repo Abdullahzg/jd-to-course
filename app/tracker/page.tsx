@@ -15,7 +15,7 @@ import { StatusPill } from "@/app/home/page";
  * in its journey carries the sentence from the email that made it true.
  */
 
-type Ev = { id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null };
+type Ev = { id: string; status: string; quote: string | null; subject: string | null; emailDate: number | null; fromAddr?: string | null; hasBody?: boolean };
 type Item = {
   id: string; company: string; role: string | null; kind: string; status: string;
   quote: string | null; subject: string | null; emailDate: number | null;
@@ -247,18 +247,57 @@ function Row({ t, open, onToggle, onPatch, onDelete }: {
           <td colSpan={8} className="px-4 py-2.5">
             <p className="text-[11px] font-medium text-muted-foreground">The journey, each step in the email&rsquo;s own words</p>
             <ol className="mt-1 space-y-1">
-              {t.events.map((e) => (
-                <li key={e.id} className="text-xs">
-                  <span className="font-medium">{e.status}</span>
-                  <span className="text-muted-foreground"> · {e.emailDate ? new Date(e.emailDate).toLocaleDateString() : ""}</span>
-                  {e.quote && <blockquote className="mt-0.5 border-l-2 border-border pl-2 italic text-muted-foreground">&ldquo;{e.quote}&rdquo;</blockquote>}
-                </li>
-              ))}
+              {t.events.map((e) => <EventRow key={e.id} e={e} />)}
             </ol>
           </td>
         </tr>
       )}
     </>
+  );
+}
+
+/**
+ * One step of the journey, with the email it came from one click away.
+ * The body renders inside a sandboxed iframe with scripts off, so a
+ * recruiter's HTML can look like itself without running anything here.
+ */
+function EventRow({ e }: { e: Ev }) {
+  const [openMail, setOpenMail] = useState(false);
+  const [body, setBody] = useState<string | null | undefined>(undefined);
+  const toggle = async () => {
+    const next = !openMail;
+    setOpenMail(next);
+    if (next && body === undefined) {
+      try {
+        const r = await fetch(`/api/tracker?eventBody=${e.id}`).then((x) => x.json());
+        setBody(r?.body ?? null);
+      } catch { setBody(null); }
+    }
+  };
+  const looksHtml = (b: string) => /<[a-z][\s\S]*>/i.test(b);
+  return (
+    <li className="text-xs">
+      <span className="font-medium">{e.status}</span>
+      <span className="text-muted-foreground"> · {e.emailDate ? new Date(e.emailDate).toLocaleDateString() : ""}</span>
+      {e.fromAddr && <span className="text-muted-foreground"> · {e.fromAddr}</span>}
+      {e.hasBody && (
+        <button onClick={() => void toggle()} data-track="tracker_view_email"
+                className="ml-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+          {openMail ? "Hide the email" : "View the email"}
+          <ChevronDown className={`h-3 w-3 transition-transform ${openMail ? "rotate-180" : ""}`} />
+        </button>
+      )}
+      {e.quote && <blockquote className="mt-0.5 border-l-2 border-border pl-2 italic text-muted-foreground">&ldquo;{e.quote}&rdquo;</blockquote>}
+      {openMail && (
+        <div className="mt-1.5 overflow-hidden rounded-lg border border-border bg-white">
+          {body === undefined && <div className="h-24 animate-pulse bg-foreground/5" />}
+          {body === null && <p className="p-3 text-[11px] text-muted-foreground">The email itself was not stored for this step; rows from before the upgrade only kept the quote. The next scan stores full emails.</p>}
+          {typeof body === "string" && (looksHtml(body)
+            ? <iframe sandbox="" srcDoc={body} title="The email" className="h-80 w-full bg-white" />
+            : <pre className="max-h-80 overflow-auto whitespace-pre-wrap p-3 text-[11px] leading-relaxed">{body}</pre>)}
+        </div>
+      )}
+    </li>
   );
 }
 
