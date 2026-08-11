@@ -33,31 +33,3 @@ Not yet reviewed (the board marks anything depending on these as *check with you
 
 `COMS W1004`, `COMS W3134`, `COMS W3137`, `COMS W3157`, `COMS W3203`, `COMS W3261`, `CSEE W3827`, `MATH UN1201`, `MATH UN1205`, `APMA E2000`, `COMS W3251`, `MATH UN2010`, `MATH UN2015`, `MATH UN2020`, `APMA E2101`, `APMA E3101`, `STAT GU4001`, `IEOR E3658`, `COMS W4111`, `COMS W4113`, `COMS W4115`, `COMS W4118`, `COMS W4119`, `COMS W4152`, `COMS W4156`, `COMS W4160`, `COMS W4167`, `COMS W4170`, `COMS W4181`, `CSOR E4231`, `COMS W4236`, `COMS W4701`, `COMS W4705`, `COMS W4731`, `COMS W4733`, `CBMF W4761`, `COMS W4771`, `CSEE W4824`, `CSEE W4868`, `COMS W4121`, `COMS W4153`, `COMS W4995`, `COMS W4246`, `COMS W3902`, `COMS W3132`, `COMS W3210`, `BIOL W4037`, `BMEN E4460`, `BMEN E4470`, `BMEN E4480`, `CHEN E4180`, `CIEN E4253`, `CIEN E4256`, `COMS BC3420`, `COMS E3999`, `COMS E4762`, `COMS E4773`, `COMS E4775`, `COMS E4776`, `COMS E4995`, `COMS W1001`, `COMS W1002`, `COMS W1005`, `COMS W1404`, `COMS W2132`, `COMS W2702`, `COMS W3101`, `COMS W3102`, `COMS W3107`, `COMS W3136`, `COMS W3410`, `COMS W3770`, `COMS W3995`, `COMS W3998`, `COMS W4112`, `COMS W4137`, `COMS W4162`, `COMS W4165`, `COMS W4172`, `COMS W4182`, `COMS W4186`, `COMS W4203`, `COMS W4205`, `COMS W4223`, `COMS W4232`, `COMS W4241`, `COMS W4252`, `COMS W4261`, `COMS W4281`, `COMS W4295`, `COMS W4419`, `COMS W4444`, `COMS W4460`, `COMS W4706`, `COMS W4710`, `COMS W4725`, `COMS W4726`, `COMS W4732`, `COMS W4735`, `COMS W4737`, `COMS W4772`, `COMS W4774`, `COMS W4901`, `COMS W4975`, `CSEE W4140`, `CSEE W4823`, `CSEE W4840`, `EAEE E4000`, `ECBM E4040`, `ECON UN3025`, `ECON UN3265`, `ECON UN3412`, `EECS E4764`, `ELEN E4730`, `ENGI E1006`, `IEOR E2000`, `IEOR E4212`, `IEOR E4540`, `MATH UN1102`, `MECE E4520`, `MECE E4602`, `ORCS E4200`, `ORCS E4201`, `ORCS E4529`, `POLS GU4728`, `PSYC GU4836`, `SIEO W3600`, `SOCI UN3010`, `SOCI UN3960`, `STAT GU4203`, `STAT GU4204`, `STAT GU4205`, `STAT GU4206`, `STAT GU4224`, `STAT GU4241`, `STAT GU4242`, `STAT GU4244`, `STAT UN3106`
 
-## Borough of Manhattan Community College, CUNY
-
-Public, rigid. A 60 credit associate degree where 30 credits are a fixed CUNY Pathways core with named required courses and almost no choice. Only 6 credits of program electives and 4 of general electives are genuinely free, which is the opposite shape to Columbia and the reason it is here.
-
-### Computer Science, AS
-
-| Rule | As the catalog states it | Source | Retrieved |
-|---|---|---|---|
-| Required Common Core: English Composition | English Composition 6 | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Required Common Core: Mathematical and Quantitative Reasoning | Students are required to take MAT 206 or MAT 301. | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Required Common Core: Life and Physical Sciences | Students are required to take PHY 215. | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Flexible Core: Scientific World | Students are required to take CSC 101 and CSC 111. | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Flexible Core: Creative Expression | Students are advised to take SPE 100 or SPE 102. | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Flexible Core: Individual and Society | Individual and Society 3 | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Flexible Core: U.S. Experience in Its Diversity | U.S. Experience in Its Diversity 3 | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Curriculum requirements | CSC 211 Advanced Programming Techniques; CSC 215 Fundamentals of Computer Systems; CSC 231 Discrete Structures and Applications to Computer Science; CSC 331 Data Structures; CSC 350 Software Development | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Program electives | Select 6 credits from CIS 317, CIS 345, CIS 359, CIS 362, CIS 364, CIS 385, CIS 395, CSC 103, GIS 201, CIS 316, CIS 272, CIS 285 or CSC 203. | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Degree-wide policy | TOTAL COMMON CORE 30 | [link](https://www.bmcc.cuny.edu/academics/departments/cis/computer-science/) | 2026-08-06 |
-| Degree-wide policy | No more than two courses in any discipline or interdisciplinary field can be used to satisfy Flexible Core requirements. | [link](https://www.bmcc.cuny.edu/academics/pathways/pathways-common-core-is-required/) | 2026-08-06 |
-| Degree-wide policy | Fall/Spring 18* credits/hours | [link](https://www.bmcc.cuny.edu/registrar/policies-general-information/faq/) | 2026-08-06 |
-| Degree-wide policy | *Students on academic notice are limited to 14 credits/hours for the Spring/Fall. | [link](https://www.bmcc.cuny.edu/registrar/policies-general-information/faq/) | 2026-08-06 |
-
-**Courses in this catalog:** 22 · **prerequisite parses reviewed by a human:** 17 of 22
-
-Not yet reviewed (the board marks anything depending on these as *check with your advisor*):
-
-`CIS 385`, `CIS 395`, `CIS 345`, `CIS 359`, `CSC 203`
-

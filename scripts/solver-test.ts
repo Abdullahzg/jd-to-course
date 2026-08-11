@@ -8,7 +8,7 @@
  */
 import { solve, fillOpenCredits } from "@/lib/solver";
 import { buildModel, prereqSatisfied } from "@/lib/solver/core";
-import { SCHOOLS, DEMO_STUDENT, DEMO_STUDENT_BMCC, getProgram, getSchool } from "@/data";
+import { SCHOOLS, DEMO_STUDENT, getProgram, getSchool } from "@/data";
 import type { SolveRequest, Plan, Course, Term } from "@/lib/types";
 
 let failures = 0;
@@ -245,21 +245,7 @@ if (r1.ok) {
     `${r1.stats.candidateCourses} candidates → ${r1.stats.symmetryClasses} symmetry classes`);
 }
 
-// ── 2. BMCC adapter — the scale story ────────────────────────────────────────
-console.log("\nBMCC CS AS — same solver, zero school-specific code");
-const req2: SolveRequest = {
-  schoolId: "BMCC",
-  programId: "BMCC:CS_AS",
-  student: { ...DEMO_STUDENT_BMCC, horizonTerms: 5 },
-  targetSkills: ML_SKILLS,
-  k: 2,
-};
-const r2 = solve(req2, 6000);
-check("returns a plan", r2.ok && r2.plans.length > 0, r2.infeasibility?.message ?? "");
-if (r2.ok) {
-  auditPlan("bmcc", req2, r2.plans[0]);
-  console.log(`  plan A: ${r2.plans[0].placements.length} courses, ${r2.plans[0].totalCredits} cr, ${r2.plans[0].termsUsed} terms`);
-}
+// ── 2. (BMCC adapter test removed: the product ships Columbia only, by request) ──
 
 // ── 3. Infeasibility must explain itself, never blank ────────────────────────
 console.log("\nInfeasible case — 1 term for a whole major");
