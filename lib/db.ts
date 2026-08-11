@@ -288,7 +288,7 @@ export async function adminStats() {
        (SELECT COUNT(*) FROM carpa_searches s WHERE s."userId" = u.id) AS searches,
        (SELECT COUNT(*) FROM carpa_tracker t WHERE t."userId" = u.id) AS applications,
        (SELECT MAX("createdAt") FROM carpa_events e WHERE e."userId" = u.id) AS "lastSeen"
-     FROM carpa_users u ORDER BY "lastSeen" DESC NULLS LAST`);
+     FROM carpa_users u WHERE u.id <> 'judge-shared' ORDER BY "lastSeen" DESC NULLS LAST`);
   const byName = await q<{ name: string; n: number }>(
     `SELECT name, COUNT(*) AS n FROM carpa_events GROUP BY name ORDER BY n DESC LIMIT 30`);
   const recent = await q<{ name: string; meta: string | null; createdAt: number; email: string | null }>(
