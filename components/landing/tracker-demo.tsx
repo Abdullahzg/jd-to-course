@@ -16,8 +16,13 @@ type Row = { company: string; role: string; status: string; tone: string };
 const START: Row[] = [
   { company: "Columbia University", role: "MS Computer Science", status: "applied", tone: "grey" },
   { company: "Johns Hopkins", role: "MSE Computer Science", status: "applied", tone: "grey" },
+  { company: "Dartmouth", role: "MS Computer Science", status: "offer", tone: "green" },
+  { company: "NYU Tandon", role: "MS Computer Science", status: "offer", tone: "green" },
   { company: "Mitacs Globalink", role: "Research Internship", status: "applied", tone: "grey" },
   { company: "Knight-Hennessy", role: "Scholars", status: "action needed", tone: "blue" },
+  { company: "International House", role: "Gotz Mauser Fellowship", status: "accepted", tone: "green" },
+  { company: "Stanford University", role: "MS Computer Science", status: "applied", tone: "grey" },
+  { company: "Princeton University", role: "MSE Computer Science", status: "action needed", tone: "blue" },
 ];
 
 // Every line below is a real row from the owner's tracker, built from their
@@ -86,7 +91,7 @@ export function TrackerDemo() {
   }, []);
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full max-w-lg">
       {/* the inbox event sliding in */}
       <div
         aria-hidden
@@ -106,7 +111,7 @@ export function TrackerDemo() {
             updating itself
           </span>
         </div>
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-1.5">
           {rows.map((r) => (
             <li key={r.company}
                 className="flex items-center gap-2 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 transition-all duration-500">
