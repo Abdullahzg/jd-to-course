@@ -1257,7 +1257,13 @@ export function PlanScreen() {
                           <p className="text-sm font-medium leading-snug">{b.label}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {b.fromCompleted + b.fromPlan} of {b.need}
+                            {b.fromCompleted > 0 && <span> · {b.fromCompleted} from what you already passed</span>}
                           </p>
+                          {!b.satisfied && (
+                            <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--amber-deep, #92400e)" }}>
+                              still open: {Math.max(0, b.need - b.fromCompleted - b.fromPlan)} more needed beyond this horizon
+                            </p>
+                          )}
 
                           {/* Which course closed it, and the proof that it counts. */}
                           {(!!fills.length || !!already.length) && (

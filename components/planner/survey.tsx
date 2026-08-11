@@ -404,7 +404,12 @@ export function Survey({
           </div>
 
           {!!state.student.completed.length && (
-            <ul className="mt-3 flex shrink-0 flex-wrap gap-2">
+            <p className="mt-2 shrink-0 text-sm text-white/55">
+              {state.student.completed.length} passed · {state.student.completed.reduce((s, id) => s + (courses.get(id)?.credits ?? 0), 0)} credits
+            </p>
+          )}
+          {!!state.student.completed.length && (
+            <ul className="mt-2 max-h-28 shrink-0 overflow-y-auto rounded-2xl flex flex-wrap gap-2 pr-1">
               {state.student.completed.map((id) => {
                 const c = courses.get(id);
                 return c ? (

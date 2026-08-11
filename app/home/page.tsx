@@ -34,6 +34,10 @@ export default function Home() {
   const [tracker, setTracker] = useState<TrackerRow[] | null>(null);
   const [scan, setScan] = useState<{ busy: boolean; note: string }>({ busy: false, note: "" });
   const [imapOpen, setImapOpen] = useState(false);
+  const [inboxStatus, setInboxStatus] = useState<{ savedImap: string | null; gmailConnected: boolean; lastMode: string | null } | null>(null);
+  useEffect(() => {
+    void fetch("/api/inbox/status").then((r) => r.json()).then((j) => { if (j.ok) setInboxStatus(j); }).catch(() => {});
+  }, []);
   const [imapEmail, setImapEmail] = useState("");
   const [imapPass, setImapPass] = useState("");
 
@@ -206,12 +210,44 @@ export default function Home() {
           )}
 
           <div className="mt-4 rounded-xl border border-border bg-white p-3">
-            <p className="text-xs font-medium">Connect your inbox</p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-              The first scan reads back a year and builds the tracker by itself: what you applied to,
-              where each one stands, grouped by kind. Nothing is written to your mailbox, ever.
+            <p className="text-xs font-medium">
+              {inboxStatus?.savedImap || inboxStatus?.gmailConnected ? "Your inbox" : inboxStatus?.lastMode === "judge" ? "You are viewing the owner's tracker" : "Connect your inbox"}
             </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+              {inboxStatus?.savedImap
+                ? `Connected through the app password for ${inboxStatus.savedImap}. A scan reads only what arrived since last time.`
+                : inboxStatus?.gmailConnected
+                  ? "Connected through Google. A scan reads only what arrived since last time."
+                  : inboxStatus?.lastMode === "judge"
+                    ? "These rows are the real season of Abdullah Zubair Ghouri, for judging. Connect your own inbox below whenever you want your own."
+                    : "The first scan reads back a year and builds the tracker by itself: what you applied to, where each one stands, grouped by kind. Nothing is written to your mailbox, ever."}
+            </p>
+            {inboxStatus?.savedImap || inboxStatus?.gmailConnected ? (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <button onClick={() => runScan(inboxStatus?.savedImap ? "imap" : "gmail")}
+                        disabled={scan.busy} data-track="scan_now"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background disabled:opacity-40">
+                  <RefreshCw className="h-3.5 w-3.5" /> Scan my inbox now
+                </button>
+                <button onClick={() => setImapOpen((v) => !v)} disabled={scan.busy} data-track="scan_update_pass"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs disabled:opacity-40">
+                  <KeyRound className="h-3.5 w-3.5" /> {inboxStatus?.savedImap ? "Update app password" : "Use an app password instead"}
+                </button>
+              </div>
+            ) : inboxStatus?.lastMode === "judge" ? (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <button onClick={() => setImapOpen((v) => !v)} disabled={scan.busy} data-track="scan_connect_own"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background disabled:opacity-40">
+                  <KeyRound className="h-3.5 w-3.5" /> Connect my own inbox
+                </button>
+                <button onClick={() => runScan("judge")} disabled={scan.busy} data-track="scan_judge"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs text-muted-foreground disabled:opacity-40">
+                  <Play className="h-3.5 w-3.5" /> Reload the owner&rsquo;s tracker
+                </button>
+              </div>
+            ) : (
             <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+
               <button onClick={() => (gmailConnected ? void runScan("gmail") : void connectGmail())}
                       disabled={scan.busy} data-track="scan_gmail"
                       className="rounded-xl border border-foreground bg-foreground p-2.5 text-left text-background transition-opacity disabled:opacity-40">
@@ -235,6 +271,7 @@ export default function Home() {
                 </span>
               </button>
             </div>
+            )}
             {(tracker?.length ?? 0) > 0 && (
               <button onClick={() => void load()} className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" title="Refresh">
                 <RefreshCw className="h-3 w-3" /> refresh rows

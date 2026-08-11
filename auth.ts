@@ -16,6 +16,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   secret: process.env.AUTH_SECRET ?? "dev-only-secret-set-AUTH_SECRET-in-production",
   session: { strategy: "jwt" },
+  // Cancelling Google's consent screen lands here instead of on a raw
+  // "server error" page that read as a crash.
+  pages: { error: "/auth-error" },
   providers: [
     ...(process.env.AUTH_GOOGLE_ID
       ? [Google({
