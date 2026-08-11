@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { usePlanner } from "@/components/planner/planner-store";
 import { Inbox, KeyRound, Loader2, LogOut, Mail, Play, RefreshCw, Search } from "lucide-react";
 import { SemesterChart } from "@/components/planner/semester-chart";
+import { CarpaMark } from "@/components/carpa-mark";
 import { semesterNames } from "@/components/planner/plan-screen";
 import { termKindsFor } from "@/lib/verify";
 import { fillOpenCredits, type FilledTerm } from "@/lib/solver";
@@ -412,9 +413,13 @@ function SignIn() {
   return (
     <Centered>
       <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-5 shadow-sm">
-        <h1 className="font-display text-lg font-semibold">Sign in</h1>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Google keeps your searches and connects your inbox for the tracker in the same step.
+        <div className="flex items-center gap-2">
+          <CarpaMark className="h-7 w-7 rounded-md" />
+          <h1 className="font-display text-lg font-semibold">Sign in to Carpa</h1>
+        </div>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          It takes 15 seconds. Google keeps your searches and connects your inbox for the
+          tracker in the same step.
         </p>
         {providers === null ? (
           <div className="mt-3 h-9 animate-pulse rounded-full bg-foreground/5" />

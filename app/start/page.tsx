@@ -1,13 +1,15 @@
 import { Survey } from "@/components/planner/survey";
-import { PRELOADED_JDS, SCHOOLS, DEMO_STUDENT, DEMO_STUDENT_BMCC } from "@/data";
+import { PRELOADED_JDS, SCHOOLS, DEMO_STUDENT } from "@/data";
+import { RequireAuth } from "@/components/require-auth";
 
 export const metadata = { title: "Set up your plan" };
 
 export default function Page() {
   return (
+    <RequireAuth>
     <Survey
       jds={PRELOADED_JDS}
-      demos={{ COLUMBIA: DEMO_STUDENT, BMCC: DEMO_STUDENT_BMCC }}
+      demos={{ COLUMBIA: DEMO_STUDENT }}
       schools={SCHOOLS.map((s) => ({
         id: s.id, shortName: s.shortName, name: s.name,
         structureNote: s.structureNote, courseCount: s.courses.length,
@@ -18,5 +20,6 @@ export default function Page() {
         })),
       }))}
     />
+    </RequireAuth>
   );
 }

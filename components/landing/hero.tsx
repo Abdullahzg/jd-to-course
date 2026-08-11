@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TrackerDemo } from "./tracker-demo";
+import { CarpaMark } from "@/components/carpa-mark";
 
 /**
  * Statement left, product right, and nothing decorating either.
@@ -19,7 +20,8 @@ export function LandingHero() {
       <div className="relative z-10 flex min-h-[92svh] flex-col">
         <header className="border-b border-white/10">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-            <Link href="/" className="flex items-baseline gap-2">
+            <Link href="/" className="flex items-center gap-2">
+              <CarpaMark className="h-6 w-6 rounded-md ring-1 ring-white/20" />
               <span className="font-display text-base font-bold tracking-tight">Carpa</span>
               <span className="hidden text-[10px] uppercase tracking-widest text-white/35 sm:inline">plan it, track it, prove it · built for the Stellic challenge</span>
             </Link>

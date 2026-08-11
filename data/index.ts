@@ -1,8 +1,9 @@
 import type { School, Course, Program, StudentState } from "@/lib/types";
 import { COLUMBIA } from "./columbia";
-import { BMCC } from "./bmcc";
 
-export const SCHOOLS: School[] = [COLUMBIA, BMCC];
+// One school, by request: the demo is Columbia, and a second university
+// in the picker was one more decision nobody needed to make.
+export const SCHOOLS: School[] = [COLUMBIA];
 
 export function getSchool(id: string): School | undefined {
   return SCHOOLS.find((s) => s.id === id);

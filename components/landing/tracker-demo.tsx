@@ -14,49 +14,48 @@ import { useEffect, useState } from "react";
 type Row = { company: string; role: string; status: string; tone: string };
 
 const START: Row[] = [
-  { company: "Columbia University", role: "MS Computer Science", status: "applied", tone: "grey" },
-  { company: "Johns Hopkins", role: "MSE Computer Science", status: "applied", tone: "grey" },
-  { company: "Dartmouth", role: "MS Computer Science", status: "offer", tone: "green" },
-  { company: "NYU Tandon", role: "MS Computer Science", status: "offer", tone: "green" },
-  { company: "Mitacs Globalink", role: "Research Internship", status: "applied", tone: "grey" },
-  { company: "Knight-Hennessy", role: "Scholars", status: "action needed", tone: "blue" },
-  { company: "International House", role: "Gotz Mauser Fellowship", status: "accepted", tone: "green" },
-  { company: "Stanford University", role: "MS Computer Science", status: "applied", tone: "grey" },
-  { company: "Princeton University", role: "MSE Computer Science", status: "action needed", tone: "blue" },
+  { company: "Stripe", role: "SWE Intern", status: "assessment", tone: "blue" },
+  { company: "Figma", role: "Product Engineer", status: "applied", tone: "grey" },
+  { company: "Anthropic", role: "Applied AI Intern", status: "interview", tone: "blue" },
+  { company: "Palantir", role: "FDSE New Grad", status: "applied", tone: "grey" },
+  { company: "Jane Street", role: "Quant Trading Intern", status: "applied", tone: "grey" },
+  { company: "Google STEP", role: "STEP Intern", status: "action needed", tone: "blue" },
+  { company: "NSF REU", role: "ML Research", status: "applied", tone: "grey" },
+  { company: "Notion", role: "Campus Leader", status: "accepted", tone: "green" },
+  { company: "HackMIT", role: "", status: "applied", tone: "grey" },
 ];
 
-// Every line below is a real row from the owner's tracker, built from their
-// real inbox: the same acceptances, offers and rejections a judge sees after
-// one click on "use the owner's inbox". The demo stopped inventing companies
-// the day the real season became more convincing than fiction.
+// Invented companies on purpose: the landing shows the mechanism, not the
+// owner's mail. The real season, with real receipts, sits behind the
+// judges' one-click sign in where it belongs.
 const SCRIPT: { mail: string; from: string; apply: (rows: Row[]) => Row[]; quote: string }[] = [
   {
-    from: "Columbia Engineering",
-    mail: "Welcome to the MS in Computer Science",
-    quote: "We are delighted to welcome you to Columbia Engineering and the MS in Computer Science.",
-    apply: (r) => r.map((x) => (x.company.startsWith("Columbia") ? { ...x, status: "accepted", tone: "green" } : x)),
+    from: "Stripe Recruiting",
+    mail: "Interview scheduling: SWE Intern",
+    quote: "Congratulations, you passed the online assessment.",
+    apply: (r) => r.map((x) => (x.company === "Stripe" ? { ...x, status: "interview", tone: "blue" } : x)),
   },
   {
-    from: "JHU Graduate Admissions",
-    mail: "Your application decision",
-    quote: "Congratulations! It is my pleasure to inform you that you have been admitted.",
-    apply: (r) => r.map((x) => (x.company.startsWith("Johns") ? { ...x, status: "offer", tone: "green" } : x)),
+    from: "Greenhouse",
+    mail: "Figma: online assessment",
+    quote: "Please complete a take home exercise within 5 days.",
+    apply: (r) => r.map((x) => (x.company === "Figma" ? { ...x, status: "assessment", tone: "blue" } : x)),
   },
   {
-    from: "NUS Graduate Office",
-    mail: "Application outcome",
-    quote: "We regret to inform you that your application was unsuccessful.",
+    from: "Databricks",
+    mail: "Your Databricks application",
+    quote: "We will not be proceeding to the next stage at this time.",
     // The row that did not exist until its rejection arrived: the mechanism
     // on display, not just described.
-    apply: (r) => (r.some((x) => x.company.startsWith("NUS"))
+    apply: (r) => (r.some((x) => x.company === "Databricks")
       ? r
-      : [...r, { company: "NUS", role: "MComp Artificial Intelligence", status: "rejected", tone: "red" }]),
+      : [...r, { company: "Databricks", role: "SWE Intern", status: "rejected", tone: "red" }]),
   },
   {
-    from: "Mitacs",
-    mail: "Globalink Research Internship",
-    quote: "Congratulations on receiving the MITACS GRI Award!",
-    apply: (r) => r.map((x) => (x.company.startsWith("Mitacs") ? { ...x, status: "accepted", tone: "green" } : x)),
+    from: "Palantir",
+    mail: "Palantir: offer letter",
+    quote: "We are delighted to extend you an offer.",
+    apply: (r) => r.map((x) => (x.company === "Palantir" ? { ...x, status: "offer", tone: "green" } : x)),
   },
 ];
 
@@ -127,8 +126,8 @@ export function TrackerDemo() {
           {step >= 0 ? `"${SCRIPT[step].quote}"` : "every status carries the sentence that proved it"}
         </p>
         <p className="mt-2 text-[10px] text-white/30">
-          Real rows from the season of Abdullah Zubair Ghouri, who built Carpa. Judges load this
-          exact tracker in one click.
+          Invented rows, real mechanism. Judges load the owner&rsquo;s real tracker, receipts and
+          all, in one click after signing in.
         </p>
       </div>
     </div>
