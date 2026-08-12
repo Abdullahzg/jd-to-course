@@ -36,6 +36,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         })]
       : []),
+    // The demo door is DEVELOPMENT ONLY, and it is gated here, on the server,
+    // not in the page that draws it. Gating it in the UI alone was an
+    // authentication bypass: the provider stayed registered, so anyone who
+    // visited /home?demo on a deployed site could type an address from
+    // ADMIN_EMAILS and hold the admin panel, every user's trail included.
+    ...(process.env.NEXT_PUBLIC_ALLOW_DEMO === "1" ? [
     Credentials({
       id: "demo",
       name: "Demo",
@@ -47,10 +53,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(creds?.email ?? "").trim().toLowerCase();
         const name = String(creds?.name ?? "").trim();
         if (!email.includes("@") || !name) return null;
+        // Belt and braces: even with the door open, it cannot mint an admin.
+        const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+        if (admins.includes(email)) return null;
         const id = await upsertUser({ email, name });
         return { id, email, name };
       },
-    }),
+    })] : []),
   ],
   callbacks: {
     async jwt({ token, account, user }) {
