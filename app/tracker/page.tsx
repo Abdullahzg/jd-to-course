@@ -289,6 +289,13 @@ function Row({ t, open, onToggle, onPatch, onDelete }: {
               {STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </span>
+          {t.events.length > 1 && (
+            <button onClick={onToggle} data-track="tracker_history"
+                    className="mt-0.5 block pl-3.5 text-left text-[10px] text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+                    title="Every earlier status, dated, each with the sentence that set it">
+              history · {t.events.length} steps
+            </button>
+          )}
         </td>
         <td className={`${cell} tabular-nums text-muted-foreground`}>
           {t.emailDate ? new Date(t.emailDate).toLocaleDateString() : new Date(t.updatedAt).toLocaleDateString()}
