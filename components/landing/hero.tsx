@@ -64,8 +64,8 @@ export function LandingHero() {
               </a>
             </div>
             <p className="mt-8 border-t border-white/10 pt-4 text-xs leading-relaxed text-white/40">
-              32 of 32 planner checks green. Every quoted line machine checked against its source.
-              About four cents of model time for a full plan.
+              A regression suite of eleven job types, controls scoring zero. Every quoted line machine
+              checked against its source. About ten cents of model time for a full plan.
             </p>
           </div>
 

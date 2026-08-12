@@ -1,17 +1,36 @@
-# Slack — a degree planner
+# Carpa
 
-> Your degree has 40 credits of freedom in it. A constraint solver spends them on
-> the job you actually want — and shows you exactly what coursework can't give you.
+**Pick the job. We'll plan the degree — and track every application you send.**
 
-A job description, a transcript and a real university catalog go in. A provably
-optimal term-by-term plan comes out, satisfying every degree requirement, every
-prerequisite and every credit rule, while covering as much of that job as
-coursework can.
+Submission to the [Stellic Pathfinders Challenge](https://www.stellic.com/pathfinders).
+Category: **College to Career**.
 
-**The AI never picks a course.** It reads unstructured text and turns it into
-structured input. A constraint solver picks the courses. That separation is the
-entire credibility of the product, it is enforced in code, and it is stated on
-screen.
+Two things every student does by hand, in one place, with receipts:
+
+1. **Paste a job posting → get the courses that answer it, inside your real degree.**
+   Every course in the catalog is read against the whole posting. A constraint
+   solver then places the winners into semesters that satisfy every prerequisite,
+   credit cap and requirement your degree actually has. Each pick quotes the
+   catalog line that earned it.
+2. **Connect your inbox once → the application tracker maintains itself.**
+   Confirmations, assessments, interviews, offers, rejections. Each status is
+   proven by a verbatim sentence from the email that announced it, and clicking
+   any row shows that email, rendered.
+
+---
+
+## The rule that makes it trustworthy
+
+**The AI never picks a course. The AI reads; the solver decides.**
+
+The model turns unstructured text (a job posting, an email) into structured,
+*quoted* claims. A constraint solver — plain deterministic code — chooses and
+schedules courses. Nothing reaches the screen without a quote that was checked,
+by machine, against the source it claims to come from. A claim whose quote is
+not found verbatim in the text is dropped, not shown.
+
+That separation is enforced in code, and it is why a degree plan from this app
+can be handed to an advisor.
 
 ---
 
@@ -19,120 +38,97 @@ screen.
 
 ```bash
 npm install
-npm run dev            # http://localhost:3000
+cp .env.example .env.local     # fill in DATABASE_URL, AUTH_SECRET, Google keys
+npm run dev                    # http://localhost:3000
 ```
 
-Hit **Run the example** — a Columbia junior, 62 credits done, targeting ML
-engineering. Zero typing to a solved board.
+Sign in with Google, then choose a path in the setup wizard:
 
-An OpenRouter key is optional. The solver runs entirely without one; only the
-three text-reading steps need it. Add one in the bar at the top of any page, or
-set `OPENROUTER_API_KEY` (see `.env.example`).
+- **Use the owner's inbox** — the builder's own Gmail, read once, read-only,
+  through an app password he granted. Loads a real 38-application tracker in
+  about four seconds. Nothing of yours is touched. This is the fastest way to
+  see the tracker working on genuine mail.
+- **Connect your own** — Google OAuth, or a 16-character Gmail app password.
+
+An `OPENROUTER_API_KEY` powers the reading steps (Claude Haiku 4.5 only). The
+solver runs without any key at all.
 
 ```bash
-npm run verify         # provenance validator + 63 solver assertions
-npm run build          # runs verify first, then next build
+npm run verify    # citation validator: every enforced rule resolves to a source
+npm run build     # runs verify first, then next build
 ```
-
-## Deploy
-
-A single Next.js app. Push to Vercel; no second service, no Python runtime, no
-cold start. Set `OPENROUTER_API_KEY` in project settings if you want a default
-key — users can paste their own at runtime regardless.
 
 ---
 
-## The money bar
+## What is actually in here
 
-Pinned to the top of every page: what the active key has spent, what it has
-left, and what this app itself has cost this session, priced from OpenRouter's
-own per-call `cost` rather than a token estimate.
+| | |
+|---|---|
+| Catalog | Columbia CS BA: **139 courses**, each carrying its bulletin URL |
+| Degree rules | **7 requirement buckets**, each with a verbatim quote from the bulletin |
+| Model | Claude Haiku 4.5 only, via OpenRouter, provider-pinned to Anthropic |
+| Cost | **about $0.10** of model time per posting, measured from a real spend ledger |
+| Storage | Postgres (Supabase). Every table prefixed `carpa_` |
 
-The key is **replaceable at runtime**. Paste a new one and it is validated
-against OpenRouter before it is stored; usage and remaining limit are read from
-whichever key is live, so the bar recomputes on the swap and the previous key's
-tally is discarded with it. The key lives in an httpOnly cookie and is never
-sent to the client — the bar shows money, never the secret.
+### The matching pipeline
 
-Every model call in the product is **Haiku 4.5**, through one function, into one
-ledger.
+`job posting → facets` → `shortlist (2 parallel full-catalog passes, unioned)` →
+`judge (3 independent draws, per-claim majority vote)` → `quote verification against
+the catalog text` → `repair pass` → `refuter` → `deterministic sort`.
 
----
-
-## Where AI is allowed to run
-
-Three places, all live, all narrow:
-
-| # | Use | Input | Output |
-|---|---|---|---|
-| 1 | Job description → skills | the posting only | a flat list of strings |
-| 2 | Solver trace → English | the solver's own trace | 2–4 sentences |
-| 3 | Chat → constraint patch | the solved plan | a typed patch you confirm |
-
-Forbidden, and structurally prevented: choosing courses, deciding whether a
-prerequisite is met, deciding whether a requirement is satisfied, inventing a
-course or a number. The chat cannot state a plan because the schema it must
-return has no field to put one in, and every course id it emits is checked
-against the plan before it reaches the solver.
-
-## Architecture
-
-```
-/app          Next.js 16 App Router — three screens, five routes
-/lib/solver   the constraint solver. No model is imported into this directory.
-/lib/ai       the only place a model is called. Haiku, one ledger.
-/data         committed catalogs + snapshots. Nothing scrapes at request time.
-/ingest       the provenance validator. Fails the build on an uncited rule.
-/scripts      solver test harness.
-```
+A course only survives if the model can quote the catalog line that proves it,
+and that quote is then found in the catalog by string match. Controls matter:
+a ward-nurse posting scores zero courses against a CS catalog.
 
 ### The solver
 
-Branch-and-bound over the space of degree-satisfying course sets, with an
-admissible upper bound on the objective (optimistic on skills, pessimistic on
-cost) and exact symmetry reduction over interchangeable courses. It reports
-`provedOptimal` only when it exhausted the search tree — the demo scenario
-proves optimality in ~40 ms over 1,487 branches.
+`lib/solver/core.ts` — branch and bound over requirement buckets with symmetry
+breaking (courses interchangeable for a requirement collapse into one class),
+precedence-constrained bin packing for the term schedule, k-best enumeration for
+genuinely different alternative plans, reachability pruning, and an escalation
+ladder that sheds one over-constrained course rather than failing.
 
-Constraints: one term per course, term credit cap, full-time floor, prerequisite
-trees, term availability, bucket satisfaction, single-counting (with cited
-double-count exceptions), locks, exclusions. Then K-best via no-good cuts,
-counterfactuals by relaxing one constraint at a time, and — when nothing fits —
-a diagnosis that names the requirement that broke it and why.
+### The tracker pipeline
 
-**Departure from BUILD_SPEC §3.1:** the spec called for CP-SAT behind a FastAPI
-service. The deployment constraint was a single Vercel app, and the model here
-is small and highly structured, so the solver is TypeScript instead. The claim
-the spec protects — the AI never picks a course — is untouched.
+`headers (whole year) → deterministic bulk filter (free) → triage (model, headers only) →
+bodies for survivors only → extract with verbatim quote → skeptic pass → reconcile`.
 
-### Provenance
+Reading a 38,000-message mailbox costs one envelope sweep plus bodies for the few
+hundred that are actually about applications. Scans run as background jobs with
+live progress; a status only lands if its quote is found in the email.
 
-Every rule the solver enforces carries a URL, a verbatim quote, a retrieval
-date, and a committed snapshot of the page. `npm run verify` fails the build if
-any of that is missing, if a quote does not appear in its snapshot, if a skill's
-evidence is not a verbatim sentence from the course description, or if a
-prerequisite points at a course outside the catalog. `data/SOURCES.md` is
-generated from the same data the solver runs on, so it cannot drift.
+---
 
-Prerequisite parses that no human has reviewed are marked `verified: false`, and
-the board renders anything depending on one as **check with your advisor** —
-never as satisfied, never as blocked.
+## Scaling to another university
 
-## Two schools
+A new school is **data, not code**. `data/columbia.ts` is one `School` object:
+courses (code, title, credits, prerequisite tree, terms offered, bulletin URL) and
+programs (requirement buckets with their source quotes). The solver, the matcher,
+the UI and the verifier are school-agnostic: no code path branches on which
+school it is holding (school names appear in `lib/solver/*` only inside comments
+that explain where a rule came from).
+`ingest/validate.ts` refuses to build if any enforced rule lacks a resolvable
+citation, so a new catalog cannot ship uncited.
 
-Columbia CS BA (deep) and BMCC CS AS (partial, deliberately). BMCC is the
-opposite shape — a 60-credit associate degree where 30 credits are a rigid CUNY
-Pathways core with almost no choice. Adding it touched zero lines of
-Columbia-specific code, which is the point.
+---
 
-## Design
+## Tools used
 
-Built on the supplied v0 "Optimus" system — light editorial ground, 0.25rem
-radius, mono eyebrows, hairline rules. Type is **Poppins** for display,
-**Inter** for reading, **JetBrains Mono** for every course code and numeral,
-because `COMS W4995` is a serial number, not a word.
+Claude Code (Claude Fable 5) for the build; Claude Haiku 4.5 via OpenRouter for
+every in-app reading step; Next.js 16, React 19, TypeScript, Tailwind v4, Radix;
+NextAuth v5 (Google); Postgres on Supabase; ImapFlow + mailparser and the Gmail
+REST API; Playwright for end-to-end testing; lucide-react icons; Poppins, Inter
+and JetBrains Mono.
 
-Colour only ever encodes state: amber for locked and needs-checking, teal for a
-skill the job asked for, clay for something that costs you credits. The reflow
-animation when the solver re-runs is the one bold thing; it respects
-`prefers-reduced-motion` by keeping the pulse and dropping the transit.
+---
+
+## Honest limits
+
+- One catalog is modelled deeply (Columbia CS BA). The architecture is
+  school-agnostic; the *data* for a second school is a day of ingestion, not a
+  rewrite.
+- Prerequisite trees are parsed from bulletin text. Where a parse is not
+  human-reviewed, the plan says so on the course and asks for an advisor check
+  rather than pretending certainty.
+- A full posting takes two to four minutes to plan, because every course in the
+  catalog is genuinely read rather than keyword-matched.
