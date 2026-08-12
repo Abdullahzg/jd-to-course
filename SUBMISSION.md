@@ -1,8 +1,6 @@
 # Pathfinders submission package
 
-Deadline: **August 21, 2026**. Registration is a separate step and comes first
-(the form asks for a `.edu` address — use `azg2116@columbia.edu`, not the
-`@imagine.art` one).
+Deadline: **August 21, 2026**. Registration: **done**.
 
 The five required pieces are below, ready to paste.
 
@@ -14,12 +12,13 @@ The five required pieces are below, ready to paste.
 
 **Category:** **College to Career**
 
-*Why this category and not Degree Planning.* Stellic already sells audit-aware
-degree planning, what-if scenarios and degree pathways. Entering Carpa against
-the judges' own shipped product invites the comparison that kills the
-originality score. In College to Career, both halves of Carpa point the same
-way: a job posting decides the coursework, and the applications that follow
-track themselves. That is a lane Stellic's platform does not occupy.
+*Decided.* Stellic already sells audit-aware degree planning, what-if scenarios
+and degree pathways, so entering the planning category would ask the judges to
+score Carpa against their own product on originality. College to Career is the
+lane Carpa actually occupies and Stellic's platform does not: a job posting
+decides the coursework, and the applications that follow track themselves. Every
+line of the write-up and the video below leads with the career end of that arc,
+because that is what the category is scored on.
 
 ---
 
@@ -51,6 +50,12 @@ track themselves. That is a lane Stellic's platform does not occupy.
 > rejected — each status proven by a sentence copied verbatim out of the email
 > that announced it, with the original message one click away. A rejection for
 > something you never logged still gets its row.
+>
+> A judge does not have to take that on faith or connect anything. One button
+> loads my own inbox — read once, read only, with my permission — and the
+> tracker fills with 38 real applications: acceptances from Columbia and Johns
+> Hopkins, a Mitacs award, a rejection from NUS, each one carrying the sentence
+> that proved it. Not seeded data. My actual year.
 >
 > **The rule that makes it trustworthy**
 >
@@ -92,7 +97,7 @@ judge watch a spinner.
 | 0:12–0:35 | Paste a real posting, hit Build, **cut immediately** to the finished board | "Every course in the catalog is read against the whole posting." |
 | 0:35–1:00 | Hover a course: requirement label, the quoted catalog line, prerequisite arrows | "Each pick names the requirement it fills and quotes the sentence that earned it. The AI reads. A solver decides." |
 | 1:00–1:20 | Drop a course → red semester, live health panel, search showing "fills: Data structures" → click it → all clear | "Change your mind and the degree rules answer instantly, not eventually." |
-| 1:20–1:45 | Tracker: 38 real rows, open a receipt, show the verbatim quote and the real email | "This came out of a real inbox. Every status carries the sentence that proved it." |
+| 1:20–1:45 | Tracker: 38 real rows, open a receipt, show the verbatim quote and the real email | "This is not seeded data. It is my own inbox, read once with my permission, read only: 38 real applications, each status carrying the sentence from the email that proved it." |
 | 1:45–2:00 | Back to the board | "One catalog modelled deeply, about ten cents a posting, and a new school is data, not code." |
 
 ---
@@ -128,7 +133,6 @@ lucide-react; Poppins, Inter and JetBrains Mono; Vercel/Railway for hosting.
 
 ## Before you file
 
-- [ ] Register first (separate from submitting), with the `.edu` address
 - [ ] Deploy, or make the repo public, or both
 - [ ] Record the video with the plan run pre-baked
 - [ ] Read the official terms — they are only reachable after registering

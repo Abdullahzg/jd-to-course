@@ -318,9 +318,10 @@ export default function Setup() {
               <button onClick={() => setJudgePopup(false)} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              So judges can see Carpa working on real mail: this opens the tracker of
-              <strong className="text-foreground"> Abdullah Zubair Ghouri</strong>, who built it, in
-              your own view. Nothing of yours is touched or granted.
+              So judges can see Carpa working on real mail, not seeded data: this opens the tracker
+              built from the inbox of <strong className="text-foreground">Abdullah Zubair Ghouri</strong>,
+              who built Carpa and connected his own Gmail for exactly this purpose, read once and read
+              only. Nothing of yours is touched or granted.
             </p>
             <button
               onClick={() => { setJudgePopup(false); void scan("judge"); }}
