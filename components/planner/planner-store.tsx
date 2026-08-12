@@ -3,6 +3,7 @@
 import React, {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
+import { useSession } from "next-auth/react";
 import type { Course, Plan, School, SolveResponse, StudentState, Term } from "@/lib/types";
 import { prereqSatisfied } from "@/lib/solver/core";
 import { fillOpenCredits } from "@/lib/solver";
@@ -249,6 +250,10 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const resultRef = useRef<SolveResponse | null>(null);
   const stateRef = useRef<PlannerState>(INITIAL);
   const hydrated = useRef(false);
+  /** Whose work the in-browser snapshot is. A tab outlives a sign-in, and an
+   *  unstamped snapshot once followed the NEXT account in the door: their
+   *  dashboard opened owning a plan someone else built. */
+  const ownerRef = useRef<string | null>(null);
   const pulseTimer = useRef<number | null>(null);
   const saveTimer = useRef<number | null>(null);
   const historyIndexRef = useRef(-1);
@@ -280,6 +285,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       const raw = sessionStorage.getItem(STORAGE);
       if (raw) {
         const saved = JSON.parse(raw);
+        ownerRef.current = saved.owner ?? null;
         if (saved.state) {
           const restored = { ...INITIAL, ...saved.state };
           setStateRaw(restored);
@@ -324,6 +330,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.setItem(
         STORAGE,
         JSON.stringify({
+          owner: ownerRef.current,
           state,
           result: result?.ok ? result : null,
           summary: result?.ok ? summary : null,
@@ -360,6 +367,29 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       }, 1500);
     }
   }, [state, result, summary]);
+
+  const { data: authSession, status: authStatus } = useSession();
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    const email = authSession?.user?.email ?? null;
+    if (!email) return;
+    if (ownerRef.current && ownerRef.current !== email) {
+      // Someone else's snapshot: wipe it before it can save itself to this account.
+      try { sessionStorage.removeItem(STORAGE); } catch { /* fine */ }
+      const clean = { ...INITIAL };
+      stateRef.current = clean;
+      setStateRaw(clean);
+      setResult(null);
+      resultRef.current = null;
+      setSummary(null);
+      summaryFor.current = "";
+      baseline.current = null;
+      setHistory([]);
+      setHistoryIndex(-1);
+      historyIndexRef.current = -1;
+    }
+    ownerRef.current = email;
+  }, [authStatus, authSession]);
 
   useEffect(() => {
     let alive = true;
