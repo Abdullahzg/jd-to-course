@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { callerIp, guardExpensive } from "@/lib/rate";
 import { getActiveKey } from "@/lib/ai/keystore";
 import { HaikuError, haiku } from "@/lib/ai/haiku";
 
@@ -288,6 +289,10 @@ function quoteIsReal(jd: string, quote: string): boolean {
 }
 
 export async function POST(req: Request) {
+  // Open to visitors on purpose, so a judge can try it without an account.
+  // Open and expensive needs a ceiling; see lib/rate.ts.
+  const gate = await guardExpensive("skills", callerIp(req));
+  if (!gate.ok) return NextResponse.json({ ok: false, error: gate.error }, { status: 429 });
   const { key } = await getActiveKey();
   if (!key) {
     return NextResponse.json(

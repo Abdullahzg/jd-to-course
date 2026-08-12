@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { callerIp, guardExpensive } from "@/lib/rate";
 import { getActiveKey } from "@/lib/ai/keystore";
 import { HaikuError, haiku } from "@/lib/ai/haiku";
 import { getSchool } from "@/data";
@@ -699,6 +700,10 @@ export interface CourseFit {
 }
 
 export async function POST(req: Request) {
+  // Open to visitors on purpose, so a judge can try it without an account.
+  // Open and expensive needs a ceiling; see lib/rate.ts.
+  const gate = await guardExpensive("fit", callerIp(req));
+  if (!gate.ok) return NextResponse.json({ ok: false, error: gate.error }, { status: 429 });
   let jd = "";
   let schoolId = "";
   let courseIds: string[] = [];

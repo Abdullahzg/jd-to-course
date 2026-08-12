@@ -139,6 +139,12 @@ CREATE TABLE IF NOT EXISTS carpa_ai_calls (
   "createdAt" BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS carpa_ai_fp ON carpa_ai_calls(fp, "createdAt" DESC);
+CREATE TABLE IF NOT EXISTS carpa_rate (
+  id BIGSERIAL PRIMARY KEY,
+  bucket TEXT NOT NULL,
+  "createdAt" BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS carpa_rate_bucket ON carpa_rate(bucket, "createdAt" DESC);
 ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS body TEXT;
 ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS "fromAddr" TEXT;
 ALTER TABLE carpa_tracker ADD COLUMN IF NOT EXISTS origin TEXT;
@@ -455,6 +461,24 @@ export async function aiTotal(fp: string): Promise<{ usd: number; calls: number 
     `SELECT SUM("costUsd") AS usd, COUNT(*) AS calls FROM carpa_ai_calls WHERE fp = $1`, [fp]);
   return { usd: rows[0]?.usd ?? 0, calls: rows[0]?.calls ?? 0 };
 }
+/** Model dollars spent across the whole deployment since a moment. */
+export async function spendSince(sinceMs: number): Promise<number> {
+  const rows = await q<{ usd: number | null }>(
+    `SELECT SUM("costUsd") AS usd FROM carpa_ai_calls WHERE "createdAt" >= $1`, [sinceMs]);
+  return rows[0]?.usd ?? 0;
+}
+/** How many times this bucket fired since a moment. */
+export async function countRecent(bucket: string, sinceMs: number): Promise<number> {
+  const rows = await q<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM carpa_rate WHERE bucket = $1 AND "createdAt" >= $2`, [bucket, sinceMs]);
+  return Number(rows[0]?.n ?? 0);
+}
+export async function recordHit(bucket: string) {
+  await q(`INSERT INTO carpa_rate (bucket, "createdAt") VALUES ($1, $2)`, [bucket, now()]);
+  // Keep the table from growing forever; anything older than a day is spent.
+  if (Math.random() < 0.02) await q(`DELETE FROM carpa_rate WHERE "createdAt" < $1`, [now() - 86_400_000]);
+}
+
 export async function clearAiLedger(fp: string) {
   await q(`DELETE FROM carpa_ai_calls WHERE fp = $1`, [fp]);
 }
