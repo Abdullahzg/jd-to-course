@@ -14,8 +14,11 @@ Four routes need more than 60 seconds of server time:
 | `app/api/relevance` | 120s | second reading pass |
 | `app/api/solve` | 90s | solver with escalation ladder |
 
-**Vercel Hobby (free) kills any function at 60 seconds.** A judge clicking
-"Build my plan" on Hobby would watch it die every time. So either:
+**Vercel Hobby (free) kills any function at 60 seconds**, so this looked fatal.
+Measured on the live deployment it is not: a full catalog read finishes in about
+**30 seconds** there, because Vercel's network to the model provider is far
+faster than a laptop's. The headroom is real but it is not enormous, and a
+slower posting could still approach the cap. Options, in order of safety:
 
 - **Vercel Pro** ($20/month) — raises the cap to 300s, everything works, or
 - **A container host with no per-request cap** — Railway, Render, Fly.io.
@@ -79,7 +82,8 @@ minutes).
 ## What breaks first, in order
 
 1. **The OAuth redirect URI** — nothing works until it matches exactly.
-2. **A 60-second function cap** if deployed to Vercel Hobby: the planner dies
-   mid-run and the judge sees a failure, not a plan.
+2. **A slow posting near the 60-second cap** on Vercel Hobby. Typical runs
+   measure ~30s in production, so there is roughly 2x headroom; a heavier
+   posting eats into it. Vercel Pro (300s) removes the question entirely.
 3. **A missing `OPENROUTER_API_KEY`** — the solver still runs, but every
    reading step reports "no API key connected" and the demo looks empty.

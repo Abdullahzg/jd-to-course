@@ -104,19 +104,22 @@ judge watch a spinner.
 
 ## 4. The working link a judge can open
 
-**This is currently the blocking item.** `aicarpa.app` does not resolve and the
-GitHub repo is private, so a judge has nothing to click.
+**Live: https://aicarpa.vercel.app** — deployed on Vercel, serving from Mumbai,
+which happens to sit near the Seoul database.
 
-In order of preference:
+Verified in production on August 12:
 
-1. **Deploy it** (see `DEPLOY.md`). Railway or Render, because four routes need
-   more than the 60 seconds Vercel's free tier allows.
-2. **Make the repo public** as the fallback link — it is accepted ("live URL,
-   Figma, or GitHub"), and the README is written for that reader. Check first
-   that no secret is committed: `.env.local` is gitignored, and the judge inbox
-   credentials live in the database, not the repo.
+| Check | Result |
+|---|---|
+| Full catalog read (`/api/fit`, 139 courses) | **HTTP 200 in 30s**, 14 matches, $0.084 |
+| Solver (`/api/solve`) | **HTTP 200 in 1.7s**, 3 plans |
+| Private endpoints as a guest (tracker, searches, admin, inbox) | 401 / 403, all locked |
+| Demo sign-in door | closed in production; Google only |
 
-Do both. A live URL that dies during judging still leaves the repo standing.
+Worth doing anyway: **make the GitHub repo public** as a second link. It is an
+accepted link type, the README is written for that reader, and a live URL that
+stumbles during judging still leaves the repo standing. Check `.env.local` is
+gitignored (it is) and that the inbox credentials live in the database (they do).
 
 ---
 
