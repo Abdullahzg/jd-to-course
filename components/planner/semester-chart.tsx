@@ -62,6 +62,11 @@ export function SemesterChart({
     plan.slotChoices.map((sc) => [sc.chosen, sc.alternatives.length]),
   );
 
+  // Which requirement each course answers, right on the board. A timetable
+  // that will not say WHY a course is there makes the student cross
+  // reference two panels for every cell.
+  const bucketLabel = new Map(plan.buckets.map((b) => [b.bucketId, b.label]));
+
   // ── prerequisite arrows ───────────────────────────────────────────────────
   // Off by default. The board is a timetable first, and the reason a course
   // sits where it sits is a second question, asked only when you want it.
@@ -384,6 +389,10 @@ export function SemesterChart({
                           className={`min-w-0 flex-1 py-1 pl-1.5 text-left ${hit ? "font-medium" : ""}`}
                         >
                           {c.title}
+                          <span className="block truncate text-[9px] font-normal text-muted-foreground"
+                                title={bucketLabel.get(p.bucketId) ?? "Free elective credit"}>
+                            {bucketLabel.get(p.bucketId) ?? "free elective"}
+                          </span>
                         </button>
                         <span className="flex shrink-0 items-center gap-1 self-center">
                           <WhatIsIt course={c} align="right" reason={p.covers.map((x) => x.skill)} />
@@ -416,9 +425,10 @@ export function SemesterChart({
                         className="min-w-0 flex-1 py-1 pl-1.5 text-left"
                       >
                         {e.title}
-                        {!e.teaches.length && (
-                          <span className="ml-1 text-[9px] opacity-60">fills credits</span>
-                        )}
+                        <span className="block truncate text-[9px] font-normal opacity-60"
+                              title="Free elective and core curriculum credit">
+                          free elective
+                        </span>
                       </button>
                       <WhatIsIt course={courses.get(e.courseId)} align="right" reason={e.teaches} />
                     </li>
