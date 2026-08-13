@@ -17,6 +17,9 @@ export default function Page() {
           id: p.id, name: p.name, totalCredits: p.totalCredits, majorCredits: p.majorCredits,
           maxCreditsPerTerm: p.maxCreditsPerTerm, minCreditsPerTerm: p.minCreditsPerTerm,
           bucketCount: p.buckets.length,
+          // Which courses this degree is actually built from, so the course
+          // picker can lead with them instead of the alphabet.
+          coreIds: [...new Set(p.buckets.flatMap((b) => b.eligible))],
         })),
       }))}
     />

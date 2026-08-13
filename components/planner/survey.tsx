@@ -10,7 +10,7 @@ import { useBudget } from "@/components/budget/budget-provider";
 
 type SchoolLite = {
   id: string; shortName: string; name: string; structureNote: string; courseCount: number;
-  programs: { id: string; name: string; totalCredits: number; majorCredits: number; maxCreditsPerTerm: number; minCreditsPerTerm: number; bucketCount: number }[];
+  programs: { id: string; name: string; totalCredits: number; majorCredits: number; maxCreditsPerTerm: number; minCreditsPerTerm: number; bucketCount: number; coreIds?: string[] }[];
 };
 
 /**
@@ -31,6 +31,10 @@ export function Survey({
   const { refresh, noteSpend } = useBudget();
 
   const [step, setStep] = useState(0);
+  // A clock, so the wait always has something honest that moves. The first
+  // fifteen seconds of a run produce no events at all, and a frozen screen is
+  // where people decide a thing is broken.
+  const [elapsed, setElapsed] = useState(0);
   const [busy, setBusy] = useState<null | "skills" | "matching" | "reading" | "solve">(null);
   /**
    * What the run has done so far, in its own words.
@@ -75,10 +79,28 @@ export function Survey({
     [courses, state.schoolId],
   );
 
+  const runStarted = useRef<number | null>(null);
+  useEffect(() => {
+    if (!busy) { runStarted.current = null; setElapsed(0); return; }
+    // The run changes phase three times; the clock measures the WAIT, so it
+    // starts once and keeps going until the whole thing is done.
+    runStarted.current ??= Date.now();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - (runStarted.current ?? Date.now())) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/\s+/g, "");
     const pool = schoolCourses.filter((c) => !state.student.completed.includes(c.id));
-    if (!q) return pool.slice().sort((a, b) => a.code.localeCompare(b.code));
+    if (!q) {
+      // An empty box used to answer with all 139 courses in code order, so a
+      // computer science student's first sight of the catalog was APMA, BIOL,
+      // BMEN. Lead with the courses this degree is actually built from.
+      const mine = new Set(program?.coreIds ?? []);
+      const rank = (c: { id: string; code: string }): number =>
+        (mine.has(c.id) ? 0 : 1) * 1e6 + (parseInt(c.code.replace(/[^0-9]/g, ""), 10) || 9999);
+      return pool.slice().sort((a, b) => rank(a) - rank(b) || a.code.localeCompare(b.code));
+    }
     return pool.filter(
       (c) => c.code.toLowerCase().replace(/\s+/g, "").includes(q) ||
              c.title.toLowerCase().includes(query.trim().toLowerCase()),
@@ -298,58 +320,66 @@ export function Survey({
 
   const steps = [
     {
-      short: "School",
-      title: "Where do you study?",
-      sub: "Both catalogs are real. Every rule comes from the university's own pages.",
-      body: (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {schools.map((s) => {
-            const on = s.id === state.schoolId;
-            return (
-              <button
-                key={s.id}
-                onClick={() => {
-                  const p = s.programs[0];
-                  setState({
-                    schoolId: s.id, programId: p.id,
-                    student: { ...state.student, program: p.id, completed: [], locked: [], excluded: [], completedCredits: 0 },
-                  });
-                }}
-                data-on={on}
-                className="card-field p-5 text-left transition-all"
-              >
-                <span className="flex items-baseline justify-between gap-3">
-                  <span className="font-display text-2xl font-semibold">{s.shortName}</span>
-                  <span className="ml-auto flex shrink-0 items-center gap-3">
-                    <span className="text-sm text-white/70">{s.courseCount} courses</span>
-                    {on && <Check className="h-5 w-5" />}
-                  </span>
-                </span>
-                <span className="mt-2 block text-sm leading-relaxed text-white/65">{s.structureNote}</span>
-              </button>
-            );
-          })}
-        </div>
-      ),
-    },
-    {
       short: "Degree",
-      title: "Which degree are you doing?",
+      title: "Where do you study, and what for?",
       sub: program
         ? `${program.totalCredits} credits in total, of which ${program.majorCredits} belong to the major. ${program.bucketCount} rules, all quoted from the bulletin.`
-        : "",
+        : "Every rule comes from the university's own pages.",
+      // School and degree used to be two screens, each asking a question with
+      // one answer and leaving four fifths of the viewport empty. They are one
+      // question: which catalog are we planning against.
       body: (
-        <div className="flex flex-wrap gap-3">
-          {school?.programs.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setState({ programId: p.id, student: { ...state.student, program: p.id } })}
-              data-on={p.id === state.programId}
-              className="card-field px-6 py-4 text-left text-lg transition-all"
-            >
-              {p.name}
-            </button>
-          ))}
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {schools.map((sc) => {
+              const on = sc.id === state.schoolId;
+              return (
+                <button
+                  key={sc.id}
+                  onClick={() => {
+                    const p = sc.programs[0];
+                    setState({
+                      schoolId: sc.id, programId: p.id,
+                      student: { ...state.student, program: p.id, completed: [], locked: [], excluded: [], completedCredits: 0 },
+                    });
+                  }}
+                  data-on={on}
+                  className="card-field p-5 text-left transition-all"
+                >
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="font-display text-2xl font-semibold">{sc.shortName}</span>
+                    <span className="ml-auto flex shrink-0 items-center gap-3">
+                      <span className="text-sm text-white/70">{sc.courseCount} courses</span>
+                      {on && <Check className="h-5 w-5" />}
+                    </span>
+                  </span>
+                  <span className="mt-2 block text-sm leading-relaxed text-white/65">{sc.structureNote}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {!!school?.programs.length && (
+            <div>
+              <p className="mb-2.5 text-sm text-white/70">Which degree?</p>
+              <div className="flex flex-wrap gap-3">
+                {school.programs.map((p) => {
+                  const on = p.id === state.programId;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setState({ programId: p.id, student: { ...state.student, program: p.id } })}
+                      data-on={on}
+                      className="card-field flex items-center gap-2.5 px-6 py-4 text-left text-lg transition-all"
+                    >
+                      {p.name}
+                      {on && <Check className="h-5 w-5 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ),
     },
@@ -533,7 +563,7 @@ export function Survey({
   return (
     <div className="survey-ground timetable-grid relative flex h-full flex-col overflow-hidden">
       {busy && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--blue-deep)]/92 px-6 backdrop-blur-sm">
+        <div className="absolute inset-0 z-40 flex items-start justify-center overflow-y-auto bg-[var(--blue-deep)]/92 px-6 py-16 backdrop-blur-sm">
           <div className="w-full max-w-[640px]">
             <p className="label text-white/50">Working</p>
             <h2 className="mt-1.5 font-display text-[clamp(1.5rem,3vw,2.2rem)] font-semibold leading-tight text-white">
@@ -557,6 +587,10 @@ export function Survey({
             <p className="mt-1.5 text-white/55">
               This takes two to four minutes. Every claim it ends up making has to be quoted from a real
               page, so it reads every course rather than guessing from titles.
+            </p>
+            <p className="tabular mt-2 text-sm text-white/60">
+              {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} elapsed
+              {elapsed < 15 ? " · opening the catalog" : ""}
             </p>
 
             <ol className="mt-6 space-y-2.5">
@@ -634,6 +668,12 @@ export function Survey({
       {/* header: wordmark + step rail */}
       <header className="flex shrink-0 items-center gap-6 px-6 py-5 lg:px-12">
         <Link href="/" className="font-display text-lg font-semibold tracking-tight">Carpa</Link>
+        <div className="ml-auto flex items-center gap-1.5 md:hidden" aria-hidden>
+          {steps.map((s, i) => (
+            <span key={s.short}
+                  className={`h-1.5 rounded-full transition-all ${i === step ? "w-6 bg-white" : i < step ? "w-3 bg-white/70" : "w-3 bg-white/25"}`} />
+          ))}
+        </div>
         <ol className="ml-auto hidden items-center gap-1.5 md:flex">
           {steps.map((s, i) => (
             <li key={s.short}>
