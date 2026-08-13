@@ -172,9 +172,19 @@ html {
   }
 }
 
+/* The global focus ring is near-black, which on the survey's deep blue ground
+   measures 1.35:1 and effectively disappears for keyboard users. */
+.survey-ground :focus-visible {
+  outline-color: var(--blue-light, #9bcbeb);
+}
+
 @layer utilities {
   .font-display {
-    font-family: var(--font-display);
+    /* Straight to the Next font variable. Routed through --font-display it
+       resolved to nothing: Tailwind v4 does not emit @theme inline values as
+       real custom properties, so every heading in the app has been quietly
+       falling back to Inter since the day Poppins was added. */
+    font-family: var(--font-poppins), 'Poppins', system-ui, sans-serif;
   }
   
   

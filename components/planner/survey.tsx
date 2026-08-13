@@ -204,8 +204,9 @@ export function Survey({
           } else if (ev.type === "done") rl = ev as typeof rl;
         }
       }
-    } catch {
+    } catch (e) {
       rl = { ok: false };
+      setError(e instanceof Error ? e.message : "The catalog read did not finish, so no plan could be built. Nothing was lost; try again.");
     }
     noteSpend(rl.costUsd);
     void refresh();
@@ -284,6 +285,12 @@ export function Survey({
       }
     }
     setState(next);
+    if (!rl.ok) {
+      // Reading the catalog is what a plan is made of. Walking someone onto
+      // /plan without it hands them a blank page and calls it a result.
+      setBusy(null);
+      return;
+    }
     await solveWith(next);
     setBusy(null);
     router.push("/plan");
@@ -314,7 +321,7 @@ export function Survey({
                 <span className="flex items-baseline justify-between gap-3">
                   <span className="font-display text-2xl font-semibold">{s.shortName}</span>
                   <span className="ml-auto flex shrink-0 items-center gap-3">
-                    <span className="text-sm text-white/45">{s.courseCount} courses</span>
+                    <span className="text-sm text-white/70">{s.courseCount} courses</span>
                     {on && <Check className="h-5 w-5" />}
                   </span>
                 </span>
@@ -379,12 +386,19 @@ export function Survey({
             })}
           </div>
 
-          <p className="mt-6 border-t border-white/15 pt-5 text-white/60">
-            That works out to {Math.max(0, (program?.totalCredits ?? 0) - state.student.completedCredits)} credits
-            left across {state.student.horizonTerms} semester{state.student.horizonTerms === 1 ? "" : "s"},
-            starting this {state.student.startTerm === "FA" ? "fall" : "spring"}. You can change any of
-            it later on the plan.
-          </p>
+          {stages.some((s) => s.credits === state.student.completedCredits && s.terms === state.student.horizonTerms) ? (
+            <p className="mt-6 border-t border-white/15 pt-5 text-white/60">
+              That works out to {Math.max(0, (program?.totalCredits ?? 0) - state.student.completedCredits)} credits
+              left across {state.student.horizonTerms} semester{state.student.horizonTerms === 1 ? "" : "s"},
+              starting this {state.student.startTerm === "FA" ? "fall" : "spring"}. You can change any of
+              it later on the plan.
+            </p>
+          ) : (
+            <p className="mt-6 border-t border-white/15 pt-5 text-white/60">
+              Pick whichever is closest. It sets how many semesters the plan has to work with, and you
+              can change it later on the plan.
+            </p>
+          )}
         </div>
       ),
     },
@@ -393,9 +407,9 @@ export function Survey({
       title: "Which classes have you passed?",
       sub: "Search the real catalog. Skip this if you have not started.",
       body: (
-        <div className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className="relative shrink-0">
-            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/45" />
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/70" />
             <input
               value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="A code like COMS W3134, or a title like Data Structures"
@@ -409,7 +423,7 @@ export function Survey({
             </p>
           )}
           {!!state.student.completed.length && (
-            <ul className="mt-2 max-h-28 shrink-0 overflow-y-auto rounded-2xl flex flex-wrap gap-2 pr-1">
+            <ul className="mt-2 max-h-40 shrink-0 overflow-y-auto rounded-2xl flex flex-wrap gap-2 pr-1">
               {state.student.completed.map((id) => {
                 const c = courses.get(id);
                 return c ? (
@@ -440,8 +454,8 @@ export function Survey({
                   className="flex w-full items-baseline gap-4 rounded-2xl px-4 py-2.5 text-left transition-colors hover:bg-white/15"
                 >
                   <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                  <span className="code shrink-0 text-xs text-white/45">{c.code}</span>
-                  <span className="tabular shrink-0 text-sm text-white/45">{c.credits} cr</span>
+                  <span className="code shrink-0 text-xs text-white/70">{c.code}</span>
+                  <span className="tabular shrink-0 text-sm text-white/70">{c.credits} cr</span>
                 </button>
               </li>
             ))}
@@ -455,7 +469,7 @@ export function Survey({
       title: "What job do you want?",
       sub: "Paste the posting, or pick one. This is the only place a model reads free text.",
       body: (
-        <div className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className="mb-3 flex shrink-0 flex-wrap gap-2.5">
             {jds.map((j) => (
               <button
@@ -475,7 +489,13 @@ export function Survey({
             <textarea
               ref={jdRef}
               value={state.jd}
-              onChange={(e) => setState({ jd: e.target.value, targetSkills: [], skillMatches: {}, relevance: {}, skillEvidence: {}, roleSummary: "", customSkills: [] })}
+              onChange={(e) => {
+                setState({ jd: e.target.value, targetSkills: [], skillMatches: {}, relevance: {}, skillEvidence: {}, roleSummary: "", customSkills: [] });
+                // Show the top of what landed. Pasting scrolled the box to the
+                // end, so the first thing anyone saw after pasting a posting
+                // was its equal-opportunity footer, not its job title.
+                requestAnimationFrame(() => { if (jdRef.current) jdRef.current.scrollTop = 0; });
+              }}
               placeholder="Paste the whole posting. Responsibilities and qualifications both, not just the bullet list."
               spellCheck={false}
               className="on-blue-field jd-box h-full min-h-[14rem] w-full resize-none overflow-y-auto p-5 text-lg leading-relaxed"
@@ -489,7 +509,13 @@ export function Survey({
                     ? "bg-white/15 text-white/60"
                     : "bg-white/90 font-medium text-[var(--blue-deep)]"
                 }`}>
-                  {state.jd.trim().split(/\s+/).length} words
+                  {(() => {
+                    // Name the role back to them: the cheapest possible proof
+                    // that the box holds the posting they meant to paste.
+                    const first = state.jd.trim().split("\n").map((l) => l.trim()).find((l) => l.length > 3 && l.length < 90);
+                    const words = state.jd.trim().split(/\s+/).length;
+                    return first && state.jd.trim().length >= 200 ? `${first} · ${words} words` : `${words} words`;
+                  })()}
                   {state.jd.trim().length < 200 && ", paste more of it"}
                 </span>
               )}
@@ -522,14 +548,14 @@ export function Survey({
                           <span className="tabular" style={{ color: "var(--blue-light)" }}>
                             {readCount}
                           </span>
-                          <span className="text-white/45">/{shortlisted || poolSize}</span>{" "}
+                          <span className="text-white/70">/{shortlisted || poolSize}</span>{" "}
                           in full
                         </>
                   )
                 : "Working out the timetable"}
             </h2>
             <p className="mt-1.5 text-white/55">
-              This takes about a minute. Every claim it ends up making has to be quoted from a real
+              This takes two to four minutes. Every claim it ends up making has to be quoted from a real
               page, so it reads every course rather than guessing from titles.
             </p>
 
@@ -579,13 +605,13 @@ export function Survey({
                         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "var(--blue-light)" }} />
                         <span className="min-w-0 flex-1 truncate text-white/85">
                           <span className="font-medium">{f.text}</span>
-                          <span className="text-white/45"> answers {f.skill}</span>
+                          <span className="text-white/70"> answers {f.skill}</span>
                         </span>
                       </>
                     ) : (
                       <>
-                        <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/35" />
-                        <span className="min-w-0 flex-1 truncate text-white/40">
+                        <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/55" />
+                        <span className="min-w-0 flex-1 truncate text-white/60">
                           threw out {f.text} for {f.skill}
                         </span>
                       </>
@@ -595,7 +621,7 @@ export function Survey({
               </ul>
             )}
             {busy === "reading" && (
-              <p className="mt-3 text-sm text-white/45">
+              <p className="mt-3 text-sm text-white/70">
                 {readCount === 0
                   ? `${triage.read || 0} of ${triage.total || poolSize} skimmed, finding the ones worth reading properly`
                   : `${Math.max(0, (shortlisted || poolSize) - readCount)} to go, out of ${shortlisted || poolSize} the first pass kept from ${poolSize}`}
@@ -607,7 +633,7 @@ export function Survey({
 
       {/* header: wordmark + step rail */}
       <header className="flex shrink-0 items-center gap-6 px-6 py-5 lg:px-12">
-        <Link href="/" className="font-display text-lg font-semibold tracking-tight">Course Path</Link>
+        <Link href="/" className="font-display text-lg font-semibold tracking-tight">Carpa</Link>
         <ol className="ml-auto hidden items-center gap-1.5 md:flex">
           {steps.map((s, i) => (
             <li key={s.short}>
@@ -616,7 +642,7 @@ export function Survey({
                 disabled={i > step}
                 className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${
                   i === step ? "bg-white font-semibold text-[var(--blue-deep)]"
-                  : i < step ? "text-white/70 hover:bg-white/10" : "text-white/35"
+                  : i < step ? "text-white/70 hover:bg-white/10" : "text-white/55"
                 }`}
               >
                 {s.short}
@@ -629,8 +655,8 @@ export function Survey({
       {/* the question, sized to the viewport */}
       <div className="flex min-h-0 flex-1 flex-col px-6 lg:px-12">
         <div key={step} className="step-in mx-auto flex min-h-0 w-full max-w-[1000px] flex-1 flex-col justify-center py-4">
-          <p className="stepno shrink-0 text-sm text-white/40">
-            {String(step + 1).padStart(2, "0")}<span className="text-white/25">/{String(steps.length).padStart(2, "0")}</span>
+          <p className="stepno shrink-0 text-sm text-white/60">
+            {String(step + 1).padStart(2, "0")}<span className="text-white/45">/{String(steps.length).padStart(2, "0")}</span>
           </p>
           <h1 className="mt-2 shrink-0 font-display text-[clamp(1.7rem,3.6vw,2.8rem)] font-semibold leading-[1.03] tracking-[-0.02em]">
             {current.title}
