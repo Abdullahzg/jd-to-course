@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ChevronDown, Download, ExternalLink, Loader2, Search, Trash2 } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Loader2, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { InboxActions } from "@/components/inbox-actions";
 
 /**
@@ -20,7 +20,7 @@ type Item = {
   id: string; company: string; role: string | null; kind: string; status: string;
   quote: string | null; subject: string | null; emailDate: number | null;
   actionLink: string | null; deadline: string | null; notes: string | null;
-  updatedAt: number; events: Ev[];
+  updatedAt: number; origin?: string | null; events: Ev[];
 };
 
 const KINDS = ["internship", "job", "research", "grad school", "scholarship", "hackathon", "program", "other"];
@@ -45,6 +45,58 @@ export default function TrackerPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncNote, setSyncNote] = useState("");
+
+  const reload = async () => {
+    const j = await fetch("/api/tracker").then((r) => r.json()).catch(() => null);
+    if (j?.ok) setItems(j.items);
+  };
+
+  /**
+   * Sync means "go and look now". It reads whatever source this account is
+   * already connected to, incrementally, then refreshes the table underneath
+   * you. Nothing to configure: an account with no inbox connected is told so
+   * rather than being sent to a settings page it did not ask for.
+   */
+  const sync = async () => {
+    setSyncing(true); setSyncNote("Looking for anything new");
+    const st = await fetch("/api/inbox/status").then((r) => r.json()).catch(() => null);
+    const mode = st?.savedImap ? "imap" : st?.gmailConnected ? "gmail" : st?.lastMode === "judge" ? "judge" : null;
+    if (!mode) {
+      setSyncing(false);
+      setSyncNote("No inbox is connected to this account yet. Connect one below and sync will keep it current.");
+      return;
+    }
+    const r = await fetch("/api/inbox/scan", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }),
+    }).then((x) => x.json()).catch(() => ({ ok: false, error: "The sync could not start." }));
+    if (!r.ok) { setSyncing(false); setSyncNote(r.error ?? "The sync failed."); return; }
+    if (r.done) { await reload(); setSyncing(false); setSyncNote(`Up to date: ${r.total} applications.`); return; }
+    window.dispatchEvent(new Event("carpa-scan-started"));
+    const tick = async () => {
+      const j = (await fetch(`/api/inbox/scan?job=${r.jobId}`).then((x) => x.json()).catch(() => null))?.job;
+      if (!j) { setTimeout(() => void tick(), 3000); return; }
+      if (j.status === "running") {
+        const n = (x: number) => Number(x).toLocaleString();
+        setSyncNote(j.phase === "triage" ? `Sorting ${n(j.total)} emails: ${n(j.done)} done`
+          : j.phase === "reading" ? `Reading the ${n(j.total)} that matter`
+          : j.phase === "extracting" ? `Extracting statuses: ${n(j.done)} of ${n(j.total)}`
+          : "Connecting to the mailbox");
+        setTimeout(() => void tick(), 3000);
+        return;
+      }
+      await reload();
+      setSyncing(false);
+      setSyncNote(j.status === "done"
+        ? (j.created || j.updated
+            ? `${j.created} new, ${j.updated} updated.`
+            : "Nothing new since the last sync.")
+        : j.error ?? "The sync failed.");
+    };
+    void tick();
+  };
   const [statusFilter, setStatusFilter] = useState("all");
   const [actionsOnly, setActionsOnly] = useState(false);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "updated", dir: -1 });
@@ -132,13 +184,29 @@ export default function TrackerPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => void sync()} disabled={syncing} data-track="tracker_sync"
+                  title="Read anything that arrived since the last scan, then refresh this table"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Syncing" : "Sync"}
+          </button>
+          <button onClick={() => setAdding(true)} data-track="tracker_add_open"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background">
+            <Plus className="h-3.5 w-3.5" /> Add an application
+          </button>
           <button onClick={exportCsv} disabled={!items?.length} data-track="tracker_export"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background disabled:opacity-40">
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-40">
             <Download className="h-3.5 w-3.5" /> Export for Excel (CSV)
           </button>
           <Link href="/home" className="text-xs text-muted-foreground underline underline-offset-2">home</Link>
         </div>
       </div>
+
+      {adding && (
+        <AddApplication
+          onClose={() => setAdding(false)}
+          onSaved={() => { setAdding(false); void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); }); }}
+        />
+      )}
 
       <div className="mt-3">
         <InboxActions onDone={() => { void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); }); }} />
@@ -186,7 +254,7 @@ export default function TrackerPage() {
         )}
         <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{visible.length} shown</span>
         <span className="w-full text-[10px] text-muted-foreground sm:w-auto">
-          Click a column name to sort. Drag the line at a column&rsquo;s edge to resize.
+          {syncNote || "Click a column name to sort. Drag the line at a column\u2019s edge to resize."}
         </span>
       </div>
 
@@ -326,7 +394,11 @@ function Row({ t, open, onToggle, onPatch, onDelete }: {
       {open && (
         <tr className="border-t border-border bg-foreground/[0.02]">
           <td colSpan={8} className="px-4 py-2.5">
-            <p className="text-[11px] font-medium text-muted-foreground">The journey, each step in the email&rsquo;s own words</p>
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {t.origin === "manual"
+                ? "You added this one by hand. Later emails about it still land here."
+                : "The journey, each step in the email\u2019s own words"}
+            </p>
             <ol className="mt-1 space-y-1">
               {t.events.map((e) => <EventRow key={e.id} e={e} />)}
             </ol>
@@ -379,6 +451,112 @@ function EventRow({ e }: { e: Ev }) {
         </div>
       )}
     </li>
+  );
+}
+
+/**
+ * The row the inbox could not know about.
+ *
+ * Applications arrive through portals that never email, through a friend's
+ * link, over the phone. A tracker that only fills itself is one a student
+ * abandons the first time it misses one, so this takes everything a row can
+ * hold and marks the result as entered by a person: the receipts panel will
+ * say so rather than implying an email proved it.
+ */
+function AddApplication({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [f, setF] = useState({
+    company: "", role: "", kind: "internship", status: "applied",
+    date: new Date().toISOString().slice(0, 10), deadline: "", actionLink: "", notes: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setF((x) => ({ ...x, [k]: e.target.value }));
+
+  const save = async () => {
+    if (!f.company.trim()) { setErr("A company or organisation, at least."); return; }
+    setBusy(true); setErr("");
+    const r = await fetch("/api/tracker", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...f, emailDate: f.date ? new Date(f.date).getTime() : Date.now() }),
+    }).then((x) => x.json()).catch(() => ({ ok: false, error: "That did not save. Try again." }));
+    setBusy(false);
+    if (r.ok) onSaved(); else setErr(r.error ?? "That did not save.");
+  };
+
+  const field = "w-full rounded-lg border border-border px-2.5 py-1.5 text-sm focus:border-[var(--blue)] focus:outline-none";
+  const label = "text-[11px] font-medium text-muted-foreground";
+  return (
+    <div className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-black/40 p-4"
+         role="dialog" aria-modal onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <div className="my-8 w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-semibold">Add an application</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              For anything your inbox never announced. It joins the table as a normal row you can edit,
+              filter and export, marked as entered by you rather than proved by an email.
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="sm:col-span-2">
+            <span className={label}>Company or organisation</span>
+            <input autoFocus value={f.company} onChange={set("company")} placeholder="Stripe, Columbia, Mitacs"
+                   className={field} />
+          </label>
+          <label className="sm:col-span-2">
+            <span className={label}>Role or programme</span>
+            <input value={f.role} onChange={set("role")} placeholder="Software Engineering Intern" className={field} />
+          </label>
+          <label>
+            <span className={label}>Kind</span>
+            <select value={f.kind} onChange={set("kind")} className={field}>
+              {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </label>
+          <label>
+            <span className={label}>Where it stands</span>
+            <select value={f.status} onChange={set("status")} className={field}>
+              {STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </label>
+          <label>
+            <span className={label}>Date of this status</span>
+            <input type="date" value={f.date} onChange={set("date")} className={field} />
+          </label>
+          <label>
+            <span className={label}>Deadline, if any</span>
+            <input value={f.deadline} onChange={set("deadline")} placeholder="within 5 days, or 12 Jan" className={field} />
+          </label>
+          <label className="sm:col-span-2">
+            <span className={label}>Link</span>
+            <input value={f.actionLink} onChange={set("actionLink")} placeholder="https://..." className={field} inputMode="url" />
+          </label>
+          <label className="sm:col-span-2">
+            <span className={label}>Notes</span>
+            <textarea value={f.notes} onChange={set("notes")} rows={2}
+                      placeholder="Referred by Sara. Recruiter said decisions go out in March."
+                      className={`${field} resize-y`} />
+          </label>
+        </div>
+
+        {err && <p className="mt-2 text-xs" style={{ color: "#b91c1c" }}>{err}</p>}
+
+        <div className="mt-4 flex items-center gap-2">
+          <button onClick={() => void save()} disabled={busy} data-track="tracker_add_save"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background disabled:opacity-50">
+            {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {busy ? "Saving" : "Add it to the tracker"}
+          </button>
+          <button onClick={onClose} className="rounded-full border border-border px-5 py-2 text-sm">Cancel</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

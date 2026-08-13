@@ -236,11 +236,11 @@ export async function trackerEventBody(userId: string, eventId: string) {
      WHERE e.id = $1 AND t."userId" = $2`, [eventId, userId]);
   return rows[0]?.body ?? null;
 }
-export async function insertTrackerItem(t: Omit<TrackerItem, "id" | "createdAt" | "updatedAt" | "notes"> & { notes?: string | null; eventBody?: string | null; eventFrom?: string | null }): Promise<string> {
+export async function insertTrackerItem(t: Omit<TrackerItem, "id" | "createdAt" | "updatedAt" | "notes"> & { notes?: string | null; eventBody?: string | null; eventFrom?: string | null; origin?: string | null }): Promise<string> {
   const id = uid();
-  await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, "createdAt", "updatedAt")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-    [id, t.userId, t.company, t.role, t.kind, t.status, t.quote, t.subject, t.emailDate, t.actionLink, t.deadline, t.notes ?? null, now(), now()]);
+  await q(`INSERT INTO carpa_tracker (id, "userId", company, role, kind, status, quote, subject, "emailDate", "actionLink", deadline, notes, origin, "createdAt", "updatedAt")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+    [id, t.userId, t.company, t.role, t.kind, t.status, t.quote, t.subject, t.emailDate, t.actionLink, t.deadline, t.notes ?? null, t.origin ?? null, now(), now()]);
   await addTrackerEvent(id, { status: t.status, quote: t.quote, subject: t.subject, emailDate: t.emailDate, body: t.eventBody ?? null, fromAddr: t.eventFrom ?? null });
   return id;
 }
@@ -407,8 +407,13 @@ export async function cloneJudgeRows(toUserId: string): Promise<{ created: numbe
   // seasons in one table answered nobody's question. The person's own scan
   // state is cleared too, so scanning their own inbox later rebuilds their
   // full tracker from scratch instead of "nothing new since last time".
-  await q(`DELETE FROM carpa_tracker_events WHERE "itemId" IN (SELECT id FROM carpa_tracker WHERE "userId" = $1)`, [toUserId]);
-  await q(`DELETE FROM carpa_tracker WHERE "userId" = $1`, [toUserId]);
+  //
+  // Rows entered BY HAND survive. Everything else here can be rebuilt by
+  // scanning again; a row someone typed cannot be, and a demo that quietly
+  // eats a student's own notes has done something unforgivable for a
+  // convenience it did not need.
+  await q(`DELETE FROM carpa_tracker_events WHERE "itemId" IN (SELECT id FROM carpa_tracker WHERE "userId" = $1 AND (origin IS NULL OR origin <> 'manual'))`, [toUserId]);
+  await q(`DELETE FROM carpa_tracker WHERE "userId" = $1 AND (origin IS NULL OR origin <> 'manual')`, [toUserId]);
   await q(`DELETE FROM carpa_seen_emails WHERE "userId" = $1 AND source IN ('imap','gmail')`, [toUserId]);
   await q(`DELETE FROM carpa_mail_state WHERE "userId" = $1 AND source IN ('imap','gmail')`, [toUserId]);
   const fresh = src;
