@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ChevronDown, Download, ExternalLink, Loader2, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Loader2, Plus, RefreshCw, Search, Trash2, Wand2, X } from "lucide-react";
 import { InboxActions } from "@/components/inbox-actions";
 
 /**
@@ -46,6 +46,7 @@ export default function TrackerPage() {
   const [tab, setTab] = useState<string>("all");
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [prompting, setPrompting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState("");
 
@@ -184,6 +185,11 @@ export default function TrackerPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setPrompting(true)} data-track="tracker_prompt_open"
+                  title="Describe several fixes in a sentence and see exactly what would change"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium">
+            <Wand2 className="h-3.5 w-3.5" /> Fix with a prompt
+          </button>
           <button onClick={() => void sync()} disabled={syncing} data-track="tracker_sync"
                   title="Read anything that arrived since the last scan, then refresh this table"
                   className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-50">
@@ -200,6 +206,13 @@ export default function TrackerPage() {
           <Link href="/home" className="text-xs text-muted-foreground underline underline-offset-2">home</Link>
         </div>
       </div>
+
+      {prompting && (
+        <FixWithPrompt
+          onClose={() => setPrompting(false)}
+          onApplied={() => { setPrompting(false); void reload(); }}
+        />
+      )}
 
       {adding && (
         <AddApplication
@@ -307,7 +320,11 @@ export default function TrackerPage() {
             </thead>
             <tbody>
               {visible.map((t) => (
-                <Row key={t.id} t={t} open={open === t.id}
+                // Keyed by its last-updated stamp as well as its id: the cells
+                // are uncontrolled inputs, so a row changed underneath us (by a
+                // sync, or by a prompt) has to remount to show its new values.
+                // Local edits do not touch updatedAt, so typing never remounts.
+                <Row key={`${t.id}-${t.updatedAt}`} t={t} open={open === t.id}
                      onToggle={() => setOpen(open === t.id ? null : t.id)}
                      onPatch={(f) => patch(t.id, f)}
                      onDelete={async () => {
@@ -463,6 +480,155 @@ function EventRow({ e }: { e: Ev }) {
  * hold and marks the result as entered by a person: the receipts panel will
  * say so rather than implying an email proved it.
  */
+type PlannedOp = {
+  action: "edit" | "add" | "delete";
+  n?: number; company?: string; role?: string; kind?: string; status?: string;
+  deadline?: string; notes?: string; reason: string;
+  current?: { company: string; role: string | null; kind: string; status: string } | null;
+};
+
+/**
+ * Say what is wrong, in a sentence, and see exactly what would change.
+ *
+ * Nothing is applied by the model's own authority: the request is turned into
+ * a list of operations, each with the row it touches and a reason in plain
+ * words, and only a person pressing the button carries them out. It is the
+ * same rule the rest of this product runs on, that nothing reaches the record
+ * without something you can read first.
+ */
+function FixWithPrompt({ onClose, onApplied }: { onClose: () => void; onApplied: () => void }) {
+  const [text, setText] = useState("");
+  const [ops, setOps] = useState<PlannedOp[] | null>(null);
+  const [unclear, setUnclear] = useState("");
+  const [busy, setBusy] = useState<"plan" | "apply" | null>(null);
+  const [err, setErr] = useState("");
+  const [skip, setSkip] = useState<Set<number>>(new Set());
+
+  const plan = async () => {
+    setBusy("plan"); setErr(""); setOps(null); setSkip(new Set());
+    const r = await fetch("/api/tracker/prompt", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instruction: text }),
+    }).then((x) => x.json()).catch(() => ({ ok: false, error: "That did not go through." }));
+    setBusy(null);
+    if (!r.ok) { setErr(r.error ?? "That did not go through."); return; }
+    setOps(r.ops ?? []); setUnclear(r.unclear ?? "");
+  };
+
+  const apply = async () => {
+    if (!ops) return;
+    setBusy("apply"); setErr("");
+    const chosen = ops.filter((_, i) => !skip.has(i));
+    const r = await fetch("/api/tracker/prompt", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apply: chosen }),
+    }).then((x) => x.json()).catch(() => ({ ok: false, error: "That did not save." }));
+    setBusy(null);
+    if (!r.ok) { setErr(r.error ?? "That did not save."); return; }
+    onApplied();
+  };
+
+  const verb = { edit: "Change", add: "Add", delete: "Delete" } as const;
+  const tone = { edit: "var(--blue)", add: "var(--teal)", delete: "#b91c1c" } as const;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal>
+      <div className="my-8 w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-semibold">Fix with a prompt</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              Describe everything you want changed, in your own words, across as many rows as you like.
+              You will see exactly what it intends to do before anything happens.
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* what it can actually do, said plainly rather than discovered by trial */}
+        <div className="mt-3 rounded-xl bg-foreground/[0.03] p-3">
+          <p className="text-[11px] font-medium">What it can do</p>
+          <ul className="mt-1 space-y-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            <li><strong>Edit anything, in bulk</strong> — company, role, kind, status, deadline, notes. &ldquo;The Stripe one went to interview, and the deadline is 12 September.&rdquo;</li>
+            <li><strong>Fix what the inbox got wrong</strong> — &ldquo;Anything from Fauji is one company, call them all Fauji Fertilizer, and they are jobs not internships.&rdquo;</li>
+            <li><strong>Add rows it never saw</strong> — &ldquo;Add Jane Street, quant intern, applied last Tuesday through the portal.&rdquo;</li>
+            <li><strong>Delete what does not belong</strong> — &ldquo;Drop the two scholarship rows I never applied to.&rdquo;</li>
+            <li><strong>Several at once</strong> — write it all in one go; each change is listed separately for you to approve or skip.</li>
+          </ul>
+        </div>
+
+        <textarea
+          value={text} onChange={(e) => setText(e.target.value)} rows={4} autoFocus
+          placeholder="Mark everything from Google as rejected, rename the two Mitacs rows to Mitacs Globalink, add Jane Street as a quant internship I applied to last week, and delete the Deriv row."
+          className="mt-3 w-full resize-y rounded-lg border border-border p-2.5 text-sm focus:border-[var(--blue)] focus:outline-none"
+        />
+
+        {err && <p className="mt-2 text-xs" style={{ color: "#b91c1c" }}>{err}</p>}
+
+        {ops && (
+          <div className="mt-3">
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {ops.length === 0 ? "Nothing to change" : `${ops.length - skip.size} change${ops.length - skip.size === 1 ? "" : "s"} ready, nothing applied yet`}
+            </p>
+            {!!unclear && <p className="mt-1 text-[11px]" style={{ color: "var(--amber-deep, #92400e)" }}>{unclear}</p>}
+            <ul className="mt-1.5 max-h-72 space-y-1.5 overflow-y-auto">
+              {ops.map((op, i) => (
+                <li key={i} className={`rounded-lg border border-border p-2.5 text-xs transition-opacity ${skip.has(i) ? "opacity-40" : ""}`}>
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 font-medium" style={{ color: tone[op.action] }}>{verb[op.action]}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">
+                        {op.current ? `${op.current.company}${op.current.role ? ` · ${op.current.role}` : ""}` : `${op.company ?? "new row"}${op.role ? ` · ${op.role}` : ""}`}
+                      </p>
+                      {op.action === "edit" && (
+                        <p className="text-muted-foreground">
+                          {(["company", "role", "kind", "status", "deadline", "notes"] as const)
+                            .filter((f) => op[f] !== undefined && op[f] !== "")
+                            .map((f) => `${f}: ${op.current && f in op.current ? `${(op.current as Record<string, unknown>)[f] ?? "empty"} → ` : ""}${op[f]}`)
+                            .join(" · ")}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-muted-foreground">{op.reason}</p>
+                    </div>
+                    <button onClick={() => setSkip((sv) => { const n = new Set(sv); n.has(i) ? n.delete(i) : n.add(i); return n; })}
+                            className="shrink-0 text-[10px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                      {skip.has(i) ? "include" : "skip"}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {!ops ? (
+            <button onClick={() => void plan()} disabled={busy !== null || text.trim().length < 4} data-track="tracker_prompt_plan"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background disabled:opacity-50">
+              {busy === "plan" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {busy === "plan" ? "Working out what you mean" : "See what would change"}
+            </button>
+          ) : (
+            <>
+              <button onClick={() => void apply()} disabled={busy !== null || ops.length - skip.size === 0} data-track="tracker_prompt_apply"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background disabled:opacity-50">
+                {busy === "apply" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {busy === "apply" ? "Applying" : `Apply ${ops.length - skip.size} change${ops.length - skip.size === 1 ? "" : "s"}`}
+              </button>
+              <button onClick={() => { setOps(null); setUnclear(""); }} className="rounded-full border border-border px-5 py-2 text-sm">
+                Rewrite the request
+              </button>
+            </>
+          )}
+          <button onClick={onClose} className="rounded-full border border-border px-5 py-2 text-sm">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddApplication({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     company: "", role: "", kind: "internship", status: "applied",
