@@ -374,16 +374,25 @@ export function PlanScreen() {
   // for: the sidebar is the monitor and the board carries the lights.
   const placedIdsLive = new Set(plan.placements.map((p) => p.courseId));
   const doneSetLive = new Set(state.student.completed);
-  const reqLive = (program?.buckets ?? []).map((b) => {
-    const has = b.eligible.filter((id) => placedIdsLive.has(id) || doneSetLive.has(id));
-    const needC = b.needCourses ?? null;
-    const needCr = b.needCredits ?? null;
-    const creditsHave = has.reduce((s, id) => s + (courses.get(id)?.credits ?? 0), 0);
-    const ok = needC != null ? has.length >= needC : needCr != null ? creditsHave >= needCr : true;
-    const gap = needC != null ? Math.max(0, needC - has.length) : needCr != null ? Math.max(0, needCr - creditsHave) : 0;
-    return { id: b.id, label: b.label, ok, gap, unit: needC != null ? "course" : "credit", eligible: new Set(b.eligible) };
-  });
-  const unmetLive = reqLive.filter((r) => !r.ok);
+  // The solver already worked out which requirement each course counts
+  // toward, by a real assignment that lets one course serve only where it
+  // is actually needed. Recomputing "is this bucket met" independently, from
+  // eligible-list membership alone, ignores that assignment and disagrees
+  // with it: a course shared between two requirements can look like it
+  // satisfies both, when the solver in fact used it for only one, or the
+  // credits/courses accounting genuinely differs from a plain membership
+  // count. plan.buckets IS the solver's real answer. Reading it directly is
+  // what the "What the degree needs" panel does; this panel now agrees with
+  // it instead of publishing a second, wrong opinion next to the true one.
+  const bucketEligible = new Map((program?.buckets ?? []).map((b) => [b.id, new Set(b.eligible)]));
+  const unmetLive = plan.buckets
+    .filter((b) => !b.satisfied)
+    .map((b) => ({
+      id: b.bucketId, label: b.label,
+      gap: Math.max(0, b.need - b.fromCompleted - b.fromPlan),
+      unit: b.unit === "courses" ? "course" : "credit",
+      eligible: bucketEligible.get(b.bucketId) ?? new Set<string>(),
+    }));
   const failedLive = (v?.checks ?? []).filter((c) => !c.passed);
   // Courses committed to the open credits live in the filler, not in the
   // solver's placements, so an offender sitting there had no term and its
@@ -1226,34 +1235,53 @@ export function PlanScreen() {
                       </div>
                       {addHere === t && (
                         <div className="mt-2">
-                          <input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)}
-                                 placeholder="search a course to put in this semester"
-                                 className="w-full rounded-lg border border-border px-2.5 py-1.5 text-xs focus:border-[var(--blue)] focus:outline-none" />
-                          {addQuery.trim().length >= 2 && (
-                            <ul className="mt-1 space-y-0.5">
-                              {(school?.courses ?? [])
-                                .filter((c) => !placedIdsLive.has(c.id) && !doneSetLive.has(c.id))
-                                .filter((c) => c.termsOffered.includes(termKinds[t]))
-                                .filter((c) => c.code.toLowerCase().includes(addQuery.trim().toLowerCase()) || c.title.toLowerCase().includes(addQuery.trim().toLowerCase()))
-                                .slice(0, 5)
-                                .map((c) => {
-                                  const fills = unmetLive.filter((r) => r.eligible.has(c.id));
-                                  return (
-                                    <li key={c.id}>
-                                      <button onClick={() => { addCourse(c.id, t, c.code); setAddHere(null); setAddQuery(""); }}
-                                              className="flex w-full items-baseline gap-2 rounded-lg border border-border bg-white px-2 py-1.5 text-left text-xs hover:border-[var(--blue)]">
-                                        <span className="min-w-0 flex-1 truncate">
-                                          {c.title} <span className="code text-[10px] text-muted-foreground">{c.code}</span>
-                                        </span>
-                                        <span className="shrink-0 text-[10px]" style={{ color: fills.length ? "var(--teal)" : "var(--muted-foreground, #6b7280)" }}>
-                                          {fills.length ? `fills: ${fills[0].label}` : "fills no open requirement"} · {c.credits} cr
-                                        </span>
-                                      </button>
-                                    </li>
-                                  );
-                                })}
-                            </ul>
-                          )}
+                          {(() => {
+                            const q = addQuery.trim().toLowerCase();
+                            // Nothing typed yet: lead with a real, ranked
+                            // suggestion instead of a search box with nothing
+                            // in it. This is the fix, not a hunt for one.
+                            const readyFixes = q.length < 2 && unmetLive.length
+                              ? unmetLive.flatMap((r) => suggestFor(r.eligible).filter((x) => x.term === t).map((x) => ({ ...x, forLabel: r.label })))
+                              : [];
+                            const list = readyFixes.length ? readyFixes.map((x) => x.course) : (school?.courses ?? [])
+                              .filter((c) => !placedIdsLive.has(c.id) && !doneSetLive.has(c.id))
+                              .filter((c) => c.termsOffered.includes(termKinds[t]))
+                              .filter((c) => q.length < 2 || c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q))
+                              .slice(0, 5);
+                            return (
+                              <>
+                                {!!readyFixes.length && (
+                                  <p className="mb-1 text-[10px] text-muted-foreground">
+                                    Closes what is open in this semester. Ranked by how well it answers your posting.
+                                  </p>
+                                )}
+                                <input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)}
+                                       placeholder="or search any other course to put in this semester"
+                                       className="w-full rounded-lg border border-border px-2.5 py-1.5 text-xs focus:border-[var(--blue)] focus:outline-none" />
+                                <ul className="mt-1 space-y-0.5">
+                                  {list.map((c) => {
+                                    const fills = unmetLive.filter((r) => r.eligible.has(c.id));
+                                    return (
+                                      <li key={c.id}>
+                                        <button onClick={() => { addCourse(c.id, t, c.code); setAddHere(null); setAddQuery(""); }}
+                                                className="flex w-full items-baseline gap-2 rounded-lg border border-border bg-white px-2 py-1.5 text-left text-xs hover:border-[var(--blue)]">
+                                          <span className="min-w-0 flex-1 truncate">
+                                            {c.title} <span className="code text-[10px] text-muted-foreground">{c.code}</span>
+                                          </span>
+                                          <span className="shrink-0 text-[10px]" style={{ color: fills.length ? "var(--teal)" : "var(--muted-foreground, #6b7280)" }}>
+                                            {fills.length ? `fills: ${fills[0].label}` : "fills no open requirement"} · {c.credits} cr
+                                          </span>
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                  {!list.length && (
+                                    <li className="px-1 py-1 text-[10px] text-muted-foreground">Nothing left in the catalog fills this here; try another semester.</li>
+                                  )}
+                                </ul>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
