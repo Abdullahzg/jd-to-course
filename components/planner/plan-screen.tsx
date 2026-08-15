@@ -61,9 +61,12 @@ export function PlanScreen() {
     state, setState, result, solving, reflowing, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
-    repair, clearRepair, tryArrangement, removeCourse, addCourse, lastRemovedTerm, restoreSnapshot,
+    repair, clearRepair, tryArrangement, removeCourse, addCourse, moveCourse, lastRemovedTerm, restoreSnapshot,
   } = usePlanner();
   const [doctorOpen, setDoctorOpen] = useState(false);
+  const [openFix, setOpenFix] = useState<string | null>(null);
+  const [addHere, setAddHere] = useState<number | null>(null);
+  const [addQuery, setAddQuery] = useState("");
   // A plan you built belongs to your account, not to one browser tab. An
   // empty store on /plan pulls your newest saved search back from the
   // database before showing "no plan yet" to someone who has one.
@@ -330,52 +333,6 @@ export function PlanScreen() {
   }
 
   const termKinds = termKindsFor(state.student.startTerm as Term, plan.termCredits.length);
-  const v = program ? verifyPlan(plan, program, courses, state.student.completed, termKinds) : null;
-
-  // The always-on health readout. Manual edits change placements, placements
-  // change these numbers, same render. No dialog to open, no solver to wait
-  // for: the sidebar is the monitor and the board carries the lights.
-  const placedIdsLive = new Set(plan.placements.map((p) => p.courseId));
-  const doneSetLive = new Set(state.student.completed);
-  const reqLive = (program?.buckets ?? []).map((b) => {
-    const has = b.eligible.filter((id) => placedIdsLive.has(id) || doneSetLive.has(id));
-    const needC = b.needCourses ?? null;
-    const needCr = b.needCredits ?? null;
-    const creditsHave = has.reduce((s, id) => s + (courses.get(id)?.credits ?? 0), 0);
-    const ok = needC != null ? has.length >= needC : needCr != null ? creditsHave >= needCr : true;
-    const gap = needC != null ? Math.max(0, needC - has.length) : needCr != null ? Math.max(0, needCr - creditsHave) : 0;
-    return { id: b.id, label: b.label, ok, gap, unit: needC != null ? "course" : "credit", eligible: new Set(b.eligible) };
-  });
-  const unmetLive = reqLive.filter((r) => !r.ok);
-  const failedLive = (v?.checks ?? []).filter((c) => !c.passed);
-  const termOfLive = new Map(plan.placements.map((p) => [p.courseId, p.term]));
-  const problemTerms = new Set<number>();
-  for (const c of failedLive) for (const id of c.offenders) { const t = termOfLive.get(id); if (t != null) problemTerms.add(t); }
-  if (failedLive.some((c) => c.id === "full-time")) {
-    plan.termCredits.forEach((cr, t) => {
-      if (cr + (plan.openCreditsNeeded?.[t] ?? 0) < (program?.minCreditsPerTerm ?? 0)) problemTerms.add(t);
-    });
-  }
-  // A shortfall is an absence; absences have no offender to point at. The
-  // semester the removal happened in carries the light instead.
-  if (unmetLive.length && lastRemovedTerm != null) problemTerms.add(lastRemovedTerm);
-  const healthy = !failedLive.length && !unmetLive.length;
-  const slotByCourse = new Map(plan.slotChoices.map((s) => [s.chosen, s]));
-  // "Not covered" was hiding two completely different answers behind one
-  // outlined chip. Either this catalog teaches the thing and the plan simply
-  // has no room for it, which is a choice you might want to revisit, or nothing
-  // here teaches it at all, which is the end of the conversation. Only the
-  // second one is bad news, so they stopped looking identical.
-  const teachableSomewhere = new Map<string, { courseId: string; code: string; title: string; quote: string }[]>();
-  for (const [courseId, hits] of Object.entries(state.relevance ?? {})) {
-    const c = courses.get(courseId);
-    if (!c) continue;
-    for (const h of hits) {
-      const list = teachableSomewhere.get(h.skill) ?? [];
-      list.push({ courseId, code: c.code, title: c.title, quote: h.evidence });
-      teachableSomewhere.set(h.skill, list);
-    }
-  }
   // The degree does not name the free electives, so the solver cannot schedule
   // them. It can still be planned: this commits a concrete course to every open
   // credit, job relevant ones first, and guarantees nothing is used twice.
@@ -395,6 +352,85 @@ export function PlanScreen() {
     (state.considerationAll ?? []).map((x) => [codeToId.get(x.code) ?? x.code, x.why]),
   );
   const shortlistCount = (state.shortlist ?? []).length;
+
+  const v = program ? verifyPlan(plan, program, courses, state.student.completed, termKinds) : null;
+
+  // The always-on health readout. Manual edits change placements, placements
+  // change these numbers, same render. No dialog to open, no solver to wait
+  // for: the sidebar is the monitor and the board carries the lights.
+  const placedIdsLive = new Set(plan.placements.map((p) => p.courseId));
+  const doneSetLive = new Set(state.student.completed);
+  const reqLive = (program?.buckets ?? []).map((b) => {
+    const has = b.eligible.filter((id) => placedIdsLive.has(id) || doneSetLive.has(id));
+    const needC = b.needCourses ?? null;
+    const needCr = b.needCredits ?? null;
+    const creditsHave = has.reduce((s, id) => s + (courses.get(id)?.credits ?? 0), 0);
+    const ok = needC != null ? has.length >= needC : needCr != null ? creditsHave >= needCr : true;
+    const gap = needC != null ? Math.max(0, needC - has.length) : needCr != null ? Math.max(0, needCr - creditsHave) : 0;
+    return { id: b.id, label: b.label, ok, gap, unit: needC != null ? "course" : "credit", eligible: new Set(b.eligible) };
+  });
+  const unmetLive = reqLive.filter((r) => !r.ok);
+  const failedLive = (v?.checks ?? []).filter((c) => !c.passed);
+  // Courses committed to the open credits live in the filler, not in the
+  // solver's placements, so an offender sitting there had no term and its
+  // semester never lit up.
+  const termOfLive = new Map<string, number>([
+    ...plan.placements.map((p) => [p.courseId, p.term] as const),
+    ...[...filledByTerm.entries()].flatMap(([t, f]) => f.picks.map((pk) => [pk.courseId, t] as const)),
+  ]);
+  /**
+   * A problem that cannot be acted on where it is read is a problem the
+   * student has to go hunting for. For every unmet requirement, work out the
+   * courses that would actually close it and the earliest term each could sit
+   * in, so the panel can offer the fix rather than describe where to look.
+   */
+  const suggestFor = (eligible: Set<string>) => {
+    const takenOrPlanned = new Set([...placedIdsLive, ...doneSetLive]);
+    return (school?.courses ?? [])
+      .filter((c) => eligible.has(c.id) && !takenOrPlanned.has(c.id))
+      .map((c) => {
+        // The first term in the horizon this course actually runs in.
+        const term = termKinds.findIndex((k) => c.termsOffered.includes(k));
+        const rank = consideration[c.id];
+        return { course: c, term, rank };
+      })
+      .filter((x) => x.term >= 0)
+      .sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999) || a.course.code.localeCompare(b.course.code))
+      .slice(0, 4);
+  };
+
+  const problemTerms = new Set<number>();
+  for (const c of failedLive) for (const id of c.offenders) { const t = termOfLive.get(id); if (t != null) problemTerms.add(t); }
+  if (failedLive.some((c) => c.id === "full-time")) {
+    plan.termCredits.forEach((cr, t) => {
+      if (cr + (plan.openCreditsNeeded?.[t] ?? 0) < (program?.minCreditsPerTerm ?? 0)) problemTerms.add(t);
+    });
+  }
+  // A shortfall is an absence, and an absence has no course to point at. The
+  // semesters that light up are the ones that could HOST the missing thing,
+  // which is also where the fix has to happen. Marking only the term a removal
+  // happened in worked for one session and left the plan unmarked ever after.
+  for (const r of unmetLive) for (const p of suggestFor(r.eligible)) problemTerms.add(p.term);
+  if (unmetLive.length && !problemTerms.size && lastRemovedTerm != null) problemTerms.add(lastRemovedTerm);
+  const healthy = !failedLive.length && !unmetLive.length;
+
+
+  const slotByCourse = new Map(plan.slotChoices.map((s) => [s.chosen, s]));
+  // "Not covered" was hiding two completely different answers behind one
+  // outlined chip. Either this catalog teaches the thing and the plan simply
+  // has no room for it, which is a choice you might want to revisit, or nothing
+  // here teaches it at all, which is the end of the conversation. Only the
+  // second one is bad news, so they stopped looking identical.
+  const teachableSomewhere = new Map<string, { courseId: string; code: string; title: string; quote: string }[]>();
+  for (const [courseId, hits] of Object.entries(state.relevance ?? {})) {
+    const c = courses.get(courseId);
+    if (!c) continue;
+    for (const h of hits) {
+      const list = teachableSomewhere.get(h.skill) ?? [];
+      list.push({ courseId, code: c.code, title: c.title, quote: h.evidence });
+      teachableSomewhere.set(h.skill, list);
+    }
+  }
 
   const filledByTerm = new Map(
     fillOpenCredits({
@@ -1165,7 +1201,62 @@ export function PlanScreen() {
               const other = plan.openCreditsNeeded[t] ?? 0;
               const under = plan.belowFullTime?.includes(t);
               return (
-                <section key={name} id={`term-${t}`} className="scroll-mt-4 rounded-2xl border plan-edge bg-card p-3.5 glow sm:p-4 lg:p-5">
+                <section key={name} id={`term-${t}`}
+                         className="scroll-mt-4 rounded-2xl border plan-edge bg-card p-3.5 glow sm:p-4 lg:p-5"
+                         style={problemTerms.has(t) ? { borderColor: "#dc2626", boxShadow: "inset 0 0 0 1px #dc2626" } : undefined}>
+                  {/* The compact board at the top marks trouble; these cards are
+                      where people actually read a semester, so they carry the
+                      same mark and the same way out of it. */}
+                  {problemTerms.has(t) && (
+                    <div className="mb-3 rounded-xl border p-2.5" style={{ borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }}>
+                      <p className="text-xs font-medium" style={{ color: "#dc2626" }}>
+                        {failedLive.filter((c) => c.offenders.some((id) => termOfLive.get(id) === t)).map((c) => c.rule).join(" · ") ||
+                          (unmetLive.length ? `${unmetLive[0].label}: ${unmetLive[0].gap} ${unmetLive[0].unit}${unmetLive[0].gap === 1 ? "" : "s"} short` : "This semester needs a look")}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <button onClick={() => setAddHere(addHere === t ? null : t)} data-track="term_add_open"
+                                className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">
+                          {addHere === t ? "Close" : "Add a course here"}
+                        </button>
+                        <button onClick={() => document.getElementById("plan-health")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                                className="rounded-full border border-border px-3 py-1 text-[11px]">
+                          See the fixes
+                        </button>
+                      </div>
+                      {addHere === t && (
+                        <div className="mt-2">
+                          <input autoFocus value={addQuery} onChange={(e) => setAddQuery(e.target.value)}
+                                 placeholder="search a course to put in this semester"
+                                 className="w-full rounded-lg border border-border px-2.5 py-1.5 text-xs focus:border-[var(--blue)] focus:outline-none" />
+                          {addQuery.trim().length >= 2 && (
+                            <ul className="mt-1 space-y-0.5">
+                              {(school?.courses ?? [])
+                                .filter((c) => !placedIdsLive.has(c.id) && !doneSetLive.has(c.id))
+                                .filter((c) => c.termsOffered.includes(termKinds[t]))
+                                .filter((c) => c.code.toLowerCase().includes(addQuery.trim().toLowerCase()) || c.title.toLowerCase().includes(addQuery.trim().toLowerCase()))
+                                .slice(0, 5)
+                                .map((c) => {
+                                  const fills = unmetLive.filter((r) => r.eligible.has(c.id));
+                                  return (
+                                    <li key={c.id}>
+                                      <button onClick={() => { addCourse(c.id, t, c.code); setAddHere(null); setAddQuery(""); }}
+                                              className="flex w-full items-baseline gap-2 rounded-lg border border-border bg-white px-2 py-1.5 text-left text-xs hover:border-[var(--blue)]">
+                                        <span className="min-w-0 flex-1 truncate">
+                                          {c.title} <span className="code text-[10px] text-muted-foreground">{c.code}</span>
+                                        </span>
+                                        <span className="shrink-0 text-[10px]" style={{ color: fills.length ? "var(--teal)" : "var(--muted-foreground, #6b7280)" }}>
+                                          {fills.length ? `fills: ${fills[0].label}` : "fills no open requirement"} · {c.credits} cr
+                                        </span>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-baseline gap-3 border-b border-border pb-3">
                     <h2 className="font-display text-lg font-semibold">{name}</h2>
                     <span className="tabular plan-wash plan-accent rounded-full px-2.5 py-0.5 text-xs font-medium">
@@ -1334,7 +1425,7 @@ export function PlanScreen() {
                        ? { borderColor: "color-mix(in oklab, var(--teal) 45%, transparent)", background: "color-mix(in oklab, var(--teal) 5%, white)" }
                        : { borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }}>
               <div className="flex items-baseline justify-between gap-2">
-                <h2 className="font-display text-sm font-semibold">Plan health, live</h2>
+                <h2 id="plan-health" className="font-display text-sm font-semibold">Plan health, live</h2>
                 <span className="text-xs font-medium" style={{ color: healthy ? "var(--teal)" : "#dc2626" }}>
                   {healthy ? "all clear" : `${failedLive.length + unmetLive.length} open`}
                 </span>
@@ -1351,29 +1442,107 @@ export function PlanScreen() {
                       <p className="font-medium" style={{ color: "#dc2626" }}>{c.rule}</p>
                       <p className="text-muted-foreground">{c.detail}</p>
                       {!!c.offenders.length && (
-                        <p className="mt-0.5 flex flex-wrap gap-1">
-                          {c.offenders.map((id) => (
-                            <button key={id} onClick={() => jumpToCourse(termOfLive.get(id) ?? 0, id)}
-                                    className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] hover:border-[var(--blue)]"
-                                    title="Go to the semester causing this">
-                              {courses.get(id)?.code ?? id}
-                            </button>
-                          ))}
-                        </p>
+                        <div className="mt-1 space-y-1">
+                          {c.offenders.map((id) => {
+                            const co = courses.get(id);
+                            const here = termOfLive.get(id);
+                            const open = openFix === `${c.id}:${id}`;
+                            // Where this course could legally sit instead: the
+                            // terms it is actually offered in, minus where it is.
+                            const legal = names
+                              .map((n, t) => ({ n, t }))
+                              .filter(({ t }) => co?.termsOffered.includes(termKinds[t]) && t !== here);
+                            return (
+                              <div key={id}>
+                                <button onClick={() => setOpenFix(open ? null : `${c.id}:${id}`)}
+                                        aria-expanded={open}
+                                        className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] hover:border-[var(--blue)]">
+                                  {co?.code ?? id} {open ? "\u25B4" : "\u25BE"}
+                                </button>
+                                {open && (
+                                  <div className="mt-1 rounded-lg border border-border bg-white p-2">
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {co?.title}{here != null ? ` sits in ${names[here]}.` : ""} Move it, or open it on the board.
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {legal.map(({ n, t }) => (
+                                        <button key={t} onClick={() => { moveCourse(id, t, co?.code); setOpenFix(null); }}
+                                                data-track="health_fix_move"
+                                                className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
+                                          Move to {n}
+                                        </button>
+                                      ))}
+                                      <button onClick={() => { removeCourse(id, co?.code); setOpenFix(null); }}
+                                              data-track="health_fix_remove"
+                                              className="rounded-full border border-border px-2.5 py-1 text-[10px]">
+                                        Remove it
+                                      </button>
+                                      <button onClick={() => { setOpenFix(null); jumpToCourse(here ?? 0, id); }}
+                                              className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
+                                        Show me
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </li>
                   ))}
-                  {unmetLive.map((r) => (
-                    <li key={r.id} className="text-xs">
-                      <button onClick={() => document.getElementById(`bucket-${r.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                              className="text-left font-medium underline-offset-2 hover:underline" style={{ color: "#dc2626" }}>
-                        {r.label}: {r.gap} {r.unit}{r.gap === 1 ? "" : "s"} short
-                      </button>
-                      <p className="text-muted-foreground">
-                        A red semester on the board has a search box; it marks the courses that fill this.
-                      </p>
-                    </li>
-                  ))}
+                  {unmetLive.map((r) => {
+                    const picks = suggestFor(r.eligible);
+                    const open = openFix === r.id;
+                    return (
+                      <li key={r.id} className="text-xs">
+                        <button onClick={() => setOpenFix(open ? null : r.id)}
+                                aria-expanded={open}
+                                className="flex w-full items-center gap-1 text-left font-medium" style={{ color: "#dc2626" }}>
+                          {r.label}: {r.gap} {r.unit}{r.gap === 1 ? "" : "s"} short
+                          <ChevronDown className={`ml-auto h-3 w-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+                        </button>
+                        {open && (
+                          <div className="mt-1.5 rounded-lg border border-border bg-white p-2">
+                            {picks.length ? (
+                              <>
+                                <p className="text-[10px] text-muted-foreground">
+                                  Any one of these closes it. Ranked by how well it answers your posting.
+                                </p>
+                                <ul className="mt-1 space-y-1">
+                                  {picks.map(({ course, term, rank }) => (
+                                    <li key={course.id} className="flex items-center gap-2">
+                                      <span className="min-w-0 flex-1 truncate">
+                                        {course.title} <span className="code text-[10px] text-muted-foreground">{course.code}</span>
+                                        <span className="block text-[10px] text-muted-foreground">
+                                          {rank != null ? `reader's pick ${rank + 1} for this job · ` : ""}
+                                          {course.credits} cr · runs {course.termsOffered.join("/")}
+                                        </span>
+                                      </span>
+                                      <button onClick={() => { addCourse(course.id, term, course.code); setOpenFix(null); }}
+                                              data-track="health_fix_add"
+                                              className="shrink-0 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
+                                        Add to {names[term]}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            ) : (
+                              <p className="text-[10px] text-muted-foreground">
+                                Nothing left in the catalog fills this inside your remaining semesters. Adding a
+                                semester in the survey, or unpinning a course, is what opens it up.
+                              </p>
+                            )}
+                            <button onClick={() => document.getElementById(`bucket-${r.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                                    className="mt-1.5 text-[10px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                              see the rule this comes from
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>

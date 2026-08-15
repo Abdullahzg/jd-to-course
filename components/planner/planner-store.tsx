@@ -155,6 +155,7 @@ type Ctx = {
   removeCourse: (courseId: string, label?: string) => void;
   lastRemovedTerm: number | null;
   addCourse: (courseId: string, term: number, label?: string) => void;
+  moveCourse: (courseId: string, term: number, label?: string) => void;
   tryArrangement: (placements: { courseId: string; term: number }[], dropId?: string) => void;
   unexclude: (courseId: string, label?: string) => void;
   chooseSlot: (bucketId: string, replace: string, withCourse: string, replaceLabel?: string, withLabel?: string) => void;
@@ -647,6 +648,26 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     recordManual(`Removed ${label}`, "Removed by hand. Nothing else was touched; the health panel says what this opened up.", nextState, nextResult, [`Took out ${label}, and only ${label}`]);
   }, [recordManual]);
 
+  /** Put a course in a different semester, and nothing else. */
+  const moveCourse = useCallback((courseId: string, term: number, label = courseId) => {
+    const res = resultRef.current;
+    const st = stateRef.current;
+    const planIdx = st.activePlan ?? 0;
+    const plan = res?.plans?.[planIdx];
+    if (!res || !plan) return;
+    const from = plan.placements.find((p) => p.courseId === courseId)?.term;
+    if (from === undefined || from === term) return;
+    const placements = plan.placements.map((p) => (p.courseId === courseId ? { ...p, term } : p));
+    const termCredits = plan.termCredits.map((_, t) =>
+      placements.filter((p) => p.term === t).reduce((sum, p) => sum + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
+    const nextPlan = { ...plan, placements, termCredits };
+    const nextResult = { ...res, plans: res.plans.map((p, i) => (i === planIdx ? nextPlan : p)) };
+    const nextState = { ...st, student: { ...st.student, locked: [...st.student.locked.filter((l) => l.courseId !== courseId), { courseId, term }] } };
+    setChanged(new Set([courseId]));
+    recordManual(`Moved ${label}`, "Moved by hand and pinned there, so the next solve keeps it where you put it.",
+      nextState, nextResult, [`Moved ${label} from semester ${from + 1} to semester ${term + 1}`]);
+  }, [recordManual]);
+
   const addCourse = useCallback((courseId: string, term: number, label = courseId) => {
     const res = resultRef.current;
     const st = stateRef.current;
@@ -1015,7 +1036,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     state, setState, catalog, courses, school, program,
     result, solving, reflowing, changed, error,
-    repair, clearRepair, tryArrangement, removeCourse, addCourse, lastRemovedTerm,
+    repair, clearRepair, tryArrangement, removeCourse, addCourse, moveCourse, lastRemovedTerm,
     history, historyIndex,
     canUndo: historyIndex >= 0,
     canRedo: historyIndex < history.length - 1,
