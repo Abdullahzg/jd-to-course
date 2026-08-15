@@ -13,6 +13,7 @@ import type { Course, Placement, Plan, SlotAlternative, SlotChoice, Term } from 
 import { usePlanner } from "./planner-store";
 import { useBudget } from "@/components/budget/budget-provider";
 import { termKindsFor, verifyPlan } from "@/lib/verify";
+import { earliestLegalTerm, latePrereq, legalMoves, type BoardView } from "@/lib/plan-edits";
 import { PlanDoctor } from "./plan-doctor";
 import { describeDiff, fillOpenCredits, type ElectiveOption, type FilledTerm } from "@/lib/solver";
 import { prereqSatisfied } from "@/lib/solver/core";
@@ -427,25 +428,16 @@ export function PlanScreen() {
    */
   const excludedSetLive = new Set(state.student.excluded);
   /**
-   * Where a course can actually go, if it has to land before `beforeTerm`.
-   *
-   * "Offered in that season" is not enough, and assuming it was produced a fix
-   * that broke the plan a second way: told that COMS W3157 was missing its
-   * Data Structures, the panel offered to put Data Structures in the very
-   * first semester -- in front of the Programming in Java that Data Structures
-   * itself depends on. Pressing exactly what the app said to press left it
-   * still complaining, now about the course it had just added. A term only
-   * counts if the course's own prerequisites are already behind it.
+   * One description of the board, handed to every "where may this go" answer,
+   * so the panel, the semester banners and the move buttons cannot drift into
+   * disagreeing about which semesters are legal. The rules themselves live in
+   * lib/plan-edits.ts and are tested on every build.
    */
-  const earliestLegalTermFor = (course: Course, beforeTerm: number): number => {
-    for (let k = 0; k < beforeTerm; k++) {
-      if (!course.termsOffered.includes(termKinds[k])) continue;
-      const have = new Set<string>(doneSetLive);
-      for (const [id, t] of termOfLive) if (t < k) have.add(id);
-      if (prereqSatisfied(course.prereq, have)) return k;
-    }
-    return -1;
-  };
+  const board: BoardView = { courses, termOf: termOfLive, completed: doneSetLive, termKinds };
+  const earliestLegalTermFor = (course: Course, beforeTerm: number) => earliestLegalTerm(course, beforeTerm, board);
+  const legalMovesFor = (courseId: string) => legalMoves(courseId, board);
+  const latePrereqFor = (courseId: string) => latePrereq(courseId, board);
+
   const missingPrereqFor = (courseId: string): { course: Course; term: number } | null => {
     const c = courses.get(courseId);
     if (!c?.prereq) return null;
@@ -502,42 +494,6 @@ export function PlanScreen() {
     // course that needs it that runs it AND has its own prerequisites behind it.
     const term = earliestLegalTermFor(missing, here);
     return term >= 0 ? { course: missing, term } : null;
-  };
-
-  /**
-   * The third shape a prerequisite failure takes, and the one that had no
-   * words at all: the course it needs IS in the plan, just not early enough.
-   * Nothing can be added and nothing un-excluded to fix that — one of the two
-   * has to move — so the only useful thing to say is which two, and where
-   * each one currently sits. "Move it, or open it on the board" was the whole
-   * of what this used to offer.
-   */
-  const latePrereqFor = (courseId: string): { course: Course; term: number } | null => {
-    const c = courses.get(courseId);
-    const here = termOfLive.get(courseId);
-    if (!c?.prereq || here == null) return null;
-    const before = new Set<string>(doneSetLive);
-    for (const [id, t] of termOfLive) if (t < here) before.add(id);
-    if (prereqSatisfied(c.prereq, before)) return null;
-    const find = (node: PrereqNode | null): string | null => {
-      if (!node) return null;
-      if (node.op === "COURSE") {
-        const t = termOfLive.get(node.courseId);
-        return t != null && t >= here ? node.courseId : null;
-      }
-      if (node.op === "UNVERIFIABLE") return null;
-      if (node.op === "AND") { for (const ch of node.children) { const m = find(ch); if (m) return m; } return null; }
-      if (node.op === "OR") {
-        if (node.children.some((ch) => prereqSatisfied(ch, before))) return null;
-        for (const ch of node.children) { const m = find(ch); if (m) return m; }
-        return null;
-      }
-      return null;
-    };
-    const lateId = find(c.prereq);
-    const late = lateId ? courses.get(lateId) : null;
-    const term = late ? termOfLive.get(late.id) : null;
-    return late && term != null ? { course: late, term } : null;
   };
 
   const suggestFor = (eligible: Set<string>) => {
@@ -1829,17 +1785,21 @@ export function PlanScreen() {
                             }
                             const here = termOfLive.get(id);
                             const open = openFix === `${c.id}:${id}`;
-                            // Where this course could legally sit instead: the
-                            // terms it is actually offered in, minus where it is.
-                            const legal = names
-                              .map((n, t) => ({ n, t }))
-                              .filter(({ t }) => co.termsOffered.includes(termKinds[t]) && t !== here);
-                            // A prereq failure can mean two different things:
-                            // the course IS in the plan but sits too late (Move
-                            // fixes that), or its prerequisite was never placed
-                            // at all, and moving THIS course changes nothing.
+                            // Somewhere this course could sit that actually
+                            // resolves it, rather than every term it is taught.
+                            const legal = legalMovesFor(id).map((t) => ({ n: names[t], t }));
+                            // A prerequisite failure is one of three things, and
+                            // they take three different fixes: the prerequisite
+                            // is nowhere in the plan (add it), it was taken out
+                            // by hand (put it back), or it IS in the plan but
+                            // not early enough (move one of the two). Moving
+                            // THIS course only ever helps in the third case.
                             const missing = c.id === "prereqs" ? missingPrereqFor(id) : null;
                             const excludedPrereq = c.id === "prereqs" && !missing ? excludedPrereqFor(id) : null;
+                            const late = c.id === "prereqs" && !missing && !excludedPrereq ? latePrereqFor(id) : null;
+                            // Pulling the prerequisite forward is the other way
+                            // out of the third case, and often the better one.
+                            const pullBack = late ? legalMovesFor(late.course.id).filter((t) => t < (here ?? 0)) : [];
                             return (
                               <div key={id}>
                                 <button onClick={() => setOpenFix(open ? null : `${c.id}:${id}`)}
@@ -1855,7 +1815,11 @@ export function PlanScreen() {
                                         ? `Its prerequisite, ${missing.course.title}, is not in the plan at all.`
                                         : excludedPrereq
                                           ? `Its prerequisite, ${excludedPrereq.course.title}, was taken out of the plan \u2014 moving this course to another term will not fix that. Putting it back will.`
-                                          : "Move it, or open it on the board."}
+                                          : late
+                                            ? `${late.course.code}, which it needs first, is in ${names[late.term]}${late.term === here ? " \u2014 the same semester, and a prerequisite has to be finished before, not alongside" : ""}. One of the two has to move.`
+                                            : legal.length
+                                              ? "Move it, or open it on the board."
+                                              : "No semester in your horizon has its prerequisites behind it, so moving it cannot settle this."}
                                     </p>
                                     <div className="mt-1 flex flex-wrap gap-1">
                                       {missing && (
@@ -1872,11 +1836,18 @@ export function PlanScreen() {
                                           Put {excludedPrereq.course.code} back in {names[excludedPrereq.term]}
                                         </button>
                                       )}
+                                      {late && pullBack.map((t) => (
+                                        <button key={`pull-${t}`} onClick={() => { moveCourse(late.course.id, t, late.course.code); setOpenFix(null); }}
+                                                data-track="health_fix_pull_prereq"
+                                                className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
+                                          Move {late.course.code} to {names[t]}
+                                        </button>
+                                      )).slice(0, 2)}
                                       {!excludedPrereq && legal.map(({ n, t }) => (
                                         <button key={t} onClick={() => { moveCourse(id, t, co.code); setOpenFix(null); }}
                                                 data-track="health_fix_move"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
-                                          Move to {n}
+                                          {late ? `Move ${co.code} to ${n}` : `Move to ${n}`}
                                         </button>
                                       ))}
                                       <button onClick={() => { removeCourse(id, co.code); setOpenFix(null); }}

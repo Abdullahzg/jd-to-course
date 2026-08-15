@@ -10,6 +10,8 @@ import { solve, fillOpenCredits } from "@/lib/solver";
 import { buildModel, prereqSatisfied } from "@/lib/solver/core";
 import { SCHOOLS, DEMO_STUDENT, getProgram, getSchool } from "@/data";
 import type { SolveRequest, Plan, Course, Term } from "@/lib/types";
+import { termKindsFor } from "@/lib/verify";
+import { earliestLegalTerm, latePrereq, legalMoves, type BoardView } from "@/lib/plan-edits";
 
 let failures = 0;
 const check = (name: string, cond: boolean, detail = "") => {
@@ -369,6 +371,55 @@ for (const school of SCHOOLS) {
   school.courses.forEach((c) => walk(c.prereq, c.code));
   check(`${school.shortName}: no prerequisite points at a course outside the catalog`,
     danglingPrereq.length === 0, danglingPrereq.join(", "));
+}
+
+// ── Hand edits: a term is only an answer if the prerequisites are behind it ──
+// Both of these shipped wrong once. The panel told a student to put Data
+// Structures in Fall 2026 to repair a course that needed it, when Fall 2026
+// sits in front of the Programming in Java that Data Structures itself
+// requires; and it offered seven "Move to ..." buttons for a course stranded
+// in front of its own prerequisite, the first of them EARLIER still.
+{
+  console.log("\nHand edits \u2014 a legal term has the prerequisites behind it");
+  const school = getSchool("COLUMBIA")!;
+  const courses = new Map(school.courses.map((c) => [c.id, c]));
+  const termKinds = termKindsFor("FA" as Term, 8);
+  const W1004 = "COLUMBIA:COMSW1004";  // Programming in Java
+  const W3134 = "COLUMBIA:COMSW3134";  // Data Structures in Java, needs W1004
+  const W3157 = "COLUMBIA:COMSW3157";  // Advanced Programming, needs W3134
+
+  check("the fixture matches the real catalog (W3134 depends on W1004)",
+    JSON.stringify(courses.get(W3134)?.prereq ?? null).includes("COMSW1004"),
+    JSON.stringify(courses.get(W3134)?.prereq ?? null));
+
+  // W1004 in Spring 2027 (term 1), W3157 in Spring 2028 (term 3).
+  const board: BoardView = {
+    courses, termKinds, completed: new Set<string>(),
+    termOf: new Map([[W1004, 1], [W3157, 3]]),
+  };
+
+  // Repairing W3157 by adding W3134: it must land before term 3, but not
+  // before W1004 has happened. Term 2 is the only right answer.
+  const t = earliestLegalTerm(courses.get(W3134)!, 3, board);
+  check("adding a missing prerequisite lands after ITS own prerequisite", t === 2, `got term ${t}`);
+  check("and not merely in the first semester it is offered", t !== 0, `got term ${t}`);
+
+  // Same board, but W3134 wrongly sharing a semester with W1004.
+  const stranded: BoardView = { ...board, termOf: new Map([[W1004, 1], [W3134, 1], [W3157, 3]]) };
+  const late = latePrereq(W3134, stranded);
+  check("a prerequisite in the SAME semester is reported, not counted as met",
+    late?.course.id === W1004 && late?.term === 1, JSON.stringify(late?.course.code ?? null));
+
+  const moves = legalMoves(W3134, stranded);
+  check("no offered move leaves the violation standing", moves.every((k) => k > 1), `got ${moves.join(",")}`);
+  check("moving it EARLIER is never offered", !moves.includes(0), `got ${moves.join(",")}`);
+  check("the moves that do settle it are offered", moves.length > 0, `got ${moves.join(",")}`);
+
+  // A prerequisite that is nowhere on the board has no legal earlier term at
+  // all, and saying so is better than naming one that cannot work.
+  const orphan: BoardView = { ...board, termOf: new Map([[W3157, 3]]) };
+  check("with the prerequisite absent, no legal term is invented",
+    earliestLegalTerm(courses.get(W3134)!, 1, orphan) === -1);
 }
 
 console.log(failures === 0
