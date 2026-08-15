@@ -54,6 +54,14 @@ export function Survey({
   const [shortlisted, setShortlisted] = useState(0);
   /** The quick first pass over the whole catalog. */
   const [triage, setTriage] = useState({ read: 0, total: 0 });
+  // Which pass the catalog read is in, taken from the stream rather than
+  // guessed from a counter. Everything on this screen used to key off
+  // "readCount === 0", so the moment the skim finished the headline, the bar and
+  // the caption all froze -- still reporting "139 of 139 skimmed" -- and stayed
+  // frozen for the whole deep read, which is the longest part. It looked hung
+  // because nothing on screen could tell the two passes apart.
+  const [phase, setPhase] = useState<"" | "triage" | "reading">("");
+  const [readings, setReadings] = useState({ done: 0, of: 0 });
   /** A running feed of what the catalog read is finding and throwing out. */
   const [feed, setFeed] = useState<{ kind: "found" | "rejected"; text: string; skill: string }[]>([]);
   const say = (text: string) => setLog((l) => [...l.map((x) => ({ ...x, done: true })), { text, done: false }]);
@@ -125,6 +133,8 @@ export function Survey({
     setLog([]);
     setFeed([]);
     setTriage({ read: 0, total: 0 });
+    setPhase("");
+    setReadings({ done: 0, of: 0 });
     setBusy("skills");
     say("Reading the posting");
     const sk = await fetch("/api/skills", {
@@ -212,10 +222,14 @@ export function Survey({
           let ev: Record<string, unknown>;
           try { ev = JSON.parse(line); } catch { continue; }
           if (ev.type === "progress" && ev.phase === "triage") {
+            setPhase("triage");
             setTriage({ read: Number(ev.read) || 0, total: Number(ev.total) || 0 });
           } else if (ev.type === "progress" && typeof ev.read === "number") {
+            setPhase("reading");
             setReadCount(Number(ev.read) || 0);
             if (ev.total) setShortlisted(Number(ev.total));
+            const rd = ev.readings as { done?: number; of?: number } | undefined;
+            if (rd?.of) setReadings({ done: Number(rd.done) || 0, of: Number(rd.of) });
             const found = (ev.found ?? []) as { code: string; title: string; aspects: string[] }[];
             if (found.length) {
               setFeed((f) => [
@@ -575,14 +589,13 @@ export function Survey({
                 : busy === "reading" ? (
                     // Two passes, two counters, and they used to share one line,
                     // so the number climbed to 151, reset, and climbed again.
-                    readCount === 0
+                    phase !== "reading"
                       ? "Looking over the whole catalog"
                       : <>Reading{" "}
                           <span className="tabular" style={{ color: "var(--blue-light)" }}>
-                            {readCount}
-                          </span>
-                          <span className="text-white/70">/{shortlisted || poolSize}</span>{" "}
-                          in full
+                            {shortlisted || poolSize}
+                          </span>{" "}
+                          courses in full
                         </>
                   )
                 : "Working out the timetable"}
@@ -619,10 +632,10 @@ export function Survey({
                 style={{
                   width:
                     busy === "skills" ? "10%"
-                      : busy === "reading" && readCount === 0 && triage.total
+                      : busy === "reading" && phase === "triage" && triage.total
                         ? `${18 + Math.round((triage.read / triage.total) * 22)}%`
-                      : busy === "reading" && (shortlisted || poolSize)
-                        ? `${42 + Math.round((readCount / (shortlisted || poolSize)) * 50)}%`
+                      : busy === "reading" && phase === "reading"
+                        ? `${42 + Math.round((readings.of ? readings.done / readings.of : 0) * 50)}%`
                       : busy === "reading" ? "22%"
                       : "96%",
                   background: "var(--blue-light)",
@@ -659,9 +672,11 @@ export function Survey({
             )}
             {busy === "reading" && (
               <p className="mt-3 text-sm text-white/70">
-                {readCount === 0
+                {phase !== "reading"
                   ? `${triage.read || 0} of ${triage.total || poolSize} skimmed, finding the ones worth reading properly`
-                  : `${Math.max(0, (shortlisted || poolSize) - readCount)} to go, out of ${shortlisted || poolSize} the first pass kept from ${poolSize}`}
+                  : `The first pass kept ${shortlisted || poolSize} of ${poolSize}. Each one is now read in full three times over,`
+                    + ` and a course has to convince two of the three to appear at all —`
+                    + ` ${readings.done} of ${readings.of || 3} readings back.`}
               </p>
             )}
           </div>

@@ -778,7 +778,15 @@ export async function POST(req: Request) {
   }
 
 
-  type Progress = { read: number; total: number; found: CourseFit[]; phase: "triage" | "reading" };
+  // `readings` exists because the deep read is three concurrent calls, each
+  // over the whole shortlist, and there is nothing finer to report from inside
+  // one. Without saying so, the bar sat still for the entire read and looked
+  // hung. The honest unit of progress here is "how many of the three readings
+  // have come back", so that is what gets sent.
+  type Progress = {
+    read: number; total: number; found: CourseFit[]; phase: "triage" | "reading";
+    readings?: { done: number; of: number };
+  };
 
   const run = async (onProgress?: (p: Progress) => void) => {
     // ── one read, the whole catalog at once ─────────────────────────────
@@ -865,7 +873,7 @@ export async function POST(req: Request) {
       }
     } catch { /* the fallback judge reads the whole catalog, as before */ }
 
-    onProgress?.({ read: 0, total: candidates.length, found: [], phase: "reading" });
+    onProgress?.({ read: 0, total: candidates.length, found: [], phase: "reading", readings: { done: 0, of: 3 } });
 
     // Three independent draws, majority vote. One judge call at temperature
     // zero still varies with the provider's numerics, and its variance is
@@ -1019,7 +1027,10 @@ export async function POST(req: Request) {
     let judged = 0;
     const judgeTick = (pr: Promise<CourseFit[] | null>) => pr.then((r) => {
       judged++;
-      onProgress?.({ read: Math.round((judged * candidates.length) / 3), total: candidates.length, found: [], phase: "reading" });
+      onProgress?.({
+        read: Math.round((judged * candidates.length) / 3), total: candidates.length,
+        found: [], phase: "reading", readings: { done: judged, of: 3 },
+      });
       return r;
     });
     const settled = await Promise.allSettled([judgeTick(judgeDraw()), judgeTick(judgeDraw()), judgeTick(judgeDraw())]);
@@ -1077,7 +1088,7 @@ export async function POST(req: Request) {
       }
     }
     if (!landed) unread = targets.length;
-    onProgress?.({ read: targets.length, total: targets.length, found: fits, phase: "reading" });
+    onProgress?.({ read: targets.length, total: targets.length, found: fits, phase: "reading", readings: { done: 3, of: 3 } });
 
     // ── second pass: try to break every claim the first pass made ────────
     // Only the central claims face the refuter now. Two rejection layers with
