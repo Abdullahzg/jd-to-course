@@ -121,12 +121,20 @@ export function PlanDoctor({
                   <p className="text-muted-foreground"><strong>How to fix:</strong> {HOW[c.id] ?? "Adjust the semesters below until this turns green."}</p>
                   {!!c.offenders.length && (
                     <p className="mt-0.5 flex flex-wrap gap-1">
-                      {c.offenders.map((id) => (
-                        <button key={id} onClick={() => { const el = document.getElementById(`doctor-term-${draft.find((d) => d.courseId === id)?.term ?? 0}`); el?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
-                                className="rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-[var(--blue)]">
-                          {courses.get(id)?.code ?? id}
-                        </button>
-                      ))}
+                      {c.offenders.map((id) => {
+                        // Semester- or requirement-level failures (a credit
+                        // cap, a missing citation) have no course to jump to.
+                        const inDraft = draft.find((d) => d.courseId === id);
+                        if (!courses.get(id)) {
+                          return <span key={id} className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] text-muted-foreground">{id}</span>;
+                        }
+                        return (
+                          <button key={id} onClick={() => { const el = document.getElementById(`doctor-term-${inDraft?.term ?? 0}`); el?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+                                  className="rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-[var(--blue)]">
+                            {courses.get(id)?.code}
+                          </button>
+                        );
+                      })}
                     </p>
                   )}
                 </li>

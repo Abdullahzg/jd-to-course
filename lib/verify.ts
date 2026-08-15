@@ -44,7 +44,6 @@ export function verifyPlan(
     checks.push({ id, rule, passed, detail, offenders });
 
   const placed = plan.placements;
-  const code = (id: string) => courses.get(id)?.code ?? id;
   const done = new Set(completed);
 
   // 1. every requirement met
@@ -63,12 +62,12 @@ export function verifyPlan(
   const ids = placed.map((p) => p.courseId);
   const dupes = ids.filter((x, i) => ids.indexOf(x) !== i);
   add("no-duplicates", "No course appears twice", dupes.length === 0,
-    `${ids.length} courses, ${new Set(ids).size} distinct`, dupes.map(code));
+    `${ids.length} courses, ${new Set(ids).size} distinct`, dupes);
 
   // 3. nothing you already passed
   const retakes = ids.filter((id) => done.has(id));
   add("no-retakes", "Nothing you have already passed is planned again", retakes.length === 0,
-    `${completed.length} courses already done`, retakes.map(code));
+    `${completed.length} courses already done`, retakes);
 
   // 4. credit cap
   const over = plan.termCredits
@@ -87,7 +86,7 @@ export function verifyPlan(
   add("offered", "Every course is placed in a semester it is actually offered",
     badTerm.length === 0,
     `${placed.length} placements checked`,
-    badTerm.map((p) => `${code(p.courseId)} placed in ${termKinds[p.term]}, offered ${courses.get(p.courseId)?.termsOffered.join("/")}`));
+    badTerm.map((p) => p.courseId));
 
   // 6. prerequisites, re-derived from the catalog
   const badPrereq = placed.filter((p) => {
@@ -100,13 +99,13 @@ export function verifyPlan(
   add("prereqs", "Every prerequisite is finished before the course that needs it",
     badPrereq.length === 0,
     `${placed.filter((p) => courses.get(p.courseId)?.prereq).length} courses have prerequisites`,
-    badPrereq.map((p) => code(p.courseId)));
+    badPrereq.map((p) => p.courseId));
 
   // 7. horizon
   const outside = placed.filter((p) => p.term < 0 || p.term >= plan.termCredits.length);
   add("horizon", "Nothing is scheduled past the semesters you have",
     outside.length === 0,
-    `${plan.termCredits.length} semesters`, outside.map((p) => code(p.courseId)));
+    `${plan.termCredits.length} semesters`, outside.map((p) => p.courseId));
 
   // 8. single counting
   const byBucket = new Map<string, string[]>();
@@ -118,7 +117,7 @@ export function verifyPlan(
   add("single-count", "No course is used to satisfy two different requirements",
     new Set(counted).size === counted.length,
     `${counted.length} courses counted toward requirements`,
-    counted.filter((x, i) => counted.indexOf(x) !== i).map(code));
+    counted.filter((x, i) => counted.indexOf(x) !== i));
 
   // 9. citations
   const uncited = plan.buckets.filter((b) => !b.source?.url || !b.source?.quote);

@@ -15,6 +15,8 @@ import { useBudget } from "@/components/budget/budget-provider";
 import { termKindsFor, verifyPlan } from "@/lib/verify";
 import { PlanDoctor } from "./plan-doctor";
 import { describeDiff, fillOpenCredits, type ElectiveOption, type FilledTerm } from "@/lib/solver";
+import { prereqSatisfied } from "@/lib/solver/core";
+import type { PrereqNode } from "@/lib/types";
 import { AskPanel } from "./ask-panel";
 import { RichText } from "./rich-text";
 import { SemesterChart } from "./semester-chart";
@@ -407,6 +409,39 @@ export function PlanScreen() {
    * courses that would actually close it and the earliest term each could sit
    * in, so the panel can offer the fix rather than describe where to look.
    */
+  /**
+   * "Move it" answers a mis-ordering. It says nothing when the prerequisite
+   * is not merely early enough, but missing from the plan entirely, which is
+   * exactly the COMS W3261-needs-W3203 case: moving W3261 later never adds
+   * W3203. This walks the same prereq tree the solver itself checks
+   * (prereqSatisfied, imported, not re-implemented) to name the one course
+   * still missing, so the fix can be offered directly instead of left as an
+   * exercise.
+   */
+  const missingPrereqFor = (courseId: string): { course: Course; term: number } | null => {
+    const c = courses.get(courseId);
+    if (!c?.prereq) return null;
+    const have = new Set([...placedIdsLive, ...doneSetLive]);
+    const find = (node: PrereqNode | null): string | null => {
+      if (!node) return null;
+      if (node.op === "COURSE") return have.has(node.courseId) ? null : node.courseId;
+      if (node.op === "UNVERIFIABLE") return null;
+      if (node.op === "AND") { for (const ch of node.children) { const m = find(ch); if (m) return m; } return null; }
+      if (node.op === "OR") {
+        if (node.children.some((ch) => prereqSatisfied(ch, have))) return null;
+        for (const ch of node.children) { const m = find(ch); if (m) return m; }
+        return null;
+      }
+      return null;
+    };
+    const missingId = find(c.prereq);
+    const missing = missingId ? courses.get(missingId) : null;
+    if (!missing) return null;
+    const here = termOfLive.get(courseId) ?? 0;
+    const term = termKinds.findIndex((k, t) => t < here && missing.termsOffered.includes(k));
+    return term >= 0 ? { course: missing, term } : null;
+  };
+
   const suggestFor = (eligible: Set<string>) => {
     const takenOrPlanned = new Set([...placedIdsLive, ...doneSetLive]);
     return (school?.courses ?? [])
@@ -1474,42 +1509,67 @@ export function PlanScreen() {
                         <div className="mt-1 space-y-1">
                           {c.offenders.map((id) => {
                             const co = courses.get(id);
+                            // A rule can also fail at the semester or the
+                            // requirement level (a credit cap, a missing
+                            // citation), where there is no single course to
+                            // move or remove. Those offenders are plain
+                            // labels; only a real course id gets the button.
+                            if (!co) {
+                              return <span key={id} className="inline-block rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] text-muted-foreground">{id}</span>;
+                            }
                             const here = termOfLive.get(id);
                             const open = openFix === `${c.id}:${id}`;
                             // Where this course could legally sit instead: the
                             // terms it is actually offered in, minus where it is.
                             const legal = names
                               .map((n, t) => ({ n, t }))
-                              .filter(({ t }) => co?.termsOffered.includes(termKinds[t]) && t !== here);
+                              .filter(({ t }) => co.termsOffered.includes(termKinds[t]) && t !== here);
+                            // A prereq failure can mean two different things:
+                            // the course IS in the plan but sits too late (Move
+                            // fixes that), or its prerequisite was never placed
+                            // at all, and moving THIS course changes nothing.
+                            const missing = c.id === "prereqs" ? missingPrereqFor(id) : null;
                             return (
                               <div key={id}>
                                 <button onClick={() => setOpenFix(open ? null : `${c.id}:${id}`)}
                                         aria-expanded={open}
                                         className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] hover:border-[var(--blue)]">
-                                  {co?.code ?? id} {open ? "\u25B4" : "\u25BE"}
+                                  {co.code} {open ? "\u25B4" : "\u25BE"}
                                 </button>
                                 {open && (
                                   <div className="mt-1 rounded-lg border border-border bg-white p-2">
                                     <p className="text-[10px] text-muted-foreground">
-                                      {co?.title}{here != null ? ` sits in ${names[here]}.` : ""} Move it, or open it on the board.
+                                      {co.title}{here != null ? ` sits in ${names[here]}.` : " is not currently placed."}{" "}
+                                      {missing
+                                        ? `Its prerequisite, ${missing.course.title}, is not in the plan at all.`
+                                        : "Move it, or open it on the board."}
                                     </p>
                                     <div className="mt-1 flex flex-wrap gap-1">
+                                      {missing && (
+                                        <button onClick={() => { addCourse(missing.course.id, missing.term, missing.course.code); setOpenFix(null); }}
+                                                data-track="health_fix_add_prereq"
+                                                className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
+                                          Add {missing.course.code} to {names[missing.term]}
+                                        </button>
+                                      )}
                                       {legal.map(({ n, t }) => (
-                                        <button key={t} onClick={() => { moveCourse(id, t, co?.code); setOpenFix(null); }}
+                                        <button key={t} onClick={() => { moveCourse(id, t, co.code); setOpenFix(null); }}
                                                 data-track="health_fix_move"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
                                           Move to {n}
                                         </button>
                                       ))}
-                                      <button onClick={() => { removeCourse(id, co?.code); setOpenFix(null); }}
+                                      <button onClick={() => { removeCourse(id, co.code); setOpenFix(null); }}
                                               data-track="health_fix_remove"
                                               className="rounded-full border border-border px-2.5 py-1 text-[10px]">
                                         Remove it
                                       </button>
-                                      <button onClick={() => { setOpenFix(null); jumpToCourse(here ?? 0, id); }}
-                                              className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
-                                        Show me
-                                      </button>
+                                      {here != null && (
+                                        <button onClick={() => { setOpenFix(null); jumpToCourse(here, id); }}
+                                                className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
+                                          Show me
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 )}
