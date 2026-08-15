@@ -106,3 +106,26 @@ export function latePrereq(courseId: string, b: BoardView): { course: Course; te
   const term = late ? b.termOf.get(late.id) : null;
   return late && term != null ? { course: late, term } : null;
 }
+
+/**
+ * The student, as a brand new posting should see them.
+ *
+ * `excluded` and `locked` describe edits to ONE timetable: a course dropped out
+ * of it, a course pinned inside it. They used to travel to every later posting,
+ * and because the solver bans every excluded course outright, a single drop
+ * hours earlier quietly banned that course for good. A fresh Machine Learning
+ * posting opened already broken -- Fundamentals of Computer Systems had been
+ * dropped while looking at a different job, so Computer Science core could no
+ * longer be completed -- and the panel blamed the student for a removal they
+ * had made against a plan they had already left behind.
+ *
+ * What the student IS carries over, because it is true of them whatever they
+ * are applying for: their programme, when they start, how long they have, and
+ * what they have already passed. What they did to a previous timetable does not.
+ */
+export function studentForNewPosting<T extends {
+  excluded: string[];
+  locked: { courseId: string; term: number }[];
+}>(student: T): T {
+  return { ...student, excluded: [], locked: [] };
+}

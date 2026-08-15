@@ -433,6 +433,18 @@ export function PlanScreen() {
    * disagreeing about which semesters are legal. The rules themselves live in
    * lib/plan-edits.ts and are tested on every build.
    */
+  /**
+   * What a course is CALLED, for prose about it.
+   *
+   * Every sentence the health panel and the semester banners produced was
+   * written in catalog codes -- "CSEE W4824 needs CSEE W3827" -- which is four
+   * tokens of nothing anyone can hold in their head, on a board where the codes
+   * are already printed next to every title. The title is the readable half and
+   * belongs in the sentence; the code stays where it is useful, on the card and
+   * in the course link.
+   */
+  const nameOf = (courseId: string) => courses.get(courseId)?.title ?? courses.get(courseId)?.code ?? courseId;
+
   const board: BoardView = { courses, termOf: termOfLive, completed: doneSetLive, termKinds };
   const earliestLegalTermFor = (course: Course, beforeTerm: number) => earliestLegalTerm(course, beforeTerm, board);
   const legalMovesFor = (courseId: string) => legalMoves(courseId, board);
@@ -565,15 +577,15 @@ export function PlanScreen() {
       .filter((id) => termOfLive.get(id) === t);
 
     for (const id of prereqOffenders) {
-      const code = courses.get(id)?.code ?? id;
+      const code = nameOf(id);
       const missing = missingPrereqFor(id);
       if (missing) {
         out.push({
           key: `missing:${id}`, broken: true,
-          headline: `${code} needs ${missing.course.code} first, and it is not in the plan.`,
+          headline: `${code} needs ${missing.course.title} first, and it is not in the plan.`,
           detail: `${missing.course.title} runs in ${missing.course.termsOffered.join("/")}, so it can go in ${names[missing.term]}, before this.`,
           actions: [{
-            label: `Add ${missing.course.code} to ${names[missing.term]}`, primary: true,
+            label: `Add ${missing.course.title} to ${names[missing.term]}`, primary: true,
             onClick: () => addCourse(missing.course.id, missing.term, missing.course.code),
           }],
         });
@@ -585,12 +597,12 @@ export function PlanScreen() {
           && (b.needCourses ?? 0) >= b.eligible.length)?.label;
         out.push({
           key: `excluded:${id}`, broken: true,
-          headline: `${code} needs ${gone.course.code}, and you took ${gone.course.code} out of the plan.`,
+          headline: `${code} needs ${gone.course.title}, which is not in the plan.`,
           detail: requiredBy
-            ? `${requiredBy} requires ${gone.course.code} too, so the degree cannot finish without it.`
+            ? `${requiredBy} requires it too, so the degree cannot finish without it.`
             : `Putting it back in ${names[gone.term]} puts it in front of ${code} again.`,
           actions: [
-            { label: `Put ${gone.course.code} back in ${names[gone.term]}`, primary: true,
+            { label: `Put ${gone.course.title} back in ${names[gone.term]}`, primary: true,
               onClick: () => addCourse(gone.course.id, gone.term, gone.course.code) },
             { label: `or drop ${code}`, onClick: () => removeCourse(id, code) },
           ],
@@ -605,7 +617,7 @@ export function PlanScreen() {
           .filter(({ k }) => k > late.term && co?.termsOffered.includes(termKinds[k]));
         out.push({
           key: `late:${id}`, broken: true,
-          headline: `${code} is in ${names[t]}, but ${late.course.code}, which it needs first, is in ${names[late.term]}.`,
+          headline: `${code} is in ${names[t]}, but ${late.course.title}, which it needs first, is in ${names[late.term]}.`,
           detail: `One of the two has to move. ${code} runs in ${co?.termsOffered.join("/") ?? ""}.`,
           actions: legal.slice(0, 3).map(({ n, k }) => ({
             label: `Move ${code} to ${n}`, primary: true, onClick: () => moveCourse(id, k, code),
@@ -629,9 +641,9 @@ export function PlanScreen() {
       out.push({
         key: `rule:${c.id}:${t}`, broken: true,
         headline: c.problem,
-        detail: `In this semester: ${here.map((id) => courses.get(id)?.code ?? id).join(", ")}. ${c.detail}`,
+        detail: `In this semester: ${here.map((id) => nameOf(id)).join(", ")}. ${c.detail}`,
         actions: here.slice(0, 1).map((id) => ({
-          label: `Show me ${courses.get(id)?.code ?? id}`, onClick: () => jumpToCourse(t, id),
+          label: `Show me ${nameOf(id)}`, onClick: () => jumpToCourse(t, id),
         })),
       });
     }
@@ -655,7 +667,7 @@ export function PlanScreen() {
         headline: `${r.label} is ${r.gap} ${r.unit}${r.gap === 1 ? "" : "s"} short.`,
         detail: `Nothing in ${names[t]} is wrong. It is flagged because this is the earliest semester a course that closes ${r.label.toLowerCase()} runs in.`,
         actions: picks.slice(0, 3).map((p) => ({
-          label: `Add ${p.course.code} here`, primary: true,
+          label: `Add ${p.course.title} here`, primary: true,
           onClick: () => addCourse(p.course.id, p.term, p.course.code),
         })),
       });
@@ -1545,7 +1557,7 @@ export function PlanScreen() {
                               <>
                                 {!!missingHere && (
                                   <p className="mb-1 text-[10px] text-muted-foreground">
-                                    {missingHere.course.code} is left out here — it needs to land in an earlier semester to count.
+                                    {missingHere.course.title} is left out here — it needs to land in an earlier semester to count.
                                   </p>
                                 )}
                                 {!!readyFixes.length && (
@@ -1633,11 +1645,11 @@ export function PlanScreen() {
                         consideredTotal={orderedCodes.length}
                         shortlistCount={shortlistCount}
                         whyConsidered={(id) => considerationWhy.get(id) ?? null}
-                        onLock={() => toggleLock(p.courseId, p.term, courses.get(p.courseId)?.code)}
-                        onRemove={() => removeCourse(p.courseId, courses.get(p.courseId)?.code)}
+                        onLock={() => toggleLock(p.courseId, p.term, nameOf(p.courseId))}
+                        onRemove={() => removeCourse(p.courseId, nameOf(p.courseId))}
                         onChoose={(id) => {
                           setOpenAlts(null);
-                          chooseSlot(p.bucketId, p.courseId, id, courses.get(p.courseId)?.code, courses.get(id)?.code);
+                          chooseSlot(p.bucketId, p.courseId, id, nameOf(p.courseId), nameOf(id));
                         }}
                       />
                     ) : null)}
@@ -1716,10 +1728,10 @@ export function PlanScreen() {
                 {state.student.excluded.map((id) => (
                   <li key={id}>
                     <button
-                      onClick={() => unexclude(id, courses.get(id)?.code)}
+                      onClick={() => unexclude(id, nameOf(id))} data-track="course_put_back"
                       className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm transition-colors hover:bg-[var(--blue-soft)]"
                     >
-                      {courses.get(id)?.code ?? id} <RotateCcw className="h-3.5 w-3.5" />
+                      {nameOf(id)} <RotateCcw className="h-3.5 w-3.5" />
                     </button>
                   </li>
                 ))}
@@ -1805,7 +1817,8 @@ export function PlanScreen() {
                                 <button onClick={() => setOpenFix(open ? null : `${c.id}:${id}`)}
                                         aria-expanded={open}
                                         className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] hover:border-[var(--blue)]">
-                                  {co.code} {open ? "\u25B4" : "\u25BE"}
+                                  <span className="inline-block max-w-[150px] truncate align-bottom">{co.title}</span>{" "}
+                                  {open ? "\u25B4" : "\u25BE"}
                                 </button>
                                 {open && (
                                   <div className="mt-1 rounded-lg border border-border bg-white p-2">
@@ -1816,7 +1829,7 @@ export function PlanScreen() {
                                         : excludedPrereq
                                           ? `Its prerequisite, ${excludedPrereq.course.title}, was taken out of the plan \u2014 moving this course to another term will not fix that. Putting it back will.`
                                           : late
-                                            ? `${late.course.code}, which it needs first, is in ${names[late.term]}${late.term === here ? " \u2014 the same semester, and a prerequisite has to be finished before, not alongside" : ""}. One of the two has to move.`
+                                            ? `${late.course.title}, which it needs first, is in ${names[late.term]}${late.term === here ? " \u2014 the same semester, and a prerequisite has to be finished before, not alongside" : ""}. One of the two has to move.`
                                             : legal.length
                                               ? "Move it, or open it on the board."
                                               : "No semester in your horizon has its prerequisites behind it, so moving it cannot settle this."}
@@ -1826,31 +1839,31 @@ export function PlanScreen() {
                                         <button onClick={() => { addCourse(missing.course.id, missing.term, missing.course.code); setOpenFix(null); }}
                                                 data-track="health_fix_add_prereq"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
-                                          Add {missing.course.code} to {names[missing.term]}
+                                          Add {missing.course.title} to {names[missing.term]}
                                         </button>
                                       )}
                                       {excludedPrereq && (
                                         <button onClick={() => { addCourse(excludedPrereq.course.id, excludedPrereq.term, excludedPrereq.course.code); setOpenFix(null); }}
                                                 data-track="health_fix_restore_prereq"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
-                                          Put {excludedPrereq.course.code} back in {names[excludedPrereq.term]}
+                                          Put {excludedPrereq.course.title} back in {names[excludedPrereq.term]}
                                         </button>
                                       )}
                                       {late && pullBack.map((t) => (
                                         <button key={`pull-${t}`} onClick={() => { moveCourse(late.course.id, t, late.course.code); setOpenFix(null); }}
                                                 data-track="health_fix_pull_prereq"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
-                                          Move {late.course.code} to {names[t]}
+                                          Move {late.course.title} to {names[t]}
                                         </button>
                                       )).slice(0, 2)}
                                       {!excludedPrereq && legal.map(({ n, t }) => (
                                         <button key={t} onClick={() => { moveCourse(id, t, co.code); setOpenFix(null); }}
                                                 data-track="health_fix_move"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
-                                          {late ? `Move ${co.code} to ${n}` : `Move to ${n}`}
+                                          {late ? `Move ${co.title} to ${n}` : `Move to ${n}`}
                                         </button>
                                       ))}
-                                      <button onClick={() => { removeCourse(id, co.code); setOpenFix(null); }}
+                                      <button onClick={() => { removeCourse(id, co.title); setOpenFix(null); }}
                                               data-track="health_fix_remove"
                                               className="rounded-full border border-border px-2.5 py-1 text-[10px]">
                                         Remove it
@@ -2289,11 +2302,17 @@ function CourseRow({
         </div>
 
         <div className="order-first flex shrink-0 gap-2 self-end sm:order-none sm:self-auto">
-          <button onClick={onLock}
+          {/* Tracked, because these two are the edits most likely to be
+              behind a board someone says they never touched. A student
+              reported a plan that opened broken having "changed nothing", and
+              the honest answer was that nothing recorded either of these
+              buttons, so the origin had to be reconstructed from the
+              arithmetic of a stale requirement count. Never again. */}
+          <button onClick={onLock} data-track={placement.locked ? "course_unpin" : "course_pin"}
                   className="rounded-full border border-border px-2 py-0.5 text-[11px] transition-colors hover:bg-[var(--blue-soft)]">
             {placement.locked ? "Let it move" : "Keep"}
           </button>
-          <button onClick={onRemove}
+          <button onClick={onRemove} data-track="course_drop"
                   className="rounded-full border border-border px-2 py-0.5 text-[11px] transition-colors hover:bg-[var(--blue-soft)]">
             Drop
           </button>

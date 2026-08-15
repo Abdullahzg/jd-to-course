@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Loader2, Search, X } from "lucide-react";
 import type { StudentState } from "@/lib/types";
+import { studentForNewPosting } from "@/lib/plan-edits";
 import { usePlanner, type PlannerState } from "./planner-store";
 import { useBudget } from "@/components/budget/budget-provider";
 
@@ -267,24 +268,9 @@ export function Survey({
     say("Working out the timetable: prerequisites, terms offered, credit caps, every degree rule");
     const next = {
       ...state, schoolId, programId, jd,
-      // Building a plan for a posting starts from a clean board.
-      //
-      // `excluded` and `locked` are edits to ONE plan -- a course dropped from
-      // it, a course pinned to a semester in it. They were carried into every
-      // later posting instead, and the solver drops every excluded course from
-      // its pools, so one drop hours earlier silently banned that course for
-      // good. A brand new Machine Learning posting opened already broken:
-      // Fundamentals of Computer Systems had been dropped while looking at a
-      // different job, Computer Science core could no longer be completed, and
-      // Computer Architecture sat there with a prerequisite the solver was
-      // forbidden to place. Nothing in the new posting explained any of it, and
-      // the panel blamed the student for a removal they had made against
-      // another plan entirely.
-      //
-      // What the student IS -- program, start term, horizon, courses already
-      // passed -- is a fact about them and carries over. What they did to a
-      // previous timetable does not.
-      student: { ...student, program: programId, excluded: [], locked: [] },
+      // A posting gets a clean board: see studentForNewPosting for the plan
+      // that opened already broken because the last one's edits came along.
+      student: { ...studentForNewPosting(student), program: programId },
       // A credential is a fact about paperwork, not about what you know. Handing
       // "publications at NeurIPS" to the solver as a skill let a machine
       // learning course claim to answer it, which is how a course ended up

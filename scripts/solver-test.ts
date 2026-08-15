@@ -11,7 +11,7 @@ import { buildModel, prereqSatisfied } from "@/lib/solver/core";
 import { SCHOOLS, DEMO_STUDENT, getProgram, getSchool, DEMO_JD_ML, DEMO_JD_BACKEND, DEMO_JD_SECURITY } from "@/data";
 import type { SolveRequest, Plan, Course, Term } from "@/lib/types";
 import { termKindsFor, verifyPlan } from "@/lib/verify";
-import { earliestLegalTerm, latePrereq, legalMoves, type BoardView } from "@/lib/plan-edits";
+import { earliestLegalTerm, latePrereq, legalMoves, studentForNewPosting, type BoardView } from "@/lib/plan-edits";
 
 let failures = 0;
 const check = (name: string, cond: boolean, detail = "") => {
@@ -465,6 +465,27 @@ for (const school of SCHOOLS) {
       check(`${name}: opens with nothing flagged`, failed.length === 0 && unmet.length === 0,
         [...failed.map((c) => c.problem), ...unmet.map((b) => `${b.label} short`)].join("; "));
     }
+  }
+
+  // A posting must not inherit the last plan's hand edits. This is the exact
+  // shape of the state that opened a brand new board already broken.
+  {
+    const carried = {
+      program: "COLUMBIA:CS_BA", completed: ["COLUMBIA:COMSW1004"], startTerm: "FA" as Term,
+      horizonTerms: 8, completedCredits: 62,
+      excluded: ["COLUMBIA:CSEEW3827"],
+      locked: [{ courseId: "COLUMBIA:COMSW3134", term: 1 }],
+    };
+    const fresh = studentForNewPosting(carried);
+    check("a new posting drops the last plan's dropped courses", fresh.excluded.length === 0,
+      fresh.excluded.join(", "));
+    check("a new posting drops the last plan's pinned semesters", fresh.locked.length === 0,
+      JSON.stringify(fresh.locked));
+    check("but keeps what is true of the student whatever they apply for",
+      fresh.completed.length === 1 && fresh.horizonTerms === 8
+      && fresh.startTerm === "FA" && fresh.completedCredits === 62 && fresh.program === "COLUMBIA:CS_BA");
+    check("and does not mutate the plan it came from",
+      carried.excluded.length === 1 && carried.locked.length === 1);
   }
 
   // And the reason one did not: a course dropped while looking at an EARLIER
