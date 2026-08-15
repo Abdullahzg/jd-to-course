@@ -64,7 +64,7 @@ export function PlanScreen() {
     state, setState, result, solving, reflowing, courses, school, program, changed, keepInPlan,
     toggleLock, exclude, unexclude, chooseSlot, runSolve, solveWith,
     history, canUndo, canRedo, undo, redo, lastChange, summary, summaryBusy,
-    repair, clearRepair, tryArrangement, removeCourse, addCourse, moveCourse, lastRemovedTerm, restoreSnapshot,
+    repair, clearRepair, tryArrangement, removeCourse, addCourse, moveCourse, lastRemovedTerm, restoreSnapshot, skipSuggestion,
   } = usePlanner();
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [openFix, setOpenFix] = useState<string | null>(null);
@@ -1656,7 +1656,10 @@ export function PlanScreen() {
 
                     {other > 0 && (
                       <OpenSlot fill={filledByTerm.get(t)} courses={courses} revealCourse={openAlts}
-                                jobParts={(state.facets ?? []).length} consideredTotal={orderedCodes.length} whyConsidered={(id) => considerationWhy.get(id) ?? null} />
+                                jobParts={(state.facets ?? []).length} consideredTotal={orderedCodes.length}
+                                whyConsidered={(id) => considerationWhy.get(id) ?? null}
+                                onKeep={(id, label) => addCourse(id, t, label)}
+                                onSkip={(id, label) => skipSuggestion(id, label)} />
                     )}
 
                     {!inTerm.length && other === 0 && (
@@ -2228,13 +2231,24 @@ function CourseRow({
               bordered advisory box, stacked. Six blocks of chrome around three
               facts. The facts are the same, the stacking is gone. */}
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-            <span>
-              {isSupport
-                ? placement.unlocks.length
+            {/* Whether a course is REQUIRED or a choice is the first thing worth
+                knowing about it, and it was buried in the same grey line as the
+                seasons it runs in. A student could not tell, before pressing
+                Drop, whether they were dropping something the degree insists on
+                or something they picked. Both are still allowed -- see the
+                Drop button -- but they no longer look identical. */}
+            {isSupport ? (
+              <span>
+                {placement.unlocks.length
                   ? `Needed before ${placement.unlocks.join(", ")}`
-                  : "Not a requirement, taken for what it teaches"
-                : `Counts toward ${bucket?.label ?? "a requirement"}`}
-            </span>
+                  : "Not a requirement, taken for what it teaches"}
+              </span>
+            ) : (
+              <span className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
+                    style={{ background: "color-mix(in oklab, var(--blue) 12%, transparent)", color: "var(--blue-deep)" }}>
+                Required · {bucket?.label ?? "a requirement"}
+              </span>
+            )}
             <span aria-hidden>·</span>
             <span>{course.termsOffered.map((t) => (t === "FA" ? "Fall" : t === "SP" ? "Spring" : "Summer")).join("/")}</span>
             {placement.covers.map((c) => (
@@ -2470,9 +2484,18 @@ function Empty() {
  * Courses that answer nothing are still listed, because a semester with a hole
  * in it is not a plan, but they are visibly the quiet ones.
  */
-function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal, whyConsidered }: {
+function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal, whyConsidered, onKeep, onSkip }: {
   fill?: FilledTerm;
   courses: Map<string, Course>;
+  /**
+   * Keep pins a suggestion into the plan for real; Skip turns it down and lets
+   * the next best course take the slot. These are the courses a student has the
+   * MOST freedom over -- the degree does not care which electives they are --
+   * and they were the only ones on the board with no way to choose at all,
+   * while every required course had Keep and Drop.
+   */
+  onKeep: (courseId: string, label: string) => void;
+  onSkip: (courseId: string, label: string) => void;
   /** How many parts of the job exist, so "answers 2 of 5" has a denominator. */
   jobParts: number;
   /** how many courses were ranked for this posting, catalog wide */
@@ -2492,6 +2515,26 @@ function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal, whyC
   void courses;
   const matched = fill.picks.filter((p) => p.teaches.length);
   const filler = fill.picks.filter((p) => !p.teaches.length);
+  const ElectiveTag = () => (
+    <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{ background: "color-mix(in oklab, var(--amber) 18%, transparent)", color: "var(--clay)" }}>
+      Elective · your choice
+    </span>
+  );
+  const Choose = ({ id, label }: { id: string; label: string }) => (
+    <span className="ml-auto flex shrink-0 gap-1">
+      <button onClick={() => onKeep(id, label)} data-track="elective_keep"
+              title="Put this in the plan for good, in this semester"
+              className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] transition-colors hover:bg-[var(--blue-soft)]">
+        Keep
+      </button>
+      <button onClick={() => onSkip(id, label)} data-track="elective_skip"
+              title="Not this one. The next best course for this slot takes its place."
+              className="rounded-full border border-border bg-white px-2 py-0.5 text-[10px] transition-colors hover:bg-[var(--blue-soft)]">
+        Drop
+      </button>
+    </span>
+  );
 
   return (
     <div className="rounded-xl border border-dashed plan-edge plan-wash p-3">
@@ -2537,7 +2580,9 @@ function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal, whyC
                           reader&rsquo;s pick {o.consideredPos + 1} of {consideredTotal}
                         </span>
                       )}
-                      <span className="tabular ml-auto text-[11px] text-muted-foreground">{o.credits} cr</span>
+                      <ElectiveTag />
+                      <span className="tabular text-[11px] text-muted-foreground">{o.credits} cr</span>
+                      <Choose id={o.courseId} label={o.title} />
                     </div>
                     <p className="mt-1 text-xs">
                       Chosen for this slot because it answers{" "}
@@ -2589,7 +2634,9 @@ function OpenSlot({ fill, courses, revealCourse, jobParts, consideredTotal, whyC
                             best of {o.fillerPool} available for this slot
                           </span>
                         ) : null}
-                        <span className="tabular ml-auto text-[10px] text-muted-foreground">{o.credits} cr</span>
+                        <ElectiveTag />
+                        <span className="tabular text-[10px] text-muted-foreground">{o.credits} cr</span>
+                        <Choose id={o.courseId} label={o.title} />
                       </span>
                       <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
                         {o.fillerReason

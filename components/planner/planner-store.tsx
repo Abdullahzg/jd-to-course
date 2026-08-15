@@ -153,6 +153,8 @@ type Ctx = {
   repair: { attempted: string; message: string; blockingBuckets: { bucketId: string; label: string; detail: string }[]; suggestions: string[]; dropCourseId?: string } | null;
   clearRepair: () => void;
   removeCourse: (courseId: string, label?: string) => void;
+  /** Turn down a suggested elective. No solve: the suggestions are derived. */
+  skipSuggestion: (courseId: string, label?: string) => void;
   lastRemovedTerm: number | null;
   addCourse: (courseId: string, term: number, label?: string) => void;
   moveCourse: (courseId: string, term: number, label?: string) => void;
@@ -735,6 +737,29 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     recordManual(`Removed ${label}`, "Removed by hand. Nothing else was touched; the health panel says what this opened up.", nextState, nextResult, [`Took out ${label}, and only ${label}`]);
   }, [recordManual]);
 
+  /**
+   * "Not this one" for a suggested elective.
+   *
+   * The open-credit suggestions are not placements -- they are worked out from
+   * the plan, the catalog and this very list every time the page renders -- so
+   * turning one down needs no solver and must not call one: re-solving would
+   * reshuffle a board the student did not ask to have reshuffled, to change a
+   * suggestion. Adding it to the list the filler already reads is the whole
+   * operation, and the next best course takes the slot on the next render.
+   */
+  const skipSuggestion = useCallback((courseId: string, label = courseId) => {
+    const st = stateRef.current;
+    const res = resultRef.current;
+    if (!res || st.student.excluded.includes(courseId)) return;
+    const nextState = {
+      ...st,
+      student: { ...st.student, excluded: [...new Set([...st.student.excluded, courseId])] },
+    };
+    setChanged(new Set([courseId]));
+    recordManual(`Turned down ${label}`, "An elective you did not want. The plan is untouched; the next best course for that slot takes its place.",
+      nextState, res, [`${label} will not be suggested again`]);
+  }, [recordManual]);
+
   /** Put a course in a different semester, and nothing else. */
   const moveCourse = useCallback((courseId: string, term: number, label = courseId) => {
     const res = resultRef.current;
@@ -1131,7 +1156,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     undo, redo,
     lastChange: historyIndex >= 0 ? history[historyIndex] ?? null : null,
     summary, summaryBusy,
-    solveWith, runSolve, toggleLock, exclude, unexclude, chooseSlot, keepInPlan, reset,
+    solveWith, runSolve, toggleLock, exclude, unexclude, chooseSlot, keepInPlan, reset, skipSuggestion,
     restoreSnapshot,
   };
 
