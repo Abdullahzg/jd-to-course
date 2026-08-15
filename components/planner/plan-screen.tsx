@@ -353,6 +353,20 @@ export function PlanScreen() {
   );
   const shortlistCount = (state.shortlist ?? []).length;
 
+  const filledByTerm = new Map(
+    fillOpenCredits({
+      catalog: school?.courses ?? [],
+      plan,
+      completed: state.student.completed,
+      excluded: state.student.excluded,
+      termKinds,
+      relevance: state.relevance,
+      targetSkills: state.targetSkills,
+      shortlistRank: consideration,
+      shortlistCount,
+    }).map((f) => [f.term, f]),
+  );
+
   const v = program ? verifyPlan(plan, program, courses, state.student.completed, termKinds) : null;
 
   // The always-on health readout. Manual edits change placements, placements
@@ -432,19 +446,6 @@ export function PlanScreen() {
     }
   }
 
-  const filledByTerm = new Map(
-    fillOpenCredits({
-      catalog: school?.courses ?? [],
-      plan,
-      completed: state.student.completed,
-      excluded: state.student.excluded,
-      termKinds,
-      relevance: state.relevance,
-      targetSkills: state.targetSkills,
-      shortlistRank: consideration,
-      shortlistCount,
-    }).map((f) => [f.term, f]),
-  );
   const cov = result.coverage;
 
   /**
