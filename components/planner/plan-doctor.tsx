@@ -116,7 +116,7 @@ export function PlanDoctor({
             <ul className="mt-1.5 max-h-40 space-y-1.5 overflow-y-auto">
               {failed.map((c) => (
                 <li key={c.id} className="text-xs">
-                  <p className="font-medium" style={{ color: "#b91c1c" }}>{c.rule}</p>
+                  <p className="font-medium" style={{ color: "#b91c1c" }}>{c.problem}</p>
                   <p className="text-muted-foreground">{c.detail}</p>
                   <p className="text-muted-foreground"><strong>How to fix:</strong> {HOW[c.id] ?? "Adjust the semesters below until this turns green."}</p>
                   {!!c.offenders.length && (

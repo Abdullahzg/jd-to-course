@@ -395,7 +395,14 @@ export function PlanScreen() {
       unit: b.unit === "courses" ? "course" : "credit",
       eligible: bucketEligible.get(b.bucketId) ?? new Set<string>(),
     }));
-  const failedLive = (v?.checks ?? []).filter((c) => !c.passed);
+  // "Every requirement of the degree is satisfied" fails for exactly the
+  // reason each unmet requirement below already states, one row per
+  // requirement, each with courses that would close it. Keeping both made one
+  // problem read as two: a plan short a single data structures course counted
+  // "3 open" for two things. The per-requirement rows are the ones worth
+  // showing, because they are the ones that can be acted on. The rule itself
+  // still appears, ticked or crossed, in the full "Rules checked" list.
+  const failedLive = (v?.checks ?? []).filter((c) => !c.passed && c.id !== "requirements");
   // Courses committed to the open credits live in the filler, not in the
   // solver's placements, so an offender sitting there had no term and its
   // semester never lit up.
@@ -1335,7 +1342,7 @@ export function PlanScreen() {
                       ? `${offenderCode} needs ${missingPrereqHere.course.code} first, and it is not in the plan yet.`
                       : excludedOffenderHere?.excluded
                         ? `${offenderCode} needs ${excludedOffenderHere.excluded.course.code}, and you took ${excludedOffenderHere.excluded.course.code} out of the plan.${requiredBy ? ` ${requiredBy} requires it, so the plan cannot finish without it.` : ""}`
-                        : otherFail?.rule
+                        : otherFail?.problem
                           ?? (unmetLive.length ? `${unmetLive[0].label}: ${unmetLive[0].gap} ${unmetLive[0].unit}${unmetLive[0].gap === 1 ? "" : "s"} short` : "This semester needs a look");
                     return (
                     <div className="mb-3 rounded-xl border p-2.5" style={{ borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }}>
@@ -1614,7 +1621,10 @@ export function PlanScreen() {
                 <ul className="mt-2 space-y-2">
                   {failedLive.map((c) => (
                     <li key={c.id} className="text-xs">
-                      <p className="font-medium" style={{ color: "#dc2626" }}>{c.rule}</p>
+                      {/* These are the FAILED checks only, so the heading says
+                          what is wrong. The full ticked-and-crossed list
+                          further down is the place for the rule's own name. */}
+                      <p className="font-medium" style={{ color: "#dc2626" }}>{c.problem}</p>
                       <p className="text-muted-foreground">{c.detail}</p>
                       {!!c.offenders.length && (
                         <div className="mt-1 space-y-1">

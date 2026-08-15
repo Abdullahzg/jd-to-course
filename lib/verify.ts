@@ -19,6 +19,16 @@ export type Check = {
   id: string;
   /** what must be true, in plain words */
   rule: string;
+  /**
+   * What is WRONG, in plain words, for when this check fails.
+   *
+   * `rule` is written as the goal ("Every prerequisite is finished before the
+   * course that needs it"). Printing that sentence in red, which is what the
+   * health panel did, states the good outcome in the colour of alarm and reads
+   * as though the app were claiming it — worse still next to "1 of 7 not met",
+   * which says the opposite. A failing check has to say what broke.
+   */
+  problem: string;
   passed: boolean;
   /** the numbers behind the verdict, so it can be argued with */
   detail: string;
@@ -40,8 +50,8 @@ export function verifyPlan(
   termKinds: Term[],
 ): Verification {
   const checks: Check[] = [];
-  const add = (id: string, rule: string, passed: boolean, detail: string, offenders: string[] = []) =>
-    checks.push({ id, rule, passed, detail, offenders });
+  const add = (id: string, rule: string, problem: string, passed: boolean, detail: string, offenders: string[] = []) =>
+    checks.push({ id, rule, problem, passed, detail, offenders });
 
   const placed = plan.placements;
   const done = new Set(completed);
@@ -51,6 +61,9 @@ export function verifyPlan(
   add(
     "requirements",
     "Every requirement of the degree is satisfied",
+    unmet.length === 1
+      ? "One requirement of the degree is not met yet"
+      : `${unmet.length} requirements of the degree are not met yet`,
     unmet.length === 0,
     unmet.length === 0
       ? `all ${plan.buckets.length} requirements met`
@@ -61,12 +74,14 @@ export function verifyPlan(
   // 2. no course twice
   const ids = placed.map((p) => p.courseId);
   const dupes = ids.filter((x, i) => ids.indexOf(x) !== i);
-  add("no-duplicates", "No course appears twice", dupes.length === 0,
+  add("no-duplicates", "No course appears twice",
+    "The same course is in the plan twice", dupes.length === 0,
     `${ids.length} courses, ${new Set(ids).size} distinct`, dupes);
 
   // 3. nothing you already passed
   const retakes = ids.filter((id) => done.has(id));
-  add("no-retakes", "Nothing you have already passed is planned again", retakes.length === 0,
+  add("no-retakes", "Nothing you have already passed is planned again",
+    "The plan schedules a course you have already passed", retakes.length === 0,
     `${completed.length} courses already done`, retakes);
 
   // 4. credit cap
@@ -74,6 +89,7 @@ export function verifyPlan(
     .map((c, t) => ({ c, t }))
     .filter((x) => x.c > program.maxCreditsPerTerm);
   add("credit-cap", `No semester goes over the ${program.maxCreditsPerTerm} credit limit`,
+    `${over.length === 1 ? "A semester is" : `${over.length} semesters are`} over the ${program.maxCreditsPerTerm} credit limit`,
     over.length === 0,
     `heaviest semester is ${Math.max(0, ...plan.termCredits)} credits`,
     over.map((x) => `semester ${x.t + 1}: ${x.c} credits`));
@@ -84,6 +100,7 @@ export function verifyPlan(
     return c ? !c.termsOffered.includes(termKinds[p.term]) : false;
   });
   add("offered", "Every course is placed in a semester it is actually offered",
+    `${badTerm.length === 1 ? "A course sits" : `${badTerm.length} courses sit`} in a semester the catalog does not run ${badTerm.length === 1 ? "it" : "them"} in`,
     badTerm.length === 0,
     `${placed.length} placements checked`,
     badTerm.map((p) => p.courseId));
@@ -96,14 +113,21 @@ export function verifyPlan(
     for (const q of placed) if (q.term < p.term) before.add(q.courseId);
     return !prereqSatisfied(c.prereq, before);
   });
+  const withPrereq = placed.filter((p) => courses.get(p.courseId)?.prereq).length;
   add("prereqs", "Every prerequisite is finished before the course that needs it",
+    badPrereq.length === 1
+      ? "One course is scheduled before something it needs first"
+      : `${badPrereq.length} courses are scheduled before something they need first`,
     badPrereq.length === 0,
-    `${placed.filter((p) => courses.get(p.courseId)?.prereq).length} courses have prerequisites`,
+    badPrereq.length === 0
+      ? `${withPrereq} courses have prerequisites`
+      : `${badPrereq.length} of the ${withPrereq} courses with prerequisites are not ready when they are scheduled`,
     badPrereq.map((p) => p.courseId));
 
   // 7. horizon
   const outside = placed.filter((p) => p.term < 0 || p.term >= plan.termCredits.length);
   add("horizon", "Nothing is scheduled past the semesters you have",
+    "Something is scheduled past the last semester you have",
     outside.length === 0,
     `${plan.termCredits.length} semesters`, outside.map((p) => p.courseId));
 
@@ -115,6 +139,7 @@ export function verifyPlan(
   }
   const counted = [...byBucket.values()].flat();
   add("single-count", "No course is used to satisfy two different requirements",
+    "One course is being counted toward two different requirements",
     new Set(counted).size === counted.length,
     `${counted.length} courses counted toward requirements`,
     counted.filter((x, i) => counted.indexOf(x) !== i));
@@ -122,6 +147,7 @@ export function verifyPlan(
   // 9. citations
   const uncited = plan.buckets.filter((b) => !b.source?.url || !b.source?.quote);
   add("citations", "Every requirement links to the catalog page it came from",
+    `${uncited.length === 1 ? "A requirement" : `${uncited.length} requirements`} cannot be traced back to the bulletin`,
     uncited.length === 0,
     `${plan.buckets.length} requirements, all quoted from the bulletin`,
     uncited.map((b) => b.label));
@@ -129,6 +155,7 @@ export function verifyPlan(
   // 10. full-time floor, reported rather than enforced
   const light = plan.belowFullTime ?? [];
   add("full-time", `Every semester reaches the ${program.minCreditsPerTerm} credit full-time minimum`,
+    `${light.length === 1 ? "A semester falls" : `${light.length} semesters fall`} below the ${program.minCreditsPerTerm} credit full-time minimum`,
     light.length === 0,
     light.length === 0
       ? "all semesters reach it once your other courses are counted"
