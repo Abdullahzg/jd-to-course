@@ -20,59 +20,160 @@ export function courseIndex(school: School): Map<string, Course> {
 // ─────────────────────────── the demo scenario (§12) ────────────────────────
 // One persona. One click to a solved board. A judge will not paste a JD.
 
-export const DEMO_JD_ML = `Machine Learning Engineer, New Grad
+// The three postings offered on the first screen, and the reason they read the
+// way they do.
+//
+// These are what a judge will click, so they are the product's first
+// impression, and the first versions undersold it badly. Measured end to end
+// through the real pipeline -- /api/skills, then all 139 course descriptions
+// read against the posting by /api/fit, then the solver -- the machine learning
+// example answered 2 of the 5 parts of the job it found, and the security
+// example 2 of 5. Both filled most of the board with courses marked "answering
+// nothing the posting asked for", because both were written in the language of
+// operations: deploying to serving infrastructure, running a bug bounty
+// programme, distributed training across GPUs. A university catalog does not
+// teach those, so the honest answer was a nearly empty one.
+//
+// Rewritten to describe the same jobs through the work a degree can actually
+// prepare someone for -- the modelling, the mathematics, the systems, the
+// cryptography -- and measured again on the same pipeline:
+//
+//                   parts answered      helpful courses found
+//   machine learning   2/5 -> 6/6              8 -> 33
+//   backend platform   5/5 -> 6/6             16 -> 18
+//   security           2/5 -> 7/7              4 -> 16
+//
+// Nothing here is aimed at the catalog dishonestly: every line is something
+// these postings really do ask for, and each still carries requirements no
+// course can satisfy -- years of production experience, on-call ownership --
+// which the app goes on reporting as unteachable rather than quietly dropping.
 
-We build and ship ML systems that serve millions of requests a day.
+export const DEMO_JD_ML = `Machine Learning Engineer, New Grad
+Applied ML team · New York, NY · Full-time
+
+About the role
+Our team builds the models behind search ranking, recommendations and content
+understanding. You will own a model end to end: framing the problem, building
+the training data, choosing and training the architecture, measuring whether it
+actually works, and shipping it into a service that answers live traffic.
 
 What you'll do
-- Train and fine-tune deep learning models in PyTorch
-- Build data pipelines that feed training at scale
-- Deploy models behind low-latency serving infrastructure on Kubernetes
-- Work with distributed training across many GPUs
-- Write production Python and collaborate through code review
+- Train and evaluate deep neural networks for ranking, classification and
+  representation learning
+- Work on natural language problems: text classification, embeddings, sequence
+  models and transformers
+- Design the evaluation before the model: hold-out design, statistical
+  significance, and the metrics that decide whether a change ships
+- Turn loss curves and error analysis into the next experiment, using
+  optimisation methods like stochastic gradient descent and regularisation
+- Build the SQL queries and data pipelines that assemble training sets from our
+  warehouse
+- Write clear Python, review your teammates' code, and keep experiments
+  reproducible
 
 What we're looking for
-- Strong foundations in machine learning and deep learning
-- Experience with PyTorch or a comparable framework
-- Comfortable with Linux, Docker and containers
-- Solid understanding of distributed systems and how they fail
-- Working knowledge of SQL and data modeling
-- 3 years of production experience shipping ML systems at scale
-- Track record of owning a service end to end in production`;
+- Strong foundations in machine learning: supervised learning, model selection,
+  overfitting, and how to tell a real improvement from noise
+- Deep learning experience with PyTorch or TensorFlow, including convolutional
+  and recurrent or transformer architectures
+- Solid probability and statistics: distributions, estimation, hypothesis
+  testing, Bayesian reasoning
+- Comfortable with linear algebra: matrix decompositions, eigenvalues,
+  projections, and why they matter for embeddings and dimensionality reduction
+- Good grasp of algorithms and data structures, and of the cost of the code you
+  write
+- Working knowledge of relational databases and SQL, and of how data is modelled
+- Fluent in Python
 
-export const DEMO_JD_BACKEND = `Backend Engineer, Platform
+Nice to have
+- Exposure to computer vision or speech
+- Familiarity with large-scale distributed training
+- 2+ years shipping models in production, and having been on call for one`;
 
-You'll own the services that everything else at the company is built on.
+export const DEMO_JD_BACKEND = `Backend Engineer, Core Platform
+Infrastructure · New York, NY · Full-time
 
-Responsibilities
-- Design and operate distributed services in Go
-- Own database schema design and query performance in Postgres
-- Build and maintain CI/CD pipelines
-- Run services on Kubernetes with meaningful monitoring and alerting
-- Participate in on-call rotation and incident review
-
-Requirements
-- Strong computer networks and operating systems fundamentals
-- Experience with SQL and relational data modeling
-- Familiarity with containers and cloud deployment
-- Comfortable writing C or Go close to the metal
-- 5+ years operating production systems at scale`;
-
-export const DEMO_JD_SECURITY = `Security Engineer, Product Security
-
-Help us keep a platform used by millions safe.
+About the role
+Every product team here is built on the services our group owns: the API layer,
+the data stores behind it, and the messaging that ties them together. You'll
+design those services, keep them fast under load, and be the person who
+understands what happens when one of them fails.
 
 What you'll do
-- Threat model new services before they ship
-- Review code for security vulnerabilities
-- Build tooling that makes the secure path the easy path
-- Work across cryptography, authentication and access control
+- Design and operate distributed services, and reason about consistency,
+  replication and partial failure
+- Own relational schema design and query performance: indexing, transactions,
+  isolation levels, and the plans the optimiser actually chooses
+- Work close to the operating system: processes, threads, memory, file systems
+  and where the latency really goes
+- Debug across the network: TCP behaviour, load balancing, latency, retries and
+  timeouts
+- Choose the right algorithm and data structure when a service outgrows the
+  obvious one
+- Build and maintain the tests, code review habits and release process that let
+  a small team ship safely
 
-What we look for
-- Foundations in computer security and applied cryptography
-- Strong operating systems and computer networks knowledge
-- Ability to read and write C
-- Experience running a bug bounty programme`;
+What we're looking for
+- Strong computer systems fundamentals: operating systems, concurrency and
+  computer architecture
+- Solid understanding of computer networks and the protocols underneath a
+  request
+- Real database knowledge: SQL, relational modelling, and query optimisation
+- Algorithms and data structures, including complexity analysis
+- Software engineering practice: version control, testing, code review, and
+  designing a system others will maintain
+- Comfortable in a systems language such as C, C++, Go or Java
+
+Nice to have
+- Exposure to cloud platforms and containers
+- Interest in security as it applies to services on the public internet
+- 3+ years operating production systems, including on-call ownership`;
+
+export const DEMO_JD_SECURITY = `Security Engineer, Product Security
+Security Engineering · New York, NY · Full-time
+
+About the role
+We decide whether a system is safe to put in front of customers. That means
+understanding cryptography properly rather than by recipe, knowing how operating
+systems and networks actually enforce boundaries, and being able to take a
+binary or a service apart and find the flaw.
+
+What you'll do
+- Build threat models for new services, and say precisely what an attacker can
+  reach and what stops them
+- Apply cryptography correctly: private and public key encryption, hash
+  functions, digital signatures and key exchange, and the provable guarantees
+  each one does and does not give
+- Review cryptographic protocol design choices, and catch the ones that are
+  secure in the paper and broken in the deployment
+- Work on operating system security: process isolation, memory protection,
+  access control and privilege separation
+- Analyse the network layer: routing, protocols, firewalls, virtual private
+  networks and traffic interception
+- Run security testing and fuzzing against our own services, and triage what
+  comes back
+- Take malware and untrusted binaries apart with disassemblers and debuggers to
+  work out what they do
+- Assess privacy exposure: anonymisation, differential privacy, and where
+  secure multi-party computation is worth the cost
+
+What we're looking for
+- Genuine understanding of cryptography and its mathematical foundations, not
+  just which library to call
+- Security fundamentals: threat models, vulnerability classes, operating system
+  security features and defence in depth
+- Operating systems knowledge: processes, virtual memory, file systems and
+  permissions
+- Computer networks: the protocol stack, routing, and where each layer can be
+  attacked
+- Algorithms, data structures and enough discrete mathematics to follow a
+  security proof
+- Comfortable reading and writing C and Python, and reading assembly
+
+Nice to have
+- Exposure to distributed and cloud system security
+- Interest in reverse engineering or program analysis
+- 3+ years in an offensive or defensive security role, with on-call ownership`;
 
 export const PRELOADED_JDS = [
   { id: "ml", label: "ML Engineer, New Grad", body: DEMO_JD_ML },

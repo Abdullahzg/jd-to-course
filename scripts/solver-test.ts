@@ -6,11 +6,11 @@
  * prerequisite or a credit cap is worse than no plan, because a student would
  * act on it.
  */
-import { solve, fillOpenCredits } from "@/lib/solver";
+import { solve, solveResilient, fillOpenCredits } from "@/lib/solver";
 import { buildModel, prereqSatisfied } from "@/lib/solver/core";
-import { SCHOOLS, DEMO_STUDENT, getProgram, getSchool } from "@/data";
+import { SCHOOLS, DEMO_STUDENT, getProgram, getSchool, DEMO_JD_ML, DEMO_JD_BACKEND, DEMO_JD_SECURITY } from "@/data";
 import type { SolveRequest, Plan, Course, Term } from "@/lib/types";
-import { termKindsFor } from "@/lib/verify";
+import { termKindsFor, verifyPlan } from "@/lib/verify";
 import { earliestLegalTerm, latePrereq, legalMoves, type BoardView } from "@/lib/plan-edits";
 
 let failures = 0;
@@ -420,6 +420,67 @@ for (const school of SCHOOLS) {
   const orphan: BoardView = { ...board, termOf: new Map([[W3157, 3]]) };
   check("with the prerequisite absent, no legal term is invented",
     earliestLegalTerm(courses.get(W3134)!, 1, orphan) === -1);
+}
+
+// ── A board a student is shown must never open already broken ───────────────
+// The complaint this encodes, verbatim: "it should never start with problems,
+// that shows the judges it's just not right." A fresh posting is the first
+// thing anyone sees, so every one of them is solved here and put through the
+// same verifier the live panel uses. Nothing may be flagged.
+{
+  console.log("\nA fresh posting opens with nothing flagged");
+  const school = getSchool("COLUMBIA")!;
+  const program = getProgram("COLUMBIA", "COLUMBIA:CS_BA")!;
+  const courses = new Map(school.courses.map((c) => [c.id, c]));
+  // The catalog's own skill tags that the posting actually mentions: what the
+  // no-API-key path derives, and enough to steer the objective.
+  const skillsOf = (jd: string) => {
+    const low = jd.toLowerCase();
+    const out = new Set<string>();
+    for (const c of school.courses) for (const s of c.skills ?? []) {
+      if (low.includes(s.skill.toLowerCase())) out.add(s.skill);
+    }
+    return [...out];
+  };
+  const postings: [string, string][] = [
+    ["machine learning", DEMO_JD_ML],
+    ["backend platform", DEMO_JD_BACKEND],
+    ["security", DEMO_JD_SECURITY],
+    ["no posting at all", ""],
+  ];
+  for (const [label, jd] of postings) {
+    for (const horizonTerms of [8, 6, 4]) {
+      const res = solveResilient({
+        schoolId: "COLUMBIA", programId: "COLUMBIA:CS_BA",
+        student: { program: "COLUMBIA:CS_BA", completed: [], startTerm: "FA" as Term,
+                   horizonTerms, locked: [], excluded: [], completedCredits: 0 },
+        targetSkills: skillsOf(jd), relevance: {},
+      } as SolveRequest, 25000);
+      const name = `${label}, ${horizonTerms} semesters`;
+      if (!res.ok) { check(`${name}: produces a plan`, false, res.infeasibility?.message); continue; }
+      const plan = res.plans[0];
+      const v = verifyPlan(plan, program, courses, [], termKindsFor("FA" as Term, plan.termCredits.length));
+      const failed = v.checks.filter((c) => !c.passed);
+      const unmet = plan.buckets.filter((b) => !b.satisfied);
+      check(`${name}: opens with nothing flagged`, failed.length === 0 && unmet.length === 0,
+        [...failed.map((c) => c.problem), ...unmet.map((b) => `${b.label} short`)].join("; "));
+    }
+  }
+
+  // And the reason one did not: a course dropped while looking at an EARLIER
+  // posting stayed banned, so the new board could not complete its core. The
+  // survey clears hand edits when it builds a plan; this is the shape of the
+  // bug that made that necessary, asserted at the solver so it cannot be
+  // mistaken for a solver fault again.
+  const poisoned = solveResilient({
+    schoolId: "COLUMBIA", programId: "COLUMBIA:CS_BA",
+    student: { program: "COLUMBIA:CS_BA", completed: [], startTerm: "FA" as Term,
+               horizonTerms: 8, locked: [], excluded: ["COLUMBIA:CSEEW3827"], completedCredits: 0 },
+    targetSkills: [], relevance: {},
+  } as SolveRequest, 25000);
+  check("banning a required core course is refused outright, never half-answered",
+    !poisoned.ok || poisoned.plans[0].buckets.every((b) => b.satisfied),
+    poisoned.ok ? "returned ok with an unsatisfiable core" : "");
 }
 
 console.log(failures === 0
