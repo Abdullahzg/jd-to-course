@@ -4,7 +4,7 @@ import React, {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
 import { useSession } from "next-auth/react";
-import type { Course, Plan, School, SolveResponse, StudentState, Term } from "@/lib/types";
+import type { BucketStatus, Course, Plan, Program, School, SolveResponse, StudentState, Term } from "@/lib/types";
 import { prereqSatisfied } from "@/lib/solver/core";
 import { fillOpenCredits } from "@/lib/solver";
 import { termKindsFor } from "@/lib/verify";
@@ -213,6 +213,80 @@ export function pickTermForKeep(
     // room as the horizon has and let the solver say whether that works.
     ?? inSeason[inSeason.length - 1]
   );
+}
+
+/**
+ * Which requirements the board meets, after a hand edit.
+ *
+ * A manual add or remove changes the board, and `plan.buckets` describes the
+ * board the SOLVER produced, before the edit. Carrying those numbers over
+ * untouched is how a plan came back from a removal still reporting its
+ * Computer Science core complete with the fifth core course gone: the health
+ * panel read "satisfied", the board was one course short, and the only
+ * complaint the student ever saw was a prerequisite error somewhere else.
+ * `termCredits` was always recomputed after an edit; this is the same duty
+ * for requirements.
+ *
+ * It has to count the way the solver counts, or it trades one wrong answer
+ * for another. Columbia's bulletin permits MATH UN2015 to satisfy the linear
+ * algebra and the probability requirement at once, so the solver credits a
+ * placement to a second bucket that names both the course and the bucket it
+ * was assigned to. A recount that missed that reported "Probability or
+ * statistics: 1 course short" against a plan that met it, which would have
+ * sent someone to take a course they did not need. Same rule as
+ * lib/solver/index.ts, deliberately.
+ *
+ * A course added by hand also arrives with no bucket at all, because the
+ * solver is what assigns those and it never ran. So a hand-added course is
+ * credited to a requirement whose own eligible list names it and that is
+ * still short — otherwise "add the prerequisite the plan is missing" adds
+ * the course, closes the prerequisite, and leaves the requirement it belongs
+ * to reading as unmet.
+ */
+export function recountBuckets(
+  plan: Plan,
+  placements: Plan["placements"],
+  program: Program | undefined | null,
+  catalog: Map<string, Course>,
+): { placements: Plan["placements"]; buckets: BucketStatus[] } {
+  const eligibleOf = new Map((program?.buckets ?? []).map((b) => [b.id, new Set(b.eligible)]));
+  const amount = (b: BucketStatus, courseId: string) =>
+    b.unit === "credits" ? (catalog.get(courseId)?.credits ?? 0) : 1;
+
+  const credited = (b: BucketStatus, p: Plan["placements"][number]) =>
+    p.bucketId === b.bucketId
+    || (b.allowDoubleCount.includes(p.bucketId) && (eligibleOf.get(b.bucketId)?.has(p.courseId) ?? false));
+
+  const tallyOf = (list: Plan["placements"]) => {
+    const t = new Map<string, number>();
+    for (const b of plan.buckets) {
+      let n = 0;
+      for (const p of list) if (credited(b, p)) n += amount(b, p.courseId);
+      t.set(b.bucketId, n);
+    }
+    return t;
+  };
+
+  const next = [...placements];
+  for (let i = 0; i < next.length; i++) {
+    if (next[i].bucketId) continue;
+    const t = tallyOf(next);
+    const home = plan.buckets.find((b) =>
+      eligibleOf.get(b.bucketId)?.has(next[i].courseId)
+      && b.fromCompleted + (t.get(b.bucketId) ?? 0) < b.need);
+    if (home) next[i] = { ...next[i], bucketId: home.bucketId };
+  }
+
+  const t = tallyOf(next);
+  const buckets = plan.buckets.map((b) => {
+    const raw = t.get(b.bucketId) ?? 0;
+    return {
+      ...b,
+      fromPlan: Math.min(raw, Math.max(0, b.need - b.fromCompleted)),
+      satisfied: b.fromCompleted + raw >= b.need,
+    };
+  });
+  return { placements: next, buckets };
 }
 
 const PlannerCtx = createContext<Ctx | null>(null);
@@ -650,10 +724,11 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     const plan = res?.plans?.[planIdx];
     if (!res || !plan) return;
     setLastRemovedTerm(plan.placements.find((p) => p.courseId === courseId)?.term ?? null);
-    const placements = plan.placements.filter((p) => p.courseId !== courseId);
+    const kept = plan.placements.filter((p) => p.courseId !== courseId);
     const termCredits = plan.termCredits.map((_, t) =>
-      placements.filter((p) => p.term === t).reduce((s, p) => s + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
-    const nextPlan = { ...plan, placements, termCredits, slotChoices: plan.slotChoices.filter((sc) => sc.chosen !== courseId) };
+      kept.filter((p) => p.term === t).reduce((s, p) => s + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
+    const { placements, buckets } = recountBuckets(plan, kept, programRef.current, coursesRef.current);
+    const nextPlan = { ...plan, placements, termCredits, buckets, slotChoices: plan.slotChoices.filter((sc) => sc.chosen !== courseId) };
     const nextResult = { ...res, plans: res.plans.map((p, i) => (i === planIdx ? nextPlan : p)) };
     const nextState = { ...st, student: { ...st.student, excluded: [...new Set([...st.student.excluded, courseId])], locked: st.student.locked.filter((l) => l.courseId !== courseId) } };
     setChanged(new Set([courseId]));
@@ -691,10 +766,11 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       courseId, term, bucketId: "", locked: false, needsAdvisorCheck: false,
       unverifiableText: [], covers, earliestTerm: 0, earliestReason: "",
     } as unknown as (typeof plan.placements)[number];
-    const placements = [...plan.placements, placement];
+    const added = [...plan.placements, placement];
     const termCredits = plan.termCredits.map((_, t) =>
-      placements.filter((p) => p.term === t).reduce((s, p) => s + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
-    const nextPlan = { ...plan, placements, termCredits };
+      added.filter((p) => p.term === t).reduce((s, p) => s + (coursesRef.current.get(p.courseId)?.credits ?? 0), 0));
+    const { placements, buckets } = recountBuckets(plan, added, programRef.current, coursesRef.current);
+    const nextPlan = { ...plan, placements, termCredits, buckets };
     const nextResult = { ...res, plans: res.plans.map((p, i) => (i === planIdx ? nextPlan : p)) };
     const nextState = { ...st, student: { ...st.student, excluded: st.student.excluded.filter((x) => x !== courseId) } };
     setChanged(new Set([courseId]));

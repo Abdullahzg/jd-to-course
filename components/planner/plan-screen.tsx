@@ -418,6 +418,7 @@ export function PlanScreen() {
    * still missing, so the fix can be offered directly instead of left as an
    * exercise.
    */
+  const excludedSetLive = new Set(state.student.excluded);
   const missingPrereqFor = (courseId: string): { course: Course; term: number } | null => {
     const c = courses.get(courseId);
     if (!c?.prereq) return null;
@@ -435,9 +436,43 @@ export function PlanScreen() {
       return null;
     };
     const missingId = find(c.prereq);
+    // A course the student excluded on purpose is not a fix to offer back —
+    // "Add it" would silently override that choice. Report nothing rather
+    // than a button that undoes a decision the student already made.
+    if (missingId && excludedSetLive.has(missingId)) return null;
     const missing = missingId ? courses.get(missingId) : null;
     if (!missing) return null;
     const here = termOfLive.get(courseId) ?? 0;
+    const term = termKinds.findIndex((k, t) => t < here && missing.termsOffered.includes(k));
+    return term >= 0 ? { course: missing, term } : null;
+  };
+  /** Same walk, but reports specifically when the reason is an exclusion, and
+   *  where the excluded course would go if it came back — so the banner can
+   *  offer the fix that actually resolves it instead of only the destructive
+   *  one. A course excluded by hand is still the thing the plan needs. */
+  const excludedPrereqFor = (courseId: string): { course: Course; term: number } | null => {
+    const c = courses.get(courseId);
+    if (!c?.prereq) return null;
+    const have = new Set([...placedIdsLive, ...doneSetLive]);
+    const find = (node: PrereqNode | null): string | null => {
+      if (!node) return null;
+      if (node.op === "COURSE") return have.has(node.courseId) ? null : node.courseId;
+      if (node.op === "UNVERIFIABLE") return null;
+      if (node.op === "AND") { for (const ch of node.children) { const m = find(ch); if (m) return m; } return null; }
+      if (node.op === "OR") {
+        if (node.children.some((ch) => prereqSatisfied(ch, have))) return null;
+        for (const ch of node.children) { const m = find(ch); if (m) return m; }
+        return null;
+      }
+      return null;
+    };
+    const missingId = find(c.prereq);
+    if (!missingId || !excludedSetLive.has(missingId)) return null;
+    const missing = courses.get(missingId);
+    if (!missing) return null;
+    const here = termOfLive.get(courseId) ?? 0;
+    // Where it would land if it came back: the first semester before the
+    // course that needs it where the catalog actually runs it.
     const term = termKinds.findIndex((k, t) => t < here && missing.termsOffered.includes(k));
     return term >= 0 ? { course: missing, term } : null;
   };
@@ -1245,6 +1280,29 @@ export function PlanScreen() {
               const major = plan.termCredits[t] ?? 0;
               const other = plan.openCreditsNeeded[t] ?? 0;
               const under = plan.belowFullTime?.includes(t);
+              // A missing prerequisite for a course sitting IN this term can
+              // only be fixed by an earlier term — adding it here too would
+              // leave the violation standing. Computed once per term so both
+              // the banner and this term's own add-search can avoid the trap.
+              const missingPrereqHere = problemTerms.has(t)
+                ? failedLive
+                    .filter((c) => c.id === "prereqs")
+                    .flatMap((c) => c.offenders.filter((id) => termOfLive.get(id) === t))
+                    .map((id) => missingPrereqFor(id))
+                    .find((m): m is { course: Course; term: number } => !!m)
+                : null;
+              // The gap can also be one no NEW course closes: the missing
+              // course is one that was taken off the table by hand. Removing
+              // it is what created the break, so putting it back is the fix
+              // that actually resolves it — and for a course the degree
+              // requires, the only one that leaves a finishable plan.
+              const excludedOffenderHere = !missingPrereqHere && problemTerms.has(t)
+                ? failedLive
+                    .filter((c) => c.id === "prereqs")
+                    .flatMap((c) => c.offenders.filter((id) => termOfLive.get(id) === t))
+                    .map((id) => ({ id, excluded: excludedPrereqFor(id) }))
+                    .find((x) => x.excluded)
+                : null;
               return (
                 <section key={name} id={`term-${t}`}
                          className="scroll-mt-4 rounded-2xl border plan-edge bg-card p-3.5 glow sm:p-4 lg:p-5"
@@ -1252,20 +1310,63 @@ export function PlanScreen() {
                   {/* The compact board at the top marks trouble; these cards are
                       where people actually read a semester, so they carry the
                       same mark and the same way out of it. */}
-                  {problemTerms.has(t) && (
+                  {problemTerms.has(t) && (() => {
+                    // A rule's NAME is written as the goal ("Every prerequisite
+                    // is finished before the course that needs it"), and
+                    // showing that same sentence in red, with nothing else,
+                    // reads as if the goal were being claimed true. What
+                    // belongs here is the concrete failure: which course, and
+                    // what it is actually missing.
+                    const offenderHere = failedLive
+                      .filter((c) => c.id === "prereqs")
+                      .flatMap((c) => c.offenders.filter((id) => termOfLive.get(id) === t))
+                      .find((id) => missingPrereqFor(id) || excludedPrereqFor(id));
+                    const otherFail = failedLive.find((c) => c.offenders.some((id) => termOfLive.get(id) === t) && c.id !== "prereqs");
+                    const offenderCode = courses.get(offenderHere ?? excludedOffenderHere?.id ?? "")?.code ?? offenderHere ?? excludedOffenderHere?.id;
+                    // A course the degree itself requires is not a preference
+                    // the student can simply drop, and saying so is the
+                    // difference between a fix they understand and a button
+                    // they are afraid to press.
+                    const requiredBy = excludedOffenderHere?.excluded
+                      ? (program?.buckets ?? []).find((b) => b.eligible.includes(excludedOffenderHere.excluded!.course.id)
+                          && (b.needCourses ?? 0) >= b.eligible.length)?.label
+                      : undefined;
+                    const headline = missingPrereqHere
+                      ? `${offenderCode} needs ${missingPrereqHere.course.code} first, and it is not in the plan yet.`
+                      : excludedOffenderHere?.excluded
+                        ? `${offenderCode} needs ${excludedOffenderHere.excluded.course.code}, and you took ${excludedOffenderHere.excluded.course.code} out of the plan.${requiredBy ? ` ${requiredBy} requires it, so the plan cannot finish without it.` : ""}`
+                        : otherFail?.rule
+                          ?? (unmetLive.length ? `${unmetLive[0].label}: ${unmetLive[0].gap} ${unmetLive[0].unit}${unmetLive[0].gap === 1 ? "" : "s"} short` : "This semester needs a look");
+                    return (
                     <div className="mb-3 rounded-xl border p-2.5" style={{ borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }}>
-                      <p className="text-xs font-medium" style={{ color: "#dc2626" }}>
-                        {failedLive.filter((c) => c.offenders.some((id) => termOfLive.get(id) === t)).map((c) => c.rule).join(" · ") ||
-                          (unmetLive.length ? `${unmetLive[0].label}: ${unmetLive[0].gap} ${unmetLive[0].unit}${unmetLive[0].gap === 1 ? "" : "s"} short` : "This semester needs a look")}
-                      </p>
+                      <p className="text-xs font-medium" style={{ color: "#dc2626" }}>{headline}</p>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {missingPrereqHere && (
+                          <button onClick={() => addCourse(missingPrereqHere.course.id, missingPrereqHere.term, missingPrereqHere.course.code)}
+                                  data-track="term_add_missing_prereq"
+                                  className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">
+                            Add {missingPrereqHere.course.code} to {names[missingPrereqHere.term]}
+                          </button>
+                        )}
+                        {excludedOffenderHere?.excluded && (
+                          <>
+                            <button onClick={() => addCourse(excludedOffenderHere.excluded!.course.id, excludedOffenderHere.excluded!.term, excludedOffenderHere.excluded!.course.code)}
+                                    data-track="term_restore_excluded_prereq"
+                                    className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">
+                              Put {excludedOffenderHere.excluded.course.code} back in {names[excludedOffenderHere.excluded.term]}
+                            </button>
+                            <button onClick={() => removeCourse(excludedOffenderHere.id, courses.get(excludedOffenderHere.id)?.code)}
+                                    data-track="term_remove_unfixable"
+                                    className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground">
+                              or drop {courses.get(excludedOffenderHere.id)?.code}
+                            </button>
+                          </>
+                        )}
                         <button onClick={() => setAddHere(addHere === t ? null : t)} data-track="term_add_open"
-                                className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">
-                          {addHere === t ? "Close" : "Add a course here"}
-                        </button>
-                        <button onClick={() => document.getElementById("plan-health")?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                                className="rounded-full border border-border px-3 py-1 text-[11px]">
-                          See the fixes
+                                className={missingPrereqHere || excludedOffenderHere
+                                  ? "rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground"
+                                  : "rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background"}>
+                          {addHere === t ? "Close" : missingPrereqHere || excludedOffenderHere ? "or add something else here" : "Add a course here"}
                         </button>
                       </div>
                       {addHere === t && (
@@ -1278,13 +1379,22 @@ export function PlanScreen() {
                             const readyFixes = q.length < 2 && unmetLive.length
                               ? unmetLive.flatMap((r) => suggestFor(r.eligible).filter((x) => x.term === t).map((x) => ({ ...x, forLabel: r.label })))
                               : [];
-                            const list = readyFixes.length ? readyFixes.map((x) => x.course) : (school?.courses ?? [])
-                              .filter((c) => !placedIdsLive.has(c.id) && !doneSetLive.has(c.id))
+                            const list = (readyFixes.length ? readyFixes.map((x) => x.course) : (school?.courses ?? [])
+                              .filter((c) => !placedIdsLive.has(c.id) && !doneSetLive.has(c.id) && !excludedSetLive.has(c.id))
                               .filter((c) => c.termsOffered.includes(termKinds[t]))
                               .filter((c) => q.length < 2 || c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q))
-                              .slice(0, 5);
+                              .slice(0, 5))
+                              // Putting the missing prerequisite in THIS term
+                              // wouldn't satisfy it — a prerequisite has to
+                              // land strictly before the course that needs it.
+                              .filter((c) => c.id !== missingPrereqHere?.course.id);
                             return (
                               <>
+                                {!!missingPrereqHere && (
+                                  <p className="mb-1 text-[10px] text-muted-foreground">
+                                    {missingPrereqHere.course.code} is left out here — it needs to land in an earlier semester to count.
+                                  </p>
+                                )}
                                 {!!readyFixes.length && (
                                   <p className="mb-1 text-[10px] text-muted-foreground">
                                     Closes what is open in this semester. Ranked by how well it answers your posting.
@@ -1320,7 +1430,8 @@ export function PlanScreen() {
                         </div>
                       )}
                     </div>
-                  )}
+                    );
+                  })()}
                   <div className="flex flex-wrap items-baseline gap-3 border-b border-border pb-3">
                     <h2 className="font-display text-lg font-semibold">{name}</h2>
                     <span className="tabular plan-wash plan-accent rounded-full px-2.5 py-0.5 text-xs font-medium">
@@ -1529,6 +1640,7 @@ export function PlanScreen() {
                             // fixes that), or its prerequisite was never placed
                             // at all, and moving THIS course changes nothing.
                             const missing = c.id === "prereqs" ? missingPrereqFor(id) : null;
+                            const excludedPrereq = c.id === "prereqs" && !missing ? excludedPrereqFor(id) : null;
                             return (
                               <div key={id}>
                                 <button onClick={() => setOpenFix(open ? null : `${c.id}:${id}`)}
@@ -1542,7 +1654,9 @@ export function PlanScreen() {
                                       {co.title}{here != null ? ` sits in ${names[here]}.` : " is not currently placed."}{" "}
                                       {missing
                                         ? `Its prerequisite, ${missing.course.title}, is not in the plan at all.`
-                                        : "Move it, or open it on the board."}
+                                        : excludedPrereq
+                                          ? `Its prerequisite, ${excludedPrereq.course.title}, was taken out of the plan \u2014 moving this course to another term will not fix that. Putting it back will.`
+                                          : "Move it, or open it on the board."}
                                     </p>
                                     <div className="mt-1 flex flex-wrap gap-1">
                                       {missing && (
@@ -1552,7 +1666,14 @@ export function PlanScreen() {
                                           Add {missing.course.code} to {names[missing.term]}
                                         </button>
                                       )}
-                                      {legal.map(({ n, t }) => (
+                                      {excludedPrereq && (
+                                        <button onClick={() => { addCourse(excludedPrereq.course.id, excludedPrereq.term, excludedPrereq.course.code); setOpenFix(null); }}
+                                                data-track="health_fix_restore_prereq"
+                                                className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">
+                                          Put {excludedPrereq.course.code} back in {names[excludedPrereq.term]}
+                                        </button>
+                                      )}
+                                      {!excludedPrereq && legal.map(({ n, t }) => (
                                         <button key={t} onClick={() => { moveCourse(id, t, co.code); setOpenFix(null); }}
                                                 data-track="health_fix_move"
                                                 className="rounded-full bg-foreground px-2.5 py-1 text-[10px] font-medium text-background">

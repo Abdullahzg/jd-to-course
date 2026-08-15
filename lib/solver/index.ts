@@ -3,6 +3,7 @@ import type {
   Relaxation, SlotChoice, SolveRequest, SolveResponse, Course, Term,
 } from "@/lib/types";
 import { getProgram, getSchool } from "@/data";
+import { termKindsFor } from "@/lib/verify";
 import {
   buildModel, collectUnverifiable, neededFor, popcount, prereqSatisfied, search, W_CREDIT, W_SKILL, W_TERM,
   type Model, type Selection,
@@ -1311,6 +1312,136 @@ export function overlapGroups(catalog: Course[]): Map<string, Set<string>> {
 
 
 /**
+ * Last line of defence: no plan leaves the solver holding a course whose
+ * prerequisite is nowhere in it.
+ *
+ * Worth being exact about what this is and is not. The broken plan that
+ * prompted it was NOT produced by the solver: solve() refuses that input
+ * outright, returning "Computer Science core can't be reached in time"
+ * rather than a plan. It was produced afterwards, by a hand edit that took
+ * a course out of a finished plan and left what depended on it behind. That
+ * cause is fixed where it happens, in the store's own remove path.
+ *
+ * So this guards an invariant rather than patching a known escape. Every
+ * rung of the ladder below returns through it, and if some future search
+ * path ever does emit such a plan, it is repaired or refused here instead
+ * of reaching a student. It is deliberately not the place to explain the
+ * bug above.
+ *
+ * Where the missing course can legally be added — an earlier term exists,
+ * offering it, under the credit cap — it is added, and nothing else moves.
+ * Two situations cannot be closed that way, and are handled differently:
+ *
+ * - The missing course is on the student's own excluded list. Adding it
+ *   back would silently override a choice the student made on purpose
+ *   (already covered elsewhere, refuses to take it); the honest move is to
+ *   drop the course that depends on it instead, since it can never be
+ *   taken as scheduled.
+ * - No legal term exists for the missing course either. Leaving the gap
+ *   in place would ship a plan with a course sitting on an unmet
+ *   prerequisite, which is the exact failure this function exists to
+ *   prevent; dropping the dependent course is the only remaining option.
+ *
+ * Any add or drop changes which requirements the board meets, so bucket
+ * satisfaction is recounted from the final placement list by the same rule
+ * solve() used, rather than left describing the plan as it was.
+ */
+function repairMissingPrerequisites(
+  result: SolveResponse,
+  req: SolveRequest,
+): SolveResponse {
+  if (!result.ok || !result.plans.length) return result;
+  const school = getSchool(req.schoolId);
+  const program = getProgram(req.schoolId, req.programId);
+  if (!school || !program) return result;
+  const byId = new Map(school.courses.map((c) => [c.id, c]));
+  const termKinds = termKindsFor(req.student.startTerm as Term, result.plans[0]?.termCredits.length ?? 0);
+  const done = new Set(req.student.completed ?? []);
+  const excluded = new Set(req.student.excluded ?? []);
+
+  const findMissing = (node: import("@/lib/types").PrereqNode | null, have: Set<string>): string | null => {
+    if (!node) return null;
+    if (node.op === "COURSE") return have.has(node.courseId) ? null : node.courseId;
+    if (node.op === "UNVERIFIABLE") return null;
+    if (node.op === "AND") { for (const c of node.children) { const m = findMissing(c, have); if (m) return m; } return null; }
+    if (node.op === "OR") {
+      if (node.children.some((c) => prereqSatisfied(c, have))) return null;
+      for (const c of node.children) { const m = findMissing(c, have); if (m) return m; }
+      return null;
+    }
+    return null;
+  };
+
+  const plans = result.plans.map((plan) => {
+    const placements = [...plan.placements];
+    const termCredits = [...plan.termCredits];
+    // A course dropped here because ITS OWN prerequisite can never be met
+    // must stay dropped: without this, a later pass sees whatever depended
+    // on it newly broken, and "fixes" that by adding the very course just
+    // removed back in — an add/drop oscillation that never terminates
+    // cleanly. Anything recorded here is never reinstated, only cascaded.
+    const permanentlyGone = new Set<string>();
+    let guard = 0;
+    while (guard++ < 8) {
+      const have = new Set([...done, ...placements.map((p) => p.courseId)]);
+      let fixed = false;
+      for (const p of placements) {
+        const c = byId.get(p.courseId);
+        if (!c?.prereq) continue;
+        const before = new Set(done);
+        for (const q of placements) if (q.term < p.term) before.add(q.courseId);
+        if (prereqSatisfied(c.prereq, before)) continue;
+        const missingId = findMissing(c.prereq, before);
+        const missing = missingId ? byId.get(missingId) : null;
+        if (!missing || have.has(missing.id)) continue; // already placed too late; the live panel's Move covers that case
+        const drop = () => {
+          const idx = placements.indexOf(p);
+          if (idx >= 0) placements.splice(idx, 1);
+          termCredits[p.term] = Math.max(0, (termCredits[p.term] ?? 0) - (c.credits ?? 0));
+          permanentlyGone.add(p.courseId);
+        };
+        if (excluded.has(missing.id) || permanentlyGone.has(missing.id)) { drop(); fixed = true; break; }
+        const term = termKinds.findIndex((k: Term, t: number) =>
+          t < p.term
+          && missing.termsOffered.includes(k)
+          && (termCredits[t] ?? 0) + missing.credits <= program.maxCreditsPerTerm);
+        if (term < 0) { drop(); fixed = true; break; }
+        placements.push({
+          courseId: missing.id, term, bucketId: "", locked: false,
+          needsAdvisorCheck: false, unverifiableText: [], covers: [], unlocks: [c.code],
+          earliestTerm: term, earliestReason: `prerequisite for ${c.code}, added automatically`,
+        });
+        termCredits[term] = (termCredits[term] ?? 0) + missing.credits;
+        fixed = true;
+        break; // recompute `have`/`before` before checking the next course
+      }
+      if (!fixed) break;
+    }
+    // Placements changed above, so bucket satisfaction was computed against a
+    // list that no longer exists. Recounted by the same rule the plan was
+    // built with, double counting included: Columbia's bulletin lets MATH
+    // UN2015 answer linear algebra and probability at once, and a recount
+    // that ignored that would report a met requirement as short.
+    const eligibleOf = new Map(program.buckets.map((b) => [b.id, new Set(b.eligible)]));
+    const buckets = plan.buckets.map((b) => {
+      let fromPlan = 0;
+      for (const p of placements) {
+        const counts = p.bucketId === b.bucketId
+          || (b.allowDoubleCount.includes(p.bucketId) && (eligibleOf.get(b.bucketId)?.has(p.courseId) ?? false));
+        if (counts) fromPlan += b.unit === "credits" ? (byId.get(p.courseId)?.credits ?? 0) : 1;
+      }
+      return {
+        ...b,
+        fromPlan: Math.min(fromPlan, Math.max(0, b.need - b.fromCompleted)),
+        satisfied: b.fromCompleted + fromPlan >= b.need,
+      };
+    });
+    return { ...plan, placements, termCredits, buckets };
+  });
+  return { ...result, plans };
+}
+
+/**
  * solve(), with a way out of the corner solve() cannot leave.
  *
  * Some postings hand the optimizer a course that is technically placeable
@@ -1322,11 +1453,15 @@ export function overlapGroups(catalog: Course[]): Map<string, Set<string>> {
  * never pretends the posting had nothing more to say.
  */
 export function solveResilient(req: SolveRequest, budgetMs: number): SolveResponse & { shedForTime?: string[] } {
+  // Every rung below returns through here, so a plan can never reach a
+  // student, or the health panel, with a gap this function can close itself.
+  const done = (r: SolveResponse, shed?: string[]) => ({ ...repairMissingPrerequisites(r, req), ...(shed ? { shedForTime: shed } : {}) });
+
   let result = solve(req, budgetMs);
-  if (result.ok || !result.infeasibility?.timedOut) return result;
+  if (result.ok || !result.infeasibility?.timedOut) return done(result);
 
   result = solve(req, 20000, 2_000_000);
-  if (result.ok || !result.infeasibility?.timedOut) return result;
+  if (result.ok || !result.infeasibility?.timedOut) return done(result);
 
   const school = getSchool(req.schoolId);
   const byId = new Map((school?.courses ?? []).map((c) => [c.id, c]));
@@ -1350,9 +1485,9 @@ export function solveResilient(req: SolveRequest, budgetMs: number): SolveRespon
     delete relevance[id];
     shed.push(byId.get(id)?.code ?? id);
     const attempt = solve({ ...req, relevance }, 12000, 3_000_000);
-    if (attempt.ok || !attempt.infeasibility?.timedOut) return { ...attempt, shedForTime: [...shed] };
+    if (attempt.ok || !attempt.infeasibility?.timedOut) return done(attempt, shed);
   }
   // Last rung: the plain degree plan, which a sane catalog always has.
   const bare = solve({ ...req, relevance: {} }, 12000, 3_000_000);
-  return { ...bare, shedForTime: [...shed] };
+  return done(bare, shed);
 }
