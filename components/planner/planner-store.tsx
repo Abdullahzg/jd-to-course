@@ -488,7 +488,19 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       // screen: the old plan stays, and the repair room opens with the
       // solver's reasons. First solves keep the old behaviour, because there
       // is nothing to protect yet.
-      if (!json.ok && hadPlan) {
+      //
+      // "First solve" has to mean THIS survey submission, not merely
+      // "resultRef.current happens to hold something." The store hydrates a
+      // previous session's successful plan from sessionStorage on mount, so
+      // hadPlan could read true for a brand new JD that has never been
+      // solved before. change is only ever set by mutateAndSolve, which is
+      // exclusively the manual-edit call sites (remove, add, move, choose an
+      // alternative, arrange by hand). The survey's own solveWith(next) call
+      // never passes one. Gating on it, not on hadPlan alone, is what keeps
+      // a first attempt's honest failure screen from being replaced by a
+      // repair dialog captioned "your current plan is untouched" showing an
+      // unrelated plan from a different job description entirely.
+      if (!json.ok && hadPlan && change) {
         if (revertTo) { stateRef.current = revertTo; setStateRaw(revertTo); }
         setRepair({
           attempted: change?.action ?? "That change",
