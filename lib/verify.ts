@@ -116,8 +116,8 @@ export function verifyPlan(
   const withPrereq = placed.filter((p) => courses.get(p.courseId)?.prereq).length;
   add("prereqs", "Every prerequisite is finished before the course that needs it",
     badPrereq.length === 1
-      ? "One course is scheduled before something it needs first"
-      : `${badPrereq.length} courses are scheduled before something they need first`,
+      ? "One course is scheduled before its prerequisites"
+      : `${badPrereq.length} courses are scheduled before their prerequisites`,
     badPrereq.length === 0,
     badPrereq.length === 0
       ? `${withPrereq} courses have prerequisites`
