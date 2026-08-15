@@ -426,6 +426,26 @@ export function PlanScreen() {
    * exercise.
    */
   const excludedSetLive = new Set(state.student.excluded);
+  /**
+   * Where a course can actually go, if it has to land before `beforeTerm`.
+   *
+   * "Offered in that season" is not enough, and assuming it was produced a fix
+   * that broke the plan a second way: told that COMS W3157 was missing its
+   * Data Structures, the panel offered to put Data Structures in the very
+   * first semester -- in front of the Programming in Java that Data Structures
+   * itself depends on. Pressing exactly what the app said to press left it
+   * still complaining, now about the course it had just added. A term only
+   * counts if the course's own prerequisites are already behind it.
+   */
+  const earliestLegalTermFor = (course: Course, beforeTerm: number): number => {
+    for (let k = 0; k < beforeTerm; k++) {
+      if (!course.termsOffered.includes(termKinds[k])) continue;
+      const have = new Set<string>(doneSetLive);
+      for (const [id, t] of termOfLive) if (t < k) have.add(id);
+      if (prereqSatisfied(course.prereq, have)) return k;
+    }
+    return -1;
+  };
   const missingPrereqFor = (courseId: string): { course: Course; term: number } | null => {
     const c = courses.get(courseId);
     if (!c?.prereq) return null;
@@ -450,7 +470,7 @@ export function PlanScreen() {
     const missing = missingId ? courses.get(missingId) : null;
     if (!missing) return null;
     const here = termOfLive.get(courseId) ?? 0;
-    const term = termKinds.findIndex((k, t) => t < here && missing.termsOffered.includes(k));
+    const term = earliestLegalTermFor(missing, here);
     return term >= 0 ? { course: missing, term } : null;
   };
   /** Same walk, but reports specifically when the reason is an exclusion, and
@@ -479,9 +499,45 @@ export function PlanScreen() {
     if (!missing) return null;
     const here = termOfLive.get(courseId) ?? 0;
     // Where it would land if it came back: the first semester before the
-    // course that needs it where the catalog actually runs it.
-    const term = termKinds.findIndex((k, t) => t < here && missing.termsOffered.includes(k));
+    // course that needs it that runs it AND has its own prerequisites behind it.
+    const term = earliestLegalTermFor(missing, here);
     return term >= 0 ? { course: missing, term } : null;
+  };
+
+  /**
+   * The third shape a prerequisite failure takes, and the one that had no
+   * words at all: the course it needs IS in the plan, just not early enough.
+   * Nothing can be added and nothing un-excluded to fix that — one of the two
+   * has to move — so the only useful thing to say is which two, and where
+   * each one currently sits. "Move it, or open it on the board" was the whole
+   * of what this used to offer.
+   */
+  const latePrereqFor = (courseId: string): { course: Course; term: number } | null => {
+    const c = courses.get(courseId);
+    const here = termOfLive.get(courseId);
+    if (!c?.prereq || here == null) return null;
+    const before = new Set<string>(doneSetLive);
+    for (const [id, t] of termOfLive) if (t < here) before.add(id);
+    if (prereqSatisfied(c.prereq, before)) return null;
+    const find = (node: PrereqNode | null): string | null => {
+      if (!node) return null;
+      if (node.op === "COURSE") {
+        const t = termOfLive.get(node.courseId);
+        return t != null && t >= here ? node.courseId : null;
+      }
+      if (node.op === "UNVERIFIABLE") return null;
+      if (node.op === "AND") { for (const ch of node.children) { const m = find(ch); if (m) return m; } return null; }
+      if (node.op === "OR") {
+        if (node.children.some((ch) => prereqSatisfied(ch, before))) return null;
+        for (const ch of node.children) { const m = find(ch); if (m) return m; }
+        return null;
+      }
+      return null;
+    };
+    const lateId = find(c.prereq);
+    const late = lateId ? courses.get(lateId) : null;
+    const term = late ? termOfLive.get(late.id) : null;
+    return late && term != null ? { course: late, term } : null;
   };
 
   const suggestFor = (eligible: Set<string>) => {
@@ -489,8 +545,10 @@ export function PlanScreen() {
     return (school?.courses ?? [])
       .filter((c) => eligible.has(c.id) && !takenOrPlanned.has(c.id))
       .map((c) => {
-        // The first term in the horizon this course actually runs in.
-        const term = termKinds.findIndex((k) => c.termsOffered.includes(k));
+        // The first term this course runs in AND has its own prerequisites
+        // behind it. Offering the first term it merely runs in is how a fix
+        // for one requirement arrived already breaking another.
+        const term = earliestLegalTermFor(c, termKinds.length);
         const rank = consideration[c.id];
         return { course: c, term, rank };
       })
@@ -499,21 +557,155 @@ export function PlanScreen() {
       .slice(0, 4);
   };
 
-  const problemTerms = new Set<number>();
-  for (const c of failedLive) for (const id of c.offenders) { const t = termOfLive.get(id); if (t != null) problemTerms.add(t); }
+  // Two different things light a semester up, and they are not the same news.
+  // A semester can CONTAIN something broken: a course whose prerequisite is no
+  // longer in front of it, a term over the credit cap. Or it can simply be a
+  // place a missing requirement could be satisfied, with nothing whatever
+  // wrong inside it. Outlining both in red is why removing one course looked
+  // like it broke five semesters at once — four were holding a course that had
+  // just lost its prerequisite, and the fifth was only the earliest term a
+  // replacement runs in. They are now separated, and each semester says which
+  // it is and why.
+  const brokenTerms = new Set<number>();
+  for (const c of failedLive) for (const id of c.offenders) { const t = termOfLive.get(id); if (t != null) brokenTerms.add(t); }
   if (failedLive.some((c) => c.id === "full-time")) {
     plan.termCredits.forEach((cr, t) => {
-      if (cr + (plan.openCreditsNeeded?.[t] ?? 0) < (program?.minCreditsPerTerm ?? 0)) problemTerms.add(t);
+      if (cr + (plan.openCreditsNeeded?.[t] ?? 0) < (program?.minCreditsPerTerm ?? 0)) brokenTerms.add(t);
     });
   }
-  // A shortfall is an absence, and an absence has no course to point at. The
-  // semesters that light up are the ones that could HOST the missing thing,
-  // which is also where the fix has to happen. Marking only the term a removal
-  // happened in worked for one session and left the plan unmarked ever after.
-  for (const r of unmetLive) for (const p of suggestFor(r.eligible)) problemTerms.add(p.term);
-  if (unmetLive.length && !problemTerms.size && lastRemovedTerm != null) problemTerms.add(lastRemovedTerm);
+  // A shortfall is an absence, and an absence has no course to point at, so
+  // these are the semesters that could HOST the missing thing — which is where
+  // the fix has to happen. Computed once: suggestFor walks the whole catalog.
+  const unmetPicks = unmetLive.map((r) => ({ ...r, picks: suggestFor(r.eligible) }));
+  const fixHereTerms = new Set<number>(unmetPicks.flatMap((r) => r.picks.map((p) => p.term)));
+  // Nothing anywhere to point at and a removal to blame: mark where it happened.
+  if (unmetLive.length && !brokenTerms.size && !fixHereTerms.size && lastRemovedTerm != null) brokenTerms.add(lastRemovedTerm);
+  const problemTerms = new Set<number>([...brokenTerms, ...fixHereTerms]);
   const healthy = !failedLive.length && !unmetLive.length;
 
+
+  /**
+   * Every reason ONE semester is flagged, each with the action that settles it.
+   *
+   * The banner used to show a single headline picked from whichever failure it
+   * found first, so a semester with three separate problems announced one, and
+   * a semester with nothing wrong in it announced someone else's problem. When
+   * removing a single course flags five semesters, the only useful answer to
+   * "why this one" is the whole list for that one, and every entry saying
+   * which course, what it is missing, and what to press.
+   */
+  type TermReason = {
+    key: string;
+    broken: boolean;
+    headline: string;
+    detail?: string;
+    actions: { label: string; primary?: boolean; onClick: () => void }[];
+  };
+  const reasonsForTerm = (t: number): TermReason[] => {
+    const out: TermReason[] = [];
+    const prereqOffenders = failedLive
+      .filter((c) => c.id === "prereqs")
+      .flatMap((c) => c.offenders)
+      .filter((id) => termOfLive.get(id) === t);
+
+    for (const id of prereqOffenders) {
+      const code = courses.get(id)?.code ?? id;
+      const missing = missingPrereqFor(id);
+      if (missing) {
+        out.push({
+          key: `missing:${id}`, broken: true,
+          headline: `${code} needs ${missing.course.code} first, and it is not in the plan.`,
+          detail: `${missing.course.title} runs in ${missing.course.termsOffered.join("/")}, so it can go in ${names[missing.term]}, before this.`,
+          actions: [{
+            label: `Add ${missing.course.code} to ${names[missing.term]}`, primary: true,
+            onClick: () => addCourse(missing.course.id, missing.term, missing.course.code),
+          }],
+        });
+        continue;
+      }
+      const gone = excludedPrereqFor(id);
+      if (gone) {
+        const requiredBy = (program?.buckets ?? []).find((b) => b.eligible.includes(gone.course.id)
+          && (b.needCourses ?? 0) >= b.eligible.length)?.label;
+        out.push({
+          key: `excluded:${id}`, broken: true,
+          headline: `${code} needs ${gone.course.code}, and you took ${gone.course.code} out of the plan.`,
+          detail: requiredBy
+            ? `${requiredBy} requires ${gone.course.code} too, so the degree cannot finish without it.`
+            : `Putting it back in ${names[gone.term]} puts it in front of ${code} again.`,
+          actions: [
+            { label: `Put ${gone.course.code} back in ${names[gone.term]}`, primary: true,
+              onClick: () => addCourse(gone.course.id, gone.term, gone.course.code) },
+            { label: `or drop ${code}`, onClick: () => removeCourse(id, code) },
+          ],
+        });
+        continue;
+      }
+      const late = latePrereqFor(id);
+      if (late) {
+        const co = courses.get(id);
+        const legal = names
+          .map((n, k) => ({ n, k }))
+          .filter(({ k }) => k > late.term && co?.termsOffered.includes(termKinds[k]));
+        out.push({
+          key: `late:${id}`, broken: true,
+          headline: `${code} is in ${names[t]}, but ${late.course.code}, which it needs first, is in ${names[late.term]}.`,
+          detail: `One of the two has to move. ${code} runs in ${co?.termsOffered.join("/") ?? ""}.`,
+          actions: legal.slice(0, 3).map(({ n, k }) => ({
+            label: `Move ${code} to ${n}`, primary: true, onClick: () => moveCourse(id, k, code),
+          })),
+        });
+        continue;
+      }
+      out.push({
+        key: `prereq:${id}`, broken: true,
+        headline: `${code} does not have its prerequisites met where it sits.`,
+        actions: [{ label: "Show me", onClick: () => jumpToCourse(t, id) }],
+      });
+    }
+
+    // Any other rule that failed with something in THIS semester: wrong term
+    // for the course, over the credit cap, counted twice, past the horizon.
+    for (const c of failedLive) {
+      if (c.id === "prereqs" || c.id === "full-time") continue;
+      const here = c.offenders.filter((id) => termOfLive.get(id) === t);
+      if (!here.length) continue;
+      out.push({
+        key: `rule:${c.id}:${t}`, broken: true,
+        headline: c.problem,
+        detail: `In this semester: ${here.map((id) => courses.get(id)?.code ?? id).join(", ")}. ${c.detail}`,
+        actions: here.slice(0, 1).map((id) => ({
+          label: `Show me ${courses.get(id)?.code ?? id}`, onClick: () => jumpToCourse(t, id),
+        })),
+      });
+    }
+
+    if (failedLive.some((c) => c.id === "full-time")
+        && (plan.termCredits[t] ?? 0) + (plan.openCreditsNeeded?.[t] ?? 0) < (program?.minCreditsPerTerm ?? 0)) {
+      out.push({
+        key: `full-time:${t}`, broken: true,
+        headline: `This semester is below the ${program?.minCreditsPerTerm} credit full-time minimum.`,
+        detail: `It has ${(plan.termCredits[t] ?? 0) + (plan.openCreditsNeeded?.[t] ?? 0)} credits once your other classes are counted.`,
+        actions: [{ label: "Add a course here", onClick: () => setAddHere(t) }],
+      });
+    }
+
+    // Nothing wrong here — this is somewhere a missing requirement could go.
+    for (const r of unmetPicks) {
+      const picks = r.picks.filter((p) => p.term === t);
+      if (!picks.length) continue;
+      out.push({
+        key: `unmet:${r.id}:${t}`, broken: false,
+        headline: `${r.label} is ${r.gap} ${r.unit}${r.gap === 1 ? "" : "s"} short.`,
+        detail: `Nothing in ${names[t]} is wrong. It is flagged because this is the earliest semester a course that closes ${r.label.toLowerCase()} runs in.`,
+        actions: picks.slice(0, 3).map((p) => ({
+          label: `Add ${p.course.code} here`, primary: true,
+          onClick: () => addCourse(p.course.id, p.term, p.course.code),
+        })),
+      });
+    }
+    return out;
+  };
 
   const slotByCourse = new Map(plan.slotChoices.map((s) => [s.chosen, s]));
   // "Not covered" was hiding two completely different answers behind one
@@ -1310,76 +1502,69 @@ export function PlanScreen() {
                     .map((id) => ({ id, excluded: excludedPrereqFor(id) }))
                     .find((x) => x.excluded)
                 : null;
+              const reasons = problemTerms.has(t) ? reasonsForTerm(t) : [];
+              const brokenHere = brokenTerms.has(t);
               return (
                 <section key={name} id={`term-${t}`}
                          className="scroll-mt-4 rounded-2xl border plan-edge bg-card p-3.5 glow sm:p-4 lg:p-5"
-                         style={problemTerms.has(t) ? { borderColor: "#dc2626", boxShadow: "inset 0 0 0 1px #dc2626" } : undefined}>
+                         style={brokenHere
+                           ? { borderColor: "#dc2626", boxShadow: "inset 0 0 0 1px #dc2626" }
+                           : problemTerms.has(t)
+                             ? { borderColor: "var(--amber)" }
+                             : undefined}>
                   {/* The compact board at the top marks trouble; these cards are
                       where people actually read a semester, so they carry the
                       same mark and the same way out of it. */}
-                  {problemTerms.has(t) && (() => {
-                    // A rule's NAME is written as the goal ("Every prerequisite
-                    // is finished before the course that needs it"), and
-                    // showing that same sentence in red, with nothing else,
-                    // reads as if the goal were being claimed true. What
-                    // belongs here is the concrete failure: which course, and
-                    // what it is actually missing.
-                    const offenderHere = failedLive
-                      .filter((c) => c.id === "prereqs")
-                      .flatMap((c) => c.offenders.filter((id) => termOfLive.get(id) === t))
-                      .find((id) => missingPrereqFor(id) || excludedPrereqFor(id));
-                    const otherFail = failedLive.find((c) => c.offenders.some((id) => termOfLive.get(id) === t) && c.id !== "prereqs");
-                    const offenderCode = courses.get(offenderHere ?? excludedOffenderHere?.id ?? "")?.code ?? offenderHere ?? excludedOffenderHere?.id;
-                    // A course the degree itself requires is not a preference
-                    // the student can simply drop, and saying so is the
-                    // difference between a fix they understand and a button
-                    // they are afraid to press.
-                    const requiredBy = excludedOffenderHere?.excluded
-                      ? (program?.buckets ?? []).find((b) => b.eligible.includes(excludedOffenderHere.excluded!.course.id)
-                          && (b.needCourses ?? 0) >= b.eligible.length)?.label
-                      : undefined;
-                    const headline = missingPrereqHere
-                      ? `${offenderCode} needs ${missingPrereqHere.course.code} first, and it is not in the plan yet.`
-                      : excludedOffenderHere?.excluded
-                        ? `${offenderCode} needs ${excludedOffenderHere.excluded.course.code}, and you took ${excludedOffenderHere.excluded.course.code} out of the plan.${requiredBy ? ` ${requiredBy} requires it, so the plan cannot finish without it.` : ""}`
-                        : otherFail?.problem
-                          ?? (unmetLive.length ? `${unmetLive[0].label}: ${unmetLive[0].gap} ${unmetLive[0].unit}${unmetLive[0].gap === 1 ? "" : "s"} short` : "This semester needs a look");
-                    return (
-                    <div className="mb-3 rounded-xl border p-2.5" style={{ borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }}>
-                      <p className="text-xs font-medium" style={{ color: "#dc2626" }}>{headline}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {missingPrereqHere && (
-                          <button onClick={() => addCourse(missingPrereqHere.course.id, missingPrereqHere.term, missingPrereqHere.course.code)}
-                                  data-track="term_add_missing_prereq"
-                                  className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">
-                            Add {missingPrereqHere.course.code} to {names[missingPrereqHere.term]}
-                          </button>
-                        )}
-                        {excludedOffenderHere?.excluded && (
-                          <>
-                            <button onClick={() => addCourse(excludedOffenderHere.excluded!.course.id, excludedOffenderHere.excluded!.term, excludedOffenderHere.excluded!.course.code)}
-                                    data-track="term_restore_excluded_prereq"
-                                    className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">
-                              Put {excludedOffenderHere.excluded.course.code} back in {names[excludedOffenderHere.excluded.term]}
-                            </button>
-                            <button onClick={() => removeCourse(excludedOffenderHere.id, courses.get(excludedOffenderHere.id)?.code)}
-                                    data-track="term_remove_unfixable"
-                                    className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground">
-                              or drop {courses.get(excludedOffenderHere.id)?.code}
-                            </button>
-                          </>
-                        )}
+                  {!!reasons.length && (
+                    <div className="mb-3 rounded-xl border p-2.5"
+                         style={brokenHere
+                           ? { borderColor: "#dc2626", background: "rgba(220,38,38,0.04)" }
+                           : { borderColor: "var(--amber)", background: "color-mix(in oklab, var(--amber) 6%, white)" }}>
+                      <p className="text-[11px] font-medium" style={{ color: brokenHere ? "#dc2626" : "var(--clay)" }}>
+                        {brokenHere
+                          ? reasons.filter((r) => r.broken).length === 1
+                            ? "One thing to settle in this semester"
+                            : `${reasons.filter((r) => r.broken).length} things to settle in this semester`
+                          : "Nothing here is broken \u2014 this semester can host a fix"}
+                      </p>
+                      <ul className="mt-1.5 space-y-2">
+                        {reasons.map((r) => (
+                          <li key={r.key}>
+                            <p className="text-xs font-medium" style={{ color: r.broken ? "#dc2626" : "var(--clay)" }}>
+                              {r.headline}
+                            </p>
+                            {r.detail && <p className="mt-0.5 text-[11px] text-muted-foreground">{r.detail}</p>}
+                            {!!r.actions.length && (
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {r.actions.map((a) => (
+                                  <button key={a.label} onClick={a.onClick}
+                                          data-track="term_reason_fix"
+                                          className={a.primary
+                                            ? "rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background"
+                                            : "rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground"}>
+                                    {a.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         <button onClick={() => setAddHere(addHere === t ? null : t)} data-track="term_add_open"
-                                className={missingPrereqHere || excludedOffenderHere
-                                  ? "rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground"
-                                  : "rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background"}>
-                          {addHere === t ? "Close" : missingPrereqHere || excludedOffenderHere ? "or add something else here" : "Add a course here"}
+                                className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground">
+                          {addHere === t ? "Close" : "or add something else here"}
                         </button>
                       </div>
                       {addHere === t && (
                         <div className="mt-2">
                           {(() => {
                             const q = addQuery.trim().toLowerCase();
+                            const missingHere = failedLive
+                              .filter((c) => c.id === "prereqs")
+                              .flatMap((c) => c.offenders.filter((id) => termOfLive.get(id) === t))
+                              .map((id) => missingPrereqFor(id))
+                              .find((m): m is { course: Course; term: number } => !!m);
                             // Nothing typed yet: lead with a real, ranked
                             // suggestion instead of a search box with nothing
                             // in it. This is the fix, not a hunt for one.
@@ -1394,12 +1579,17 @@ export function PlanScreen() {
                               // Putting the missing prerequisite in THIS term
                               // wouldn't satisfy it — a prerequisite has to
                               // land strictly before the course that needs it.
-                              .filter((c) => c.id !== missingPrereqHere?.course.id);
+                              // A missing prerequisite cannot be fixed by
+                              // adding it to THIS semester -- it has to land
+                              // in an earlier one -- so it is kept out of this
+                              // list, which would otherwise offer a move that
+                              // leaves the violation standing.
+                              .filter((c) => c.id !== missingHere?.course.id);
                             return (
                               <>
-                                {!!missingPrereqHere && (
+                                {!!missingHere && (
                                   <p className="mb-1 text-[10px] text-muted-foreground">
-                                    {missingPrereqHere.course.code} is left out here — it needs to land in an earlier semester to count.
+                                    {missingHere.course.code} is left out here — it needs to land in an earlier semester to count.
                                   </p>
                                 )}
                                 {!!readyFixes.length && (
@@ -1437,8 +1627,7 @@ export function PlanScreen() {
                         </div>
                       )}
                     </div>
-                    );
-                  })()}
+                  )}
                   <div className="flex flex-wrap items-baseline gap-3 border-b border-border pb-3">
                     <h2 className="font-display text-lg font-semibold">{name}</h2>
                     <span className="tabular plan-wash plan-accent rounded-full px-2.5 py-0.5 text-xs font-medium">
