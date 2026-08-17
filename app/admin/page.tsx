@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Loader2, Search, Table2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ExternalLink, Loader2, Search, Table2 } from "lucide-react";
+import { usePlanner } from "@/components/planner/planner-store";
 
 type Stats = {
   users: { id: string; email: string; name: string | null; createdAt: number; events: number; searches: number; applications: number; lastSeen: number | null }[];
@@ -28,13 +30,58 @@ type TrackerItem = {
   status: string; updatedAt: number; emailDate: number | null;
 };
 
+type Placement = { courseId: string; term: number; bucketId: string; covers: { skill: string }[] };
+type SemesterPlan = { name: string; placements: { courseId: string; covers: number }[] };
+
 const STATUS_DOT: Record<string, string> = {
   applied: "#3b82f6", assessment: "#d97706", interview: "#8b5cf6", offer: "#10b981",
   accepted: "#059669", rejected: "#ef4444", waitlisted: "#f97316", "action needed": "#9a6410", update: "#6b7280",
 };
 
+function semesterLabels(startTerm: string, n: number): string[] {
+  const out: string[] = [];
+  let t = startTerm;
+  let y = new Date().getFullYear() + (startTerm === "FA" ? 0 : 1);
+  for (let i = 0; i < n; i++) {
+    out.push(`${t === "FA" ? "Fall" : "Spring"} ${y}`);
+    if (t === "FA") { t = "SP"; y += 1; } else { t = "FA"; }
+  }
+  return out;
+}
+
+function parseSnapshotPlan(snapshot: string): { semesters: SemesterPlan[]; courseIds: string[] } | null {
+  try {
+    const data = JSON.parse(snapshot);
+    const payload = data.payload ?? data;
+    const result = payload.result;
+    const state = payload.state;
+    if (!result?.plans?.length) return null;
+    const plan = result.plans[0];
+    const startTerm = state?.student?.startTerm ?? "FA";
+    const nTerms = plan.termCredits?.length ?? plan.placements.length;
+    const names = semesterLabels(startTerm, nTerms);
+    const courseIds = new Set<string>();
+    const byTerm = new Map<number, { courseId: string; covers: number }[]>();
+    for (const p of plan.placements as Placement[]) {
+      courseIds.add(p.courseId);
+      const list = byTerm.get(p.term) ?? [];
+      list.push({ courseId: p.courseId, covers: p.covers?.length ?? 0 });
+      byTerm.set(p.term, list);
+    }
+    const semesters = names.map((name, i) => ({
+      name,
+      placements: byTerm.get(i) ?? [],
+    }));
+    return { semesters, courseIds: [...courseIds] };
+  } catch {
+    return null;
+  }
+}
+
 export default function Admin() {
   const { status } = useSession();
+  const { restoreSnapshot } = usePlanner();
+  const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [err, setErr] = useState("");
   const [openUser, setOpenUser] = useState<string | null>(null);
@@ -45,6 +92,20 @@ export default function Admin() {
   const [openTracker, setOpenTracker] = useState(false);
   const [trackerItems, setTrackerItems] = useState<TrackerItem[] | null>(null);
   const [trackerLoading, setTrackerLoading] = useState(false);
+  const [catalog, setCatalog] = useState<Map<string, string> | null>(null);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    void fetch("/api/catalog").then((r) => r.json()).then((c) => {
+      const m = new Map<string, string>();
+      for (const s of c?.schools ?? []) {
+        for (const course of s.courses ?? []) {
+          m.set(course.id, course.code);
+        }
+      }
+      setCatalog(m);
+    }).catch(() => {});
+  }, [status]);
 
   const openTrail = async (id: string) => {
     if (openUser === id) { setOpenUser(null); setTrail(null); setOpenSearch(null); setOpenTracker(false); return; }
@@ -59,6 +120,16 @@ export default function Admin() {
     const j = await fetch(`/api/admin?user=${userId}&search=${searchId}`).then((r) => r.json()).catch(() => null);
     setSearchLoading(false);
     if (j?.ok) setSearchDetail(j.search);
+  };
+
+  const openPlan = async (searchDetail: SearchDetail) => {
+    try {
+      const data = JSON.parse(searchDetail.snapshot);
+      const payload = data.payload ?? data;
+      restoreSnapshot(payload);
+      try { sessionStorage.setItem("slack.planner.restored", JSON.stringify(payload)); } catch { /* ok */ }
+      router.push("/plan");
+    } catch { /* fail silently */ }
   };
 
   const viewTracker = async (userId: string) => {
@@ -124,7 +195,6 @@ export default function Admin() {
                           </ul>
                         </section>
                         <section className="space-y-3">
-                          {/* ── searches ─────────────────────────────────── */}
                           <div>
                             <div className="flex items-center justify-between">
                               <p className="text-[11px] font-medium text-muted-foreground">Course searches · {trail.searches.length}</p>
@@ -147,7 +217,6 @@ export default function Admin() {
                             </ul>
                           </div>
 
-                          {/* ── tracker ──────────────────────────────────── */}
                           <div>
                             <div className="flex items-center justify-between">
                               <p className="text-[11px] font-medium text-muted-foreground">Tracker rows · {trail.tracker.length}</p>
@@ -172,47 +241,68 @@ export default function Admin() {
                       </div>
                     )}
 
-                    {/* ── expanded search detail ─────────────────────────── */}
                     {openSearch && searchLoading && (
                       <div className="mt-3 h-20 animate-pulse rounded-lg bg-foreground/5" />
                     )}
                     {openSearch && searchDetail && (
-                      <div className="mt-3 rounded-lg border border-border bg-white p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold">{searchDetail.title}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {new Date(searchDetail.createdAt).toLocaleString()} ·
-                              {searchDetail.coursesPicked != null ? ` ${searchDetail.coursesPicked} courses picked` : ""}
-                              {searchDetail.partsAnswered != null ? ` · ${searchDetail.partsAnswered} parts answered` : ""}
-                            </p>
+                      <div className="mt-3 space-y-3">
+                        <div className="rounded-lg border border-border bg-white p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">{searchDetail.title}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {new Date(searchDetail.createdAt).toLocaleString()} ·
+                                {searchDetail.coursesPicked != null ? ` ${searchDetail.coursesPicked} courses picked` : ""}
+                                {searchDetail.partsAnswered != null ? ` · ${searchDetail.partsAnswered} parts answered` : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button onClick={() => openPlan(searchDetail)}
+                                      className="inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background hover:opacity-90">
+                                <ExternalLink className="h-3 w-3" /> Open plan
+                              </button>
+                              <button onClick={() => { setOpenSearch(null); setSearchDetail(null); }}
+                                      className="text-[11px] text-muted-foreground underline underline-offset-2">close</button>
+                            </div>
                           </div>
-                          <button onClick={() => { setOpenSearch(null); setSearchDetail(null); }}
-                                  className="text-[11px] text-muted-foreground underline underline-offset-2">close</button>
+
+                          {/* Semester plan view */}
+                          {(() => {
+                            const plan = parseSnapshotPlan(searchDetail.snapshot);
+                            if (!plan) return null;
+                            return (
+                              <div className="mt-3">
+                                <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Degree plan by semester</p>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  {plan.semesters.map((s) => (
+                                    <div key={s.name} className="rounded-lg border border-border bg-foreground/[0.02] p-2">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.name}</p>
+                                      {s.placements.length === 0 && <p className="text-[10px] text-muted-foreground mt-0.5">—</p>}
+                                      {s.placements.map((p) => (
+                                        <div key={p.courseId} className="flex items-center gap-1.5 text-[11px] mt-0.5">
+                                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${p.covers > 0 ? "bg-emerald-500" : "bg-amber-500"}`} />
+                                          <span className="font-medium">{catalog?.get(p.courseId) ?? p.courseId}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">
+                              Job posting preview
+                            </summary>
+                            <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap rounded bg-foreground/[0.03] p-2 text-[10px] leading-relaxed text-muted-foreground">
+                              {searchDetail.jd.slice(0, 3000)}{searchDetail.jd.length > 3000 ? "…" : ""}
+                            </pre>
+                          </details>
                         </div>
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">
-                            Job posting preview
-                          </summary>
-                          <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap rounded bg-foreground/[0.03] p-2 text-[10px] leading-relaxed text-muted-foreground">
-                            {searchDetail.jd.slice(0, 3000)}{searchDetail.jd.length > 3000 ? "…" : ""}
-                          </pre>
-                        </details>
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">
-                            Snapshot metadata
-                          </summary>
-                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-foreground/[0.03] p-2 text-[10px] leading-relaxed text-muted-foreground">
-                            {(() => {
-                              try { return JSON.stringify(JSON.parse(searchDetail.snapshot), null, 2).slice(0, 2000); }
-                              catch { return searchDetail.snapshot.slice(0, 2000); }
-                            })()}
-                          </pre>
-                        </details>
                       </div>
                     )}
 
-                    {/* ── expanded tracker detail ────────────────────────── */}
                     {openTracker && trackerLoading && (
                       <div className="mt-3 h-20 animate-pulse rounded-lg bg-foreground/5" />
                     )}

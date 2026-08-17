@@ -536,18 +536,25 @@ function FixWithPrompt({ onClose, onApplied }: { onClose: () => void; onApplied:
       <div className="my-8 w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-lg font-semibold">Fix with a prompt</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              Describe everything you want changed, in your own words, across as many rows as you like.
-              You will see exactly what it intends to do before anything happens.
-            </p>
+            {!ops ? (
+              <>
+              <h2 className="font-display text-lg font-semibold">Fix with a prompt</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Describe everything you want changed, in your own words, across as many rows as you like.
+                You will see exactly what it intends to do before anything happens.
+              </p>
+              </>
+            ) : (
+              <h2 className="font-display text-lg font-semibold">Review the changes</h2>
+            )}
           </div>
           <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* what it can actually do, said plainly rather than discovered by trial */}
+        {!ops && (
+        <>
         <div className="mt-3 rounded-xl bg-foreground/[0.03] p-3">
           <p className="text-[11px] font-medium">What it can do</p>
           <ul className="mt-1 space-y-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -564,11 +571,12 @@ function FixWithPrompt({ onClose, onApplied }: { onClose: () => void; onApplied:
           placeholder="Mark everything from Google as rejected, rename the two Mitacs rows to Mitacs Globalink, add Jane Street as a quant internship I applied to last week, and delete the Deriv row."
           className="mt-3 w-full resize-y rounded-lg border border-border p-2.5 text-sm focus:border-[var(--blue)] focus:outline-none"
         />
+        </>)}
 
         {err && <p className="mt-2 text-xs" style={{ color: "#b91c1c" }}>{err}</p>}
 
         {ops && (
-          <div className="mt-3">
+          <div className="mt-1">
             <p className="text-[11px] font-medium text-muted-foreground">
               {ops.length === 0 ? "Nothing to change" : `${ops.length - skip.size} change${ops.length - skip.size === 1 ? "" : "s"} ready, nothing applied yet`}
             </p>
