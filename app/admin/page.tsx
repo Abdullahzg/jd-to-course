@@ -126,8 +126,9 @@ export default function Admin() {
     try {
       const data = JSON.parse(searchDetail.snapshot);
       const payload = data.payload ?? data;
+      // Clear JD so auto-save doesn't hijack the plan into admin's account
+      if (payload.state) payload.state.jd = "";
       restoreSnapshot(payload);
-      try { sessionStorage.setItem("slack.planner.restored", JSON.stringify(payload)); } catch { /* ok */ }
       router.push("/plan");
     } catch { /* fail silently */ }
   };
