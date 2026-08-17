@@ -489,6 +489,9 @@ html {
 
   /* Anything wide enough to push the page sideways scrolls inside itself. */
   .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Tables that must not break the layout scroll inside their container. */
+  .table-mobile { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 /* Nothing may push the document sideways on any screen. */
@@ -498,6 +501,19 @@ html, body { max-width: 100%; overflow-x: hidden; }
   /* A step's own body clipped instead of scrolling, so the second school card
      was cut in half. The step scrolls; the chrome around it stays put. */
   .step-body { overflow-y: auto; overflow-x: hidden; }
+}
+
+/* Better tap feedback on touch devices */
+@media (pointer: coarse) {
+  button, a, summary, input, select, [role="button"] {
+    min-height: 2.75rem;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  }
+  /* Mobile focus outlines: more visible against dark/light backgrounds */
+  :focus-visible {
+    outline-width: 3px !important;
+    outline-offset: 3px !important;
+  }
 }
 
 @layer utilities {
@@ -560,13 +576,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
   @media (prefers-reduced-motion: reduce) { .landed { animation: none; } }
 }
 
-
-/* A smaller page must not mean smaller things to press. */
-@media (pointer: coarse) {
-  button, a, summary, input, select {
-    min-height: 2.75rem;
-  }
-}
 
 /* Paper gets the plan, not the controls. */
 @media print {

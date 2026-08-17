@@ -279,12 +279,34 @@ export async function userTrail(userId: string) {
       `SELECT id, email, name, "createdAt" FROM carpa_users WHERE id = $1`, [userId]),
     q<{ name: string; meta: string | null; createdAt: number }>(
       `SELECT name, meta, "createdAt" FROM carpa_events WHERE "userId" = $1 ORDER BY "createdAt" ASC LIMIT 5000`, [userId]),
-    q<{ title: string; createdAt: number }>(
-      `SELECT title, "createdAt" FROM carpa_searches WHERE "userId" = $1 ORDER BY "createdAt" ASC`, [userId]),
+q<{ id: string; title: string; createdAt: number }>(
+  `SELECT id, title, "createdAt" FROM carpa_searches WHERE "userId" = $1 ORDER BY "createdAt" ASC`, [userId]),
     q<{ company: string; status: string; kind: string; "updatedAt": number }>(
       `SELECT company, status, kind, "updatedAt" FROM carpa_tracker WHERE "userId" = $1 ORDER BY "updatedAt" DESC`, [userId]),
   ]);
   return { user: user[0], events, searches, tracker };
+}
+
+/** Full search detail for admin — bypasses userId ownership check. */
+export async function adminSearchDetail(userId: string, searchId: string) {
+  const rows = await q<{ id: string; title: string; jd: string; snapshot: string; coursesPicked: number | null; partsAnswered: number | null; createdAt: number }>(
+    `SELECT id, title, jd, snapshot, "coursesPicked", "partsAnswered", "createdAt" FROM carpa_searches WHERE "userId" = $1 AND id = $2`, [userId, searchId]);
+  return rows[0] ?? null;
+}
+
+/** Every tracker item for a user — admin view. */
+export async function adminTrackerItems(userId: string) {
+  return q<{ id: string; company: string; role: string | null; kind: string; status: string; updatedAt: number; emailDate: number | null }>(
+    `SELECT id, company, role, kind, status, "updatedAt", "emailDate" FROM carpa_tracker WHERE "userId" = $1 ORDER BY "updatedAt" DESC LIMIT 500`, [userId]);
+}
+
+/**
+ * Admin event log with full metadata — shows every tracked interaction
+ * including planner creates, tracker edits, and search executions.
+ */
+export async function adminEventDetail(userId: string, eventName: string) {
+  return q<{ name: string; meta: string | null; createdAt: number }>(
+    `SELECT name, meta, "createdAt" FROM carpa_events WHERE "userId" = $1 AND name = $2 ORDER BY "createdAt" DESC LIMIT 100`, [userId, eventName]);
 }
 
 export async function adminStats() {

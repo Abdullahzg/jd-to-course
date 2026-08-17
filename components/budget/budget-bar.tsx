@@ -81,7 +81,7 @@ export function BudgetBar() {
       onBlue ? "border-white/15 bg-[var(--blue-deep)] text-white"
              : "border-border bg-background/95 supports-[backdrop-filter]:bg-background/80"
     }`}>
-      <div className="mx-auto flex max-w-[1600px] flex-nowrap items-center gap-x-3 overflow-hidden px-3 py-2 sm:flex-wrap sm:gap-x-5 sm:gap-y-2 sm:px-4 lg:px-8">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1.5 overflow-hidden px-3 py-2 sm:gap-x-5 sm:gap-y-2 sm:px-4 lg:px-8">
         <span className={`hidden shrink-0 label text-[10px] sm:inline ${dim}`}>
           {budget?.providerName ?? "API key"}
         </span>
@@ -91,9 +91,9 @@ export function BudgetBar() {
             <Loader2 className="h-3 w-3 animate-spin" /> reading balance
           </span>
         ) : !budget?.connected ? (
-          <span className="flex items-center gap-2 text-xs" style={{ color: onBlue ? "#ffd7d2" : "var(--clay)" }}>
-            <TriangleAlert className="h-3.5 w-3.5" />
-            {budget?.error ?? budget?.message ?? "No key connected"}
+          <span className="flex items-center gap-2 text-xs min-w-0" style={{ color: onBlue ? "#ffd7d2" : "var(--clay)" }}>
+            <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{budget?.error ?? budget?.message ?? "No key connected"}</span>
           </span>
         ) : hasBalance ? (
           /* ── the provider publishes a balance ───────────────────────────── */
