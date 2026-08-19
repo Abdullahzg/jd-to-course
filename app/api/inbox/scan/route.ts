@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { auth } from "@/auth";
 import { getActiveKey } from "@/lib/ai/keystore";
 import { runScan } from "@/lib/inbox/run-scan";
-import { createScanJob, getScanJob, latestScanJob, updateScanJob, cloneJudgeRows, SHARED_JUDGE_USER } from "@/lib/db";
+import { createScanJob, getScanJob, latestScanJob, updateScanJob, cloneJudgeRows, resetMailScan, SHARED_JUDGE_USER } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,12 +21,20 @@ export async function POST(req: Request) {
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) return NextResponse.json({ ok: false, error: "Sign in first." }, { status: 401 });
 
-  let body: { mode?: string; email?: string; appPassword?: string } = {};
+  let body: { mode?: string; email?: string; appPassword?: string; full?: boolean } = {};
   try { body = await req.json(); } catch { /* defaults */ }
   const mode = body.mode ?? "demo";
 
   const { key } = await getActiveKey();
   if (!key) return NextResponse.json({ ok: false, error: "Connect an API key first, the bar at the top of the page takes one." }, { status: 400 });
+
+  // Full re-scan: forget the cursor and every seen id, so the walk starts at
+  // the beginning of the mailbox again and rebuilds both the tracker and the
+  // reject pile. An incremental sync that reports "nothing new" on a mailbox
+  // whose rows look wrong is answered by this, not by waiting.
+  if (body.full && (mode === "imap" || mode === "gmail")) {
+    await resetMailScan(userId, mode);
+  }
 
   // The Gmail token lives in the request's JWT, so it must be read here,
   // while there still is a request, and handed to the detached runner.

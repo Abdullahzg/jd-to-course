@@ -430,6 +430,14 @@ export async function deleteSkippedEmail(userId: string, source: string, emailId
   await q(`DELETE FROM carpa_skipped_emails WHERE "userId" = $1 AND source = $2 AND "emailId" = $3`, [userId, source, emailId]);
 }
 
+/** Forget everything a source ever scanned, so the next scan walks the whole
+ *  mailbox again from the beginning and rebuilds rows AND the reject pile. */
+export async function resetMailScan(userId: string, source: string) {
+  await q(`DELETE FROM carpa_seen_emails WHERE "userId" = $1 AND source = $2`, [userId, source]);
+  await q(`DELETE FROM carpa_mail_state WHERE "userId" = $1 AND source = $2`, [userId, source]);
+  await q(`DELETE FROM carpa_skipped_emails WHERE "userId" = $1 AND source = $2`, [userId, source]);
+}
+
 // ── scan jobs: the background work a scan became ─────────────────────────────
 export type ScanJob = {
   id: string; userId: string; mode: string; status: "running" | "done" | "error";

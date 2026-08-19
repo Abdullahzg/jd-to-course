@@ -100,8 +100,8 @@ export default function TrackerPage() {
    * you. Nothing to configure: an account with no inbox connected is told so
    * rather than being sent to a settings page it did not ask for.
    */
-  const sync = async () => {
-    setSyncing(true); setSyncNote("Looking for anything new");
+  const sync = async (full = false) => {
+    setSyncing(true); setSyncNote(full ? "Forgetting the cursor, re-reading the whole mailbox" : "Looking for anything new");
     const st = await fetch("/api/inbox/status").then((r) => r.json()).catch(() => null);
     const mode = st?.savedImap ? "imap" : st?.gmailConnected ? "gmail" : st?.lastMode === "judge" ? "judge" : null;
     if (!mode) {
@@ -110,10 +110,10 @@ export default function TrackerPage() {
       return;
     }
     const r = await fetch("/api/inbox/scan", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, full }),
     }).then((x) => x.json()).catch(() => ({ ok: false, error: "The sync could not start." }));
     if (!r.ok) { setSyncing(false); setSyncNote(r.error ?? "The sync failed."); return; }
-    if (r.done) { await reload(); setSyncing(false); setSyncNote(`Up to date: ${r.total} applications.`); return; }
+    if (r.done) { await reload(); void reloadSkipped(); setSyncing(false); setSyncNote(`Up to date: ${r.total} applications.`); return; }
     window.dispatchEvent(new Event("carpa-scan-started"));
     const tick = async () => {
       const j = (await fetch(`/api/inbox/scan?job=${r.jobId}`).then((x) => x.json()).catch(() => null))?.job;
@@ -121,7 +121,7 @@ export default function TrackerPage() {
       if (j.status === "running") {
         const n = (x: number) => Number(x).toLocaleString();
         setSyncNote(j.phase === "triage" ? `Sorting ${n(j.total)} emails: ${n(j.done)} done`
-          : j.phase === "reading" ? `Reading the ${n(j.total)} that matter`
+          : j.phase === "reading" ? `Reading the ${n(j.total)} that matter: ${n(j.done)} done`
           : j.phase === "extracting" ? `Extracting statuses: ${n(j.done)} of ${n(j.total)}`
           : "Connecting to the mailbox");
         setTimeout(() => void tick(), 3000);
@@ -133,7 +133,7 @@ export default function TrackerPage() {
       setSyncNote(j.status === "done"
         ? (j.created || j.updated
             ? `${j.created} new, ${j.updated} updated.`
-            : "Nothing new since the last sync.")
+            : "Nothing new — this mailbox was already fully read on an earlier scan. If rows look missing, Re-scan everything.")
         : j.error ?? "The sync failed.");
     };
     void tick();
@@ -236,6 +236,11 @@ export default function TrackerPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-50">
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Syncing" : "Sync"}
           </button>
+          <button onClick={() => void sync(true)} disabled={syncing} data-track="tracker_full_sync"
+                  title="Forget the cursor and read the entire mailbox again from the beginning, rebuilding rows and the reject pile"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> Re-scan everything
+          </button>
           <button onClick={() => setAdding(true)} data-track="tracker_add_open"
                   className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background">
             <Plus className="h-3.5 w-3.5" /> Add an application
@@ -292,7 +297,10 @@ export default function TrackerPage() {
               </div>
             )}
             {skipped?.length === 0 && (
-              <p className="p-3.5 text-[11px] text-muted-foreground">Nothing here — every email either made the table or was already known.</p>
+              <p className="p-3.5 text-[11px] leading-relaxed text-muted-foreground">
+                Nothing here. If this mailbox was first scanned by an older version, its reject pile was
+                never kept — hit <strong>Re-scan everything</strong> above to rebuild it from the whole mailbox.
+              </p>
             )}
             {skipped && skipped.length > 0 && (
               <ul className="pb-1.5">
