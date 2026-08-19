@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, KeyRound, Loader2, Mail, CalendarRange, Inbox, LayoutGrid, ArrowRight } from "lucide-react";
+import { CheckCircle2, KeyRound, Loader2, CalendarRange, Inbox, LayoutGrid, ArrowRight } from "lucide-react";
 
 /**
  * The new account door, reduced to four beats:
@@ -38,14 +38,17 @@ export default function Setup() {
   const [imapPass, setImapPass] = useState("");
   const [loaderNote, setLoaderNote] = useState("Loading");
   const [loaderSub, setLoaderSub] = useState("");
+  const [trackerCount, setTrackerCount] = useState<number | null>(null);
   const timers = useRef<number[]>([]);
 
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/home");
   }, [status, router]);
-
-  const gmailConnected = Boolean((session as { gmailConnected?: boolean } | null)?.gmailConnected);
+  useEffect(() => {
+    if (step !== 3) return;
+    void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setTrackerCount((j.items as unknown[]).length); }).catch(() => {});
+  }, [step]);
 
   const showLoader = (note: string, sub: string) => {
     setLoaderNote(note);
@@ -189,8 +192,8 @@ export default function Setup() {
           <div>
             <h1 className="font-display text-lg font-semibold">Connect your inbox</h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              One authorize tab or one app password. The first scan reads back a year and
-              then the tracker maintains itself. Nothing is ever written to your mailbox.
+              One app password from Google. The first scan reads your whole mailbox back to the
+              beginning, then the tracker maintains itself. Nothing is ever written to it.
             </p>
           </div>
 
@@ -219,19 +222,8 @@ export default function Setup() {
             </div>
           </div>
 
-          {/* google oauth */}
-          <div className="card-lift rounded-2xl border border-border bg-white p-4">
-            <p className="flex items-center gap-2 text-sm font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-600/10"><Mail className="h-3.5 w-3.5 text-sky-700" /></span> Google sign in</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              One authorize tab, read only scope, no password handling at all.
-            </p>
-            <button
-              onClick={() => (gmailConnected ? void scan("gmail") : void signIn("google", { callbackUrl: "/setup" }, { scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly", access_type: "offline", prompt: "consent" }))}
-              disabled={busy} data-track="setup_scan_gmail"
-              className="mt-2 rounded-full border border-border px-4 py-1.5 text-sm disabled:opacity-40">
-              {gmailConnected ? "Scan my Gmail" : "Authorize Gmail access"}
-            </button>
-          </div>
+{/* google oauth removed: the app-password route is the one that works
+              everywhere, so it is the only route offered. */}
 
           {(busy || log.length > 0) && (
             <div className="rounded-2xl border border-border bg-white p-4">
@@ -320,7 +312,14 @@ export default function Setup() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-600/10">
                     <Inbox className="h-4 w-4 text-sky-700" />
                   </span>
-                  <p className="mt-2.5 text-sm font-semibold">Tracker</p>
+                  <p className="mt-2.5 text-sm font-semibold">
+                    Tracker
+                    {trackerCount !== null && (
+                      <span className="ml-2 rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                        {trackerCount} application{trackerCount === 1 ? "" : "s"} found
+                      </span>
+                    )}
+                  </p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                     Your applications, maintained from your inbox: every status proven by the
                     email that announced it.

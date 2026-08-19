@@ -23,8 +23,8 @@ const strip = (html: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** Everything the scan will consider, whatever the mailbox holds. */
-const HARD_CAP = 20000;
+/** Everything the scan will consider in one pass, whatever the mailbox holds. */
+const HARD_CAP = 60000;
 
 // ── Gmail over REST, bearer token from the OAuth session ────────────────────
 export async function fetchGmailHeaders(accessToken: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {
@@ -32,23 +32,28 @@ export async function fetchGmailHeaders(accessToken: string, opts: { sinceMs: nu
   const base = "https://gmail.googleapis.com/gmail/v1/users/me";
   const headers = { Authorization: `Bearer ${accessToken}` };
 
+  // List the whole window (newest first), then keep the OLDEST chunk. A
+  // first scan must not skip history just because the newest page filled the
+  // cap; later incremental scans fetch tiny windows anyway.
   const ids: string[] = [];
-  let pageToken = "";
   const cap = opts.cap ?? HARD_CAP;
-  while (ids.length < cap) {
+  let pageToken = "";
+  for (;;) {
     const url = `${base}/messages?q=${encodeURIComponent(q)}&maxResults=500${pageToken ? `&pageToken=${pageToken}` : ""}`;
     const r = await fetch(url, { headers, cache: "no-store" });
     if (!r.ok) throw new Error(`Gmail said ${r.status}. ${r.status === 401 ? "Reconnect Google to renew access." : await r.text().then((t) => t.slice(0, 120))}`);
     const j = (await r.json()) as { messages?: { id: string }[]; nextPageToken?: string };
     for (const m of j.messages ?? []) ids.push(m.id);
-    if (!j.nextPageToken) break;
-    pageToken = j.nextPageToken;
+    pageToken = j.nextPageToken ?? "";
+    if (!pageToken) break;
+    if (ids.length > 200000) break; // safety valve, not a policy
   }
+  const take = cap ? ids.slice(-cap) : ids;
 
   const out: EmailHeader[] = [];
   // metadata format: headers only, ~1KB per message instead of the full body.
-  for (let i = 0; i < ids.length; i += 25) {
-    const chunk = await Promise.all(ids.slice(i, i + 25).map(async (id) => {
+  for (let i = 0; i < take.length; i += 25) {
+    const chunk = await Promise.all(take.slice(i, i + 25).map(async (id) => {
       const r = await fetch(`${base}/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`, { headers, cache: "no-store" });
       if (!r.ok) return null;
       const m = (await r.json()) as { id: string; internalDate?: string; payload?: { headers?: { name: string; value: string }[] } };
@@ -139,7 +144,10 @@ export async function fetchImapHeaders(email: string, appPassword: string, opts:
     // by message id, so the coarseness cannot lose or double-count anything.
     const uids = await client.search({ since: new Date(opts.sinceMs) }, { uid: true });
     if (uids === false) throw new Error("Gmail accepted the sign in but refused the mailbox search. Try again in a minute.");
-    const take = (uids || []).slice(-1 * (opts.cap ?? HARD_CAP));
+    // UIDs come back oldest first; take the OLDEST chunk so a first scan
+    // chews history from the beginning and a later scan picks up where the
+    // state cursor left off.
+    const take = (uids || []).slice(0, opts.cap ?? HARD_CAP);
     for await (const msg of client.fetch(take, { uid: true, envelope: true }, { uid: true })) {
       const env = msg.envelope;
       const from = env?.from?.[0] ? `${env.from[0].name ?? ""} <${env.from[0].address ?? ""}>`.trim() : "";

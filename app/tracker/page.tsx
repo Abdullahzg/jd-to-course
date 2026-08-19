@@ -22,6 +22,7 @@ type Item = {
   actionLink: string | null; deadline: string | null; notes: string | null;
   updatedAt: number; origin?: string | null; events: Ev[];
 };
+type SkippedRow = { source: string; emailId: string; fromAddr: string | null; subject: string | null; emailDate: number | null; reason: string };
 
 const KINDS = ["internship", "job", "research", "grad school", "scholarship", "hackathon", "program", "other"];
 const STATUSES = ["applied", "assessment", "interview", "offer", "accepted", "rejected", "waitlisted", "action needed", "update"];
@@ -49,6 +50,44 @@ export default function TrackerPage() {
   const [prompting, setPrompting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState("");
+  // The scan's reject pile: emails the reader passed over, kept visible so a
+  // person can overrule the machine one row at a time.
+  const [skipped, setSkipped] = useState<SkippedRow[] | null>(null);
+  const [skippedOpen, setSkippedOpen] = useState(false);
+  const [moving, setMoving] = useState<string | null>(null);
+  const [moveNote, setMoveNote] = useState<string | null>(null);
+
+  const reloadSkipped = async () => {
+    const j = await fetch("/api/tracker/skipped").then((r) => r.json()).catch(() => null);
+    if (j?.ok) setSkipped(j.skipped);
+  };
+
+  const moveOver = async (s: SkippedRow) => {
+    const key = `${s.source}:${s.emailId}`;
+    setMoving(key); setMoveNote(null);
+    const r = await fetch("/api/tracker/skipped", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emailId: s.emailId, source: s.source }),
+    }).then((x) => x.json()).catch(() => ({ ok: false, error: "The move did not go through." }));
+    setMoving(null);
+    if (!r.ok) { setMoveNote(r.error ?? "The move did not go through."); return; }
+    if (r.moved) {
+      setMoveNote(`${r.created > 0 ? `${r.created} new row arrived.` : ""}${r.updated > 0 ? `${r.created ? " " : ""}${r.updated} row updated.` : ""}`.trim() || "Moved into the tracker.");
+      await reload();
+      await reloadSkipped();
+    } else {
+      setMoveNote(r.note ?? "Nothing to move.");
+    }
+  };
+
+  const dismiss = async (s: SkippedRow) => {
+    setMoveNote(null);
+    await fetch("/api/tracker/skipped", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emailId: s.emailId, source: s.source }),
+    });
+    setSkipped((xs) => (xs ?? []).filter((x) => !(x.source === s.source && x.emailId === s.emailId)));
+  };
 
   const reload = async () => {
     const j = await fetch("/api/tracker").then((r) => r.json()).catch(() => null);
@@ -89,6 +128,7 @@ export default function TrackerPage() {
         return;
       }
       await reload();
+      void reloadSkipped();
       setSyncing(false);
       setSyncNote(j.status === "done"
         ? (j.created || j.updated
@@ -118,6 +158,7 @@ export default function TrackerPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
     void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); });
+    void reloadSkipped();
   }, [status]);
 
   const patch = (id: string, fields: Partial<Item>) => {
@@ -222,7 +263,71 @@ export default function TrackerPage() {
       )}
 
       <div className="mt-3">
-        <InboxActions onDone={() => { void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); }); }} />
+        <InboxActions onDone={() => { void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); }); void reloadSkipped(); }} />
+      </div>
+
+      {/* the reject pile, with a door back in */}
+      <div className="mt-3 rounded-xl border border-border bg-white">
+        <button onClick={() => setSkippedOpen((v) => !v)} data-track="tracker_skipped_toggle"
+                title="Email the scan passed over, so nothing is silently thrown away"
+                className="flex w-full items-center justify-between px-3.5 py-2.5 text-left">
+          <span className="text-xs font-medium">
+            Didn&rsquo;t make the cut
+            <span className="ml-1.5 font-normal text-muted-foreground">
+              {skipped === null ? "" : `· ${skipped.length} email${skipped.length === 1 ? "" : "s"} the scan passed over`}
+            </span>
+          </span>
+          <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${skippedOpen ? "rotate-180" : ""}`} />
+        </button>
+        {skippedOpen && (
+          <div className="border-t border-border">
+            <p className="px-3.5 pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              Bulk mail, and mail the reader judged not to be about applications. If one looks real to
+              you, move it over: it is read in full, and any status it proves lands as a row with its receipt.
+            </p>
+            {moveNote && <p className="px-3.5 pt-1 text-[11px] font-medium" style={{ color: "var(--teal)" }}>{moveNote}</p>}
+            {skipped === null && (
+              <div className="space-y-1.5 p-3">
+                {[0, 1, 2].map((i) => <div key={i} className="h-8 animate-pulse rounded-md bg-foreground/5" />)}
+              </div>
+            )}
+            {skipped?.length === 0 && (
+              <p className="p-3.5 text-[11px] text-muted-foreground">Nothing here — every email either made the table or was already known.</p>
+            )}
+            {skipped && skipped.length > 0 && (
+              <ul className="pb-1.5">
+                {skipped.map((s) => {
+                  const key = `${s.source}:${s.emailId}`;
+                  return (
+                    <li key={key} className="flex flex-wrap items-center gap-2 border-t border-border px-3.5 py-2 first:border-t-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium">{s.subject || "(no subject)"}</p>
+                        <p className="flex flex-wrap items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+                          <span className="truncate">{s.fromAddr}</span>
+                          {s.emailDate && <span>· {new Date(s.emailDate).toLocaleDateString()}</span>}
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${s.reason === "bulk" ? "bg-foreground/5 text-muted-foreground" : "bg-[var(--blue-soft)] text-[var(--blue)]"}`}>
+                            {s.reason === "bulk" ? "bulk filter" : "reader said no"}
+                          </span>
+                        </p>
+                      </div>
+                      <button onClick={() => void moveOver(s)} disabled={moving !== null} data-track="tracker_skipped_move"
+                              title="Read this email in full and move whatever it proves into the tracker"
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background disabled:opacity-50">
+                        {moving === key && <Loader2 className="h-3 w-3 animate-spin" />}
+                        Move into the tracker
+                      </button>
+                      <button onClick={() => void dismiss(s)} disabled={moving !== null} aria-label="Hide"
+                              title="Stop showing this one" data-track="tracker_skipped_hide"
+                              className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* the season at a glance, before any scrolling */}
@@ -287,7 +392,7 @@ export default function TrackerPage() {
       )}
       {items?.length === 0 && (
         <div className="mt-8 rounded-xl border border-dashed border-border p-8 text-center">
-          <p className="text-sm text-muted-foreground">Nothing here yet. Connect an inbox and the year you already lived fills this in.</p>
+          <p className="text-sm text-muted-foreground">Nothing here yet. Connect an inbox and everything you ever applied to fills this in — scanned all the way back.</p>
           <Link href="/setup" className="mt-3 inline-block rounded-full bg-foreground px-4 py-1.5 text-xs text-background">Connect an inbox</Link>
         </div>
       )}

@@ -148,6 +148,17 @@ CREATE INDEX IF NOT EXISTS carpa_rate_bucket ON carpa_rate(bucket, "createdAt" D
 ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS body TEXT;
 ALTER TABLE carpa_tracker_events ADD COLUMN IF NOT EXISTS "fromAddr" TEXT;
 ALTER TABLE carpa_tracker ADD COLUMN IF NOT EXISTS origin TEXT;
+CREATE TABLE IF NOT EXISTS carpa_skipped_emails (
+  "userId" TEXT NOT NULL,
+  source TEXT NOT NULL,
+  "emailId" TEXT NOT NULL,
+  "fromAddr" TEXT,
+  subject TEXT,
+  "emailDate" BIGINT,
+  reason TEXT NOT NULL,
+  PRIMARY KEY ("userId", source, "emailId")
+);
+CREATE INDEX IF NOT EXISTS carpa_skipped_user ON carpa_skipped_emails("userId", "emailDate" DESC);
 `);
   })();
   return ready;
@@ -386,6 +397,39 @@ export async function markEmailsSeen(userId: string, source: string, ids: string
   }
 }
 
+// ── the emails a scan decided not to track ──────────────────────────────────
+/**
+ * Every header the scanner passed over is remembered, with the reason, so
+ * the tracker page can show what did not make the cut and a person can
+ * move any of it into the tracker by hand — the machine's "no" is reversible
+ * because the machine is not the one answering for a missing row.
+ */
+export type SkippedEmail = {
+  source: string; emailId: string; fromAddr: string | null; subject: string | null;
+  emailDate: number | null; reason: string;
+};
+export async function insertSkippedEmails(userId: string, source: string, rows: SkippedEmail[]) {
+  for (let i = 0; i < rows.length; i += 1000) {
+    const chunk = rows.slice(i, i + 1000);
+    const vals: unknown[] = []; const tuples: string[] = [];
+    chunk.forEach((r) => {
+      const base = vals.length;
+      vals.push(userId, source, r.emailId, r.fromAddr, r.subject, r.emailDate, r.reason);
+      tuples.push(`(${Array.from({ length: 7 }, (_, k) => `$${base + k + 1}`).join(",")})`);
+    });
+    await q(`INSERT INTO carpa_skipped_emails ("userId", source, "emailId", "fromAddr", subject, "emailDate", reason)
+             VALUES ${tuples.join(",")} ON CONFLICT DO NOTHING`, vals);
+  }
+}
+export async function listSkippedEmails(userId: string, limit = 300): Promise<SkippedEmail[]> {
+  return q<SkippedEmail>(
+    `SELECT source, "emailId", "fromAddr", subject, "emailDate", reason FROM carpa_skipped_emails
+     WHERE "userId" = $1 ORDER BY COALESCE("emailDate", 0) DESC LIMIT $2`, [userId, limit]);
+}
+export async function deleteSkippedEmail(userId: string, source: string, emailId: string) {
+  await q(`DELETE FROM carpa_skipped_emails WHERE "userId" = $1 AND source = $2 AND "emailId" = $3`, [userId, source, emailId]);
+}
+
 // ── scan jobs: the background work a scan became ─────────────────────────────
 export type ScanJob = {
   id: string; userId: string; mode: string; status: "running" | "done" | "error";
@@ -438,6 +482,10 @@ export async function cloneJudgeRows(toUserId: string): Promise<{ created: numbe
   await q(`DELETE FROM carpa_tracker WHERE "userId" = $1 AND (origin IS NULL OR origin <> 'manual')`, [toUserId]);
   await q(`DELETE FROM carpa_seen_emails WHERE "userId" = $1 AND source IN ('imap','gmail')`, [toUserId]);
   await q(`DELETE FROM carpa_mail_state WHERE "userId" = $1 AND source IN ('imap','gmail')`, [toUserId]);
+  await q(`DELETE FROM carpa_skipped_emails WHERE "userId" = $1 AND source = 'judge'`, [toUserId]);
+  await q(`INSERT INTO carpa_skipped_emails ("userId", source, "emailId", "fromAddr", subject, "emailDate", reason)
+           SELECT $1, source, "emailId", "fromAddr", subject, "emailDate", reason
+           FROM carpa_skipped_emails WHERE "userId" = $2 ON CONFLICT DO NOTHING`, [toUserId, SHARED_JUDGE_USER]);
   const fresh = src;
   if (!fresh.length) return { created: 0, total: src.length };
 

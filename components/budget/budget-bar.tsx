@@ -37,9 +37,10 @@ export function BudgetBar() {
   }, [totalCalls]);
 
   const path = usePathname();
-  // The landing and survey own a full-bleed blue screen; a white bar across one
-  // reads as a rendering fault, so the bar carries the blue there.
-  const onBlue = path === "/" || path === "/start";
+  // The survey owns a full-bleed blue screen; a white bar across one reads as
+  // a rendering fault, so the bar carries the blue there. The landing is
+  // cream paper now and keeps the light bar.
+  const onBlue = path === "/start";
 
   useEffect(() => {
     if (!open) return;

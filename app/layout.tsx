@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Poppins, Inter, JetBrains_Mono } from "next/font/google";
+import { Poppins, Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import { BudgetBar } from "@/components/budget/budget-bar";
 import { BudgetProvider } from "@/components/budget/budget-provider";
 import { AuthProvider, Beacon } from "@/components/session";
@@ -33,6 +33,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// The landing's one serif moment: the Instrument headline, cream and ink.
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Carpa: plan the degree, track every application",
   description:"Paste a job posting and the courses you have finished. A solver picks the classes that get you closest to that job while satisfying every degree rule, then shows you what classes cannot teach you.",
@@ -42,7 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body
-        className={`${poppins.variable} ${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+        className={`${poppins.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} font-sans antialiased`}
       >
         {/* The whole app is one viewport-tall column: the money bar is a row in
             it, not an extra strip stacked on top. Stacking it above a

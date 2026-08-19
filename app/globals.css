@@ -84,9 +84,10 @@ html {
 @theme inline {
   --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
   /* No typewriter face anywhere. Course codes get weight and letter-spacing
-     instead, which reads as a code without looking like a terminal. */
+      instead, which reads as a code without looking like a terminal. */
   --font-mono: var(--font-poppins), 'Poppins', system-ui, sans-serif;
   --font-display: var(--font-poppins), 'Poppins', system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), 'Instrument Serif', ui-serif, Georgia, serif;
   --color-amber: var(--amber);
   --color-teal: var(--teal);
   --color-clay: var(--clay);

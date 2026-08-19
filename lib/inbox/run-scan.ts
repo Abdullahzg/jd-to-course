@@ -6,22 +6,26 @@ import {
 import {
   logEvent, getSecret, getMailCreds, saveMailCreds,
   getMailState, setMailState, seenEmailIds, markEmailsSeen, updateScanJob,
+  insertSkippedEmails, purgeJudgeRows,
 } from "@/lib/db";
 import type { EmailHeader, RawEmail } from "./types";
 
 const DAY = 24 * 3600 * 1000;
+/** One pass through the pipeline, checkpointed, so giant mailboxes are chewed oldest-first. */
+const CHUNK = 3000;
+/** Stop starting new chunks after this long; the rest is picked up by the next scan. */
+const TIME_BUDGET = 240_000;
 
 /**
  * A whole scan, run behind a job row instead of behind an open HTTP request.
  *
- * The request that starts a scan returns immediately with a job id; this
- * function then reports every stage into carpa_scan_jobs, which the setup
- * page, the dashboard and the site-wide notifier all poll. The stages:
- * list every header in the window, drop the ones already processed, triage
- * headers in parallel, download bodies for the survivors only, extract
- * statuses with proof, reconcile. A first connection covers a full year of
- * the ENTIRE mailbox; there is no arbitrary message cap any more, because
- * headers cost nothing and bodies are only fetched for what matters.
+ * A first connection covers the ENTIRE mailbox, not a year of it. Because
+ * whole mailboxes can be huge (the owner's holds 38,000 messages), the scan
+ * walks history in chunks, oldest first: each chunk is listed, triaged,
+ * body-fetched, extracted and reconciled, then its progress is checkpointed
+ * (seen ids + state cursor) BEFORE the next chunk starts. A platform that
+ * kills a long job therefore loses nothing: the next scan resumes exactly
+ * where the cursor left off, and the UI's sync button does that for free.
  */
 export async function runScan(
   jobId: string,
@@ -32,26 +36,25 @@ export async function runScan(
 ): Promise<void> {
   const up = (patch: Parameters<typeof updateScanJob>[1]) => updateScanJob(jobId, patch).catch(() => undefined);
   try {
-    const state = await getMailState(userId, mode);
+    let state = await getMailState(userId, mode);
     const backfill = !state;
-    const sinceMs = state ? state.lastDate - 2 * DAY : Date.now() - 365 * DAY;
+    // The cursor points at where history was last fully processed. A first
+    // scan starts at the beginning of time; later scans start two days
+    // before the newest processed message, and seen-ids remove the overlap.
+    let cursor = state ? state.lastDate - 2 * DAY : 0;
 
-    // ── list ────────────────────────────────────────────────────────────
-    await up({ phase: "connecting" });
-    let headers: EmailHeader[];
+    const startedAt = Date.now();
+    let totHeaders = 0, totFresh = 0, totRead = 0, totSignals = 0, totSkipped = 0;
+    let totCreated = 0, totUpdated = 0, totCost = 0;
+
+    // One connection-maker per mode, closed over the credentials.
+    let listHeaders: (sinceMs: number) => Promise<EmailHeader[]>;
     let getBodies: (ids: string[], onChunk?: (done: number) => void) => Promise<RawEmail[]>;
 
-    // A person's own connection fetches the whole year of headers (headers
-    // are nearly free), strips bulk senders deterministically, and spends
-    // the model budget on the newest 1200 that remain. A fixed 400 raw cap
-    // once made a noisy mailbox's scan reach back six weeks and miss every
-    // real application sitting just beyond the alerts.
-    const personalCap = 8000;
-    const triageWindow = 1200;
     if (mode === "gmail") {
       if (!opts.gmailToken) throw new Error("Google is not connected on this session. Sign in with Google, approving the Gmail permission.");
       const token = opts.gmailToken;
-      headers = await fetchGmailHeaders(token, { sinceMs, cap: personalCap });
+      listHeaders = (sinceMs) => fetchGmailHeaders(token, { sinceMs, cap: CHUNK });
       getBodies = (ids, onChunk) => fetchGmailBodies(token, ids, onChunk);
     } else if (mode === "imap") {
       let creds = opts.email && opts.appPassword
@@ -59,7 +62,7 @@ export async function runScan(
         : await getMailCreds(userId);
       if (!creds) throw new Error("The app password route needs your address and a 16 character Google app password.");
       const { email, appPassword } = creds;
-      headers = await fetchImapHeaders(email, appPassword, { sinceMs, cap: personalCap });
+      listHeaders = (sinceMs) => fetchImapHeaders(email, appPassword, { sinceMs, cap: CHUNK });
       getBodies = (ids, onChunk) => fetchImapBodies(email, appPassword, ids, onChunk);
       if (opts.email && opts.appPassword) {
         await saveMailCreds(userId, { source: "imap", email: opts.email, appPassword: opts.appPassword });
@@ -68,62 +71,89 @@ export async function runScan(
       const jEmail = (await getSecret("judge_inbox_email")) ?? process.env.JUDGE_INBOX_EMAIL;
       const jPass = (await getSecret("judge_inbox_app_password")) ?? process.env.JUDGE_INBOX_APP_PASSWORD;
       if (!jEmail || !jPass) throw new Error("The judges' inbox is not connected yet. The owner adds an app password to enable it; meanwhile the demo inbox shows the same flow.");
-      headers = await fetchImapHeaders(jEmail, jPass, { sinceMs });
+      listHeaders = (sinceMs) => fetchImapHeaders(jEmail, jPass, { sinceMs, cap: CHUNK });
       getBodies = (ids, onChunk) => fetchImapBodies(jEmail, jPass, ids, onChunk);
     } else {
       const demo = demoInbox();
-      headers = demo;
+      listHeaders = async () => demo;
       getBodies = async (ids) => demo.filter((e) => ids.includes(e.id));
     }
-
-    // ── skip what earlier scans already paid for ─────────────────────────
-    const seen = await seenEmailIds(userId, mode, headers.map((h) => h.id));
-    let fresh = headers.filter((h) => !seen.has(h.id));
-    // Bulk mail dies here, for free, before a single model call.
-    const { kept: nonBulk, bulk } = prefilterBulk(fresh);
-    const windowed = nonBulk.length > triageWindow
-      ? [...nonBulk].sort((a, b) => b.date - a.date).slice(0, triageWindow)
-      : nonBulk;
-    const processedIds = new Set([...bulk.map((h) => h.id), ...windowed.map((h) => h.id)]);
-    fresh = fresh.filter((h) => processedIds.has(h.id));
-    await up({ phase: "triage", total: windowed.length, done: 0, alreadyKnown: seen.size });
-
-    // ── triage headers, in parallel waves ────────────────────────────────
-    let lastTick = 0;
-    const { keep, costUsd: triageCost } = await triageHeaders(key, windowed, (done) => {
-      if (done - lastTick >= 180 || done === windowed.length) { lastTick = done; void up({ done }); }
-    });
-
-    // ── bodies for the survivors only ────────────────────────────────────
-    await up({ phase: "reading", total: keep.size, done: 0, costUsd: triageCost });
-    const bodies = await getBodies([...keep], (done) => void up({ done }));
 
     // Owner rows do not belong in a personal scan's result. Shifting back
     // to your own inbox is also a replacement, not a merge.
     if (mode === "imap" || mode === "gmail") {
-      await (await import("@/lib/db")).purgeJudgeRows(userId);
+      await purgeJudgeRows(userId);
     }
 
-    // ── extract, verify quotes, reconcile ────────────────────────────────
-    await up({ phase: "extracting", total: bodies.length, done: 0 });
-    const { signals: rawSignals, costUsd: extractCost, dropped } = await extractSignals(key, bodies, (done) => void up({ done }));
-    const byId = new Map(bodies.map((e) => [e.id, e]));
-    const { kept: signals, refuted, costUsd: refuteCost } = await refuteSignals(key, rawSignals, byId);
-    const result = await reconcile(userId, signals, byId);
+    // ── the walk, oldest first, checkpointed per chunk ───────────────────
+    let pass = 0;
+    for (;;) {
+      if (pass > 0 && Date.now() - startedAt > TIME_BUDGET) break; // the next scan keeps walking
+      const headers = await listHeaders(cursor);
+      if (!headers.length) break;
+      totHeaders += headers.length;
 
-    await markEmailsSeen(userId, mode, fresh.map((h) => h.id));
-    const newest = headers.reduce((m, h) => Math.max(m, h.date || 0), state?.lastDate ?? 0);
-    await setMailState(userId, mode, newest || Date.now());
+      const seen = await seenEmailIds(userId, mode, headers.map((h) => h.id));
+      let fresh = headers.filter((h) => !seen.has(h.id));
+      totFresh += fresh.length;
 
+      // Bulk mail dies here, for free, before a single model call. What the
+      // triage says no to stays recorded too, so a person can overrule it.
+      const { kept: nonBulk, bulk } = prefilterBulk(fresh);
+      await up({ phase: "triage", total: nonBulk.length, done: 0, alreadyKnown: seen.size });
+
+      let lastTick = 0;
+      const { keep, costUsd: triageCost } = await triageHeaders(key, nonBulk, (done) => {
+        if (done - lastTick >= 180 || done === nonBulk.length) { lastTick = done; void up({ done }); }
+      });
+      totCost += triageCost;
+
+      const keepSet = new Set(keep);
+      await insertSkippedEmails(userId, mode, [
+        ...bulk.map((h) => ({ source: mode, emailId: h.id, fromAddr: h.from, subject: h.subject, emailDate: h.date, reason: "bulk" })),
+        ...nonBulk.filter((h) => !keepSet.has(h.id)).map((h) => ({ source: mode, emailId: h.id, fromAddr: h.from, subject: h.subject, emailDate: h.date, reason: "triage" })),
+      ]);
+      totSkipped += bulk.length + (nonBulk.length - keepSet.size);
+
+      // ── bodies for the survivors only ──────────────────────────────────
+      await up({ phase: "reading", total: keep.size, done: 0, costUsd: triageCost });
+      const bodies = await getBodies([...keep], (done) => void up({ done }));
+      totRead += bodies.length;
+
+      // ── extract, verify quotes, reconcile ──────────────────────────────
+      await up({ phase: "extracting", total: bodies.length, done: 0 });
+      const { signals: rawSignals, costUsd: extractCost } = await extractSignals(key, bodies, (done) => void up({ done }));
+      const byId = new Map(bodies.map((e) => [e.id, e]));
+      const { kept: signals, costUsd: refuteCost } = await refuteSignals(key, rawSignals, byId);
+      const result = await reconcile(userId, signals, byId);
+      totCost += extractCost + refuteCost;
+      totSignals += signals.length;
+      totCreated += result.created;
+      totUpdated += result.updated;
+
+      // ── checkpoint BEFORE the next chunk: nothing here can be lost ─────
+      await markEmailsSeen(userId, mode, fresh.map((h) => h.id));
+      const chunkNewest = headers.reduce((m, h) => Math.max(m, h.date || 0), 0) || Date.now();
+      await setMailState(userId, mode, chunkNewest);
+      cursor = chunkNewest - 2 * DAY;
+      pass++;
+
+      // A full chunk means more history probably waits behind it; a short one
+      // means the mailbox is exhausted down to the cursor.
+      if (headers.length < CHUNK) break;
+    }
+
+    state = await getMailState(userId, mode);
     await up({
       status: "done", phase: "done",
-      done: fresh.length, total: fresh.length,
-      found: signals.length, created: result.created, updated: result.updated,
-      costUsd: triageCost + extractCost + refuteCost,
+      done: totFresh, total: totFresh,
+      found: totSignals, created: totCreated, updated: totUpdated,
+      costUsd: totCost,
     });
     await logEvent(userId, "inbox_scan", {
-      mode, backfill, headers: headers.length, fresh: fresh.length,
-      read: bodies.length, signals: signals.length, dropped, refuted, ...result,
+      mode, backfill, headers: totHeaders, fresh: totFresh,
+      read: totRead, signals: totSignals, skipped: totSkipped,
+      created: totCreated, updated: totUpdated, cursor: state?.lastDate,
     });
   } catch (e) {
     await up({ status: "error", phase: "error", error: e instanceof Error ? e.message : String(e) });

@@ -5,7 +5,7 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePlanner } from "@/components/planner/planner-store";
-import { Inbox, KeyRound, Loader2, LogOut, Mail, Play, RefreshCw, Search } from "lucide-react";
+import { Inbox, KeyRound, Loader2, LogOut, Play, RefreshCw, Search } from "lucide-react";
 import { SemesterChart } from "@/components/planner/semester-chart";
 import { CarpaMark } from "@/components/carpa-mark";
 import { semesterNames } from "@/components/planner/plan-screen";
@@ -50,16 +50,6 @@ export default function Home() {
     if (t?.ok) setTracker(t.items);
   }, []);
   useEffect(() => { if (status === "authenticated") void load(); }, [status, load]);
-
-  const gmailConnected = Boolean((session as { gmailConnected?: boolean } | null)?.gmailConnected);
-  const connectGmail = () =>
-    // The incremental ask: same provider, wider scope, explicit consent. Only
-    // people who choose this route ever see Google's Gmail permission screen.
-    signIn("google", { callbackUrl: "/home" }, {
-      scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly",
-      access_type: "offline",
-      prompt: "consent",
-    });
 
   const runScan = async (mode: "gmail" | "imap" | "demo" | "judge") => {
     setScan({ busy: true, note: "Starting the scan" });
@@ -225,7 +215,7 @@ export default function Home() {
                   ? "Connected through Google. A scan reads only what arrived since last time."
                   : inboxStatus?.lastMode === "judge"
                     ? "These rows are the real season of Abdullah Zubair Ghouri, for judging. Connect your own inbox below whenever you want your own."
-                    : "The first scan reads back a year and builds the tracker by itself: what you applied to, where each one stands, grouped by kind. Nothing is written to your mailbox, ever."}
+                    : "The first scan reads your whole mailbox back to the beginning and builds the tracker by itself: what you applied to, where each one stands, grouped by kind. Nothing is written to your mailbox, ever."}
             </p>
             {inboxStatus === null ? (
               <div className="mt-2.5 flex gap-2">
@@ -260,21 +250,13 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-            <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+            <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
 
-              <button onClick={() => (gmailConnected ? void runScan("gmail") : void connectGmail())}
-                      disabled={scan.busy} data-track="scan_gmail"
-                      className="rounded-xl border border-foreground bg-foreground p-2.5 text-left text-background transition-opacity disabled:opacity-40">
-                <span className="flex items-center gap-1.5 text-xs font-medium"><Mail className="h-3.5 w-3.5" /> {gmailConnected ? "Scan Gmail" : "Connect Gmail"}</span>
-                <span className="mt-0.5 block text-[10px] leading-snug opacity-70">
-                  Your own Gmail, through your Google sign in. First time asks Google for read only permission.
-                </span>
-              </button>
               <button onClick={() => setImapOpen((v) => !v)} disabled={scan.busy} data-track="scan_imap_open"
-                      className="rounded-xl border border-border bg-white p-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-40">
+                      className="rounded-xl border border-foreground bg-foreground p-2.5 text-left text-background transition-opacity disabled:opacity-40">
                 <span className="flex items-center gap-1.5 text-xs font-medium"><KeyRound className="h-3.5 w-3.5" /> App password</span>
-                <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
-                  Your own Gmail through a 16 character app password instead. Works for any Google account.
+                <span className="mt-0.5 block text-[10px] leading-snug opacity-70">
+                  Your own Gmail through a 16 character app password. Works for any Google account.
                 </span>
               </button>
               <button onClick={() => runScan("judge")} disabled={scan.busy} data-track="scan_judge"
@@ -490,8 +472,8 @@ function SignIn() {
           <h1 className="font-display text-lg font-semibold">Sign in to Carpa</h1>
         </div>
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-          It takes 15 seconds. Google keeps your searches and connects your inbox for the
-          tracker in the same step.
+          It takes 15 seconds. Google keeps your searches; the inbox behind the tracker connects
+          afterwards with one app password.
         </p>
         {providers === null ? (
           <div className="mt-3 h-9 animate-pulse rounded-full bg-foreground/5" />

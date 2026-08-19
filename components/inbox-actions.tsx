@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { KeyRound, Mail, Play, RefreshCw } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { KeyRound, Play, RefreshCw } from "lucide-react";
 
 /**
  * The inbox controls, portable. The dashboard grew a state-aware card
@@ -63,12 +63,6 @@ export function InboxActions({ onDone }: { onDone?: () => void }) {
     void tick();
   };
 
-  const connectGmail = () =>
-    signIn("google", { callbackUrl: "/tracker" }, {
-      scope: "openid email profile https://www.googleapis.com/auth/gmail.readonly",
-      access_type: "offline", prompt: "consent",
-    });
-
   const pill = "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs disabled:opacity-40";
   return (
     <div className="min-w-0">
@@ -102,13 +96,9 @@ export function InboxActions({ onDone }: { onDone?: () => void }) {
           </>
         ) : st ? (
           <>
-            <button onClick={() => (gmailConnected ? void run("gmail") : void connectGmail())} disabled={busy} data-track="tracker_scan_gmail"
-                    className={`${pill} bg-foreground font-medium text-background`}>
-              <Mail className="h-3.5 w-3.5" /> {gmailConnected ? "Scan Gmail" : "Connect Gmail"}
-            </button>
             <button onClick={() => setImapOpen((v) => !v)} disabled={busy} data-track="tracker_imap_open"
-                    className={`${pill} border border-border`}>
-              <KeyRound className="h-3.5 w-3.5" /> App password
+                    className={`${pill} bg-foreground font-medium text-background`}>
+              <KeyRound className="h-3.5 w-3.5" /> Connect with an app password
             </button>
             <button onClick={() => void run("judge")} disabled={busy} data-track="tracker_scan_judge"
                     className={`${pill} border border-border text-muted-foreground`}>
