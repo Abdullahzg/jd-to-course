@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, KeyRound, Loader2, Mail } from "lucide-react";
+import { CheckCircle2, KeyRound, Loader2, Mail, CalendarRange, Inbox, LayoutGrid, ArrowRight } from "lucide-react";
 
 /**
  * The new account door, reduced to four beats:
@@ -145,31 +145,37 @@ export default function Setup() {
 
       {/* ── 0 · the ask: one question, one big answer, one small one ─────── */}
       {step === 0 && (
-        <section className="mx-auto mt-10 max-w-md text-center sm:mt-16">
-          <h1 className="font-display text-2xl font-semibold leading-tight">
-            Use the owner&rsquo;s inbox?
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            See Carpa working on real mail: the owner&rsquo;s tracker of real applications,
-            every status backed by the email that announced it. Nothing of yours is read.
-          </p>
-          <button onClick={() => void scan("judge")} disabled={busy} data-track="setup_judge"
-                  className="mt-5 w-full rounded-full bg-foreground py-3 text-sm font-semibold text-background shadow-lg shadow-foreground/20 transition-transform hover:scale-[1.01] disabled:opacity-50">
-            Use the owner&rsquo;s inbox
-          </button>
-          <div className="mt-3 flex items-center justify-center gap-4">
-            <button onClick={() => setStep(1)} disabled={busy} data-track="setup_own"
-                    className="text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">
-              use my own
+        <section className="mx-auto mt-10 max-w-xl sm:mt-16">
+          <div className="rounded-2xl bg-foreground p-6 text-background sm:p-8">
+            <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">Judging Carpa?</p>
+            <h1 className="mt-1 font-display text-2xl font-semibold leading-tight">
+              One click and the tracker is full: use the owner&rsquo;s inbox.
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed opacity-80">
+              So judges can see Carpa working on real mail without connecting anything
+              of theirs: the tracker built from the owner&rsquo;s real season of
+              applications, every status proven by the email that announced it.
+            </p>
+            <button onClick={() => void scan("judge")} disabled={busy} data-track="setup_judge"
+                    className="mt-4 w-full rounded-full bg-background px-6 py-2.5 text-sm font-semibold text-foreground transition-transform hover:scale-[1.02] disabled:opacity-50">
+              Use the owner&rsquo;s inbox
             </button>
-            <span className="text-xs text-muted-foreground">·</span>
-            <Link href="/home" data-track="setup_skip"
-                  className="text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">
-              skip for now
-            </Link>
+            <p className="mt-3.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-background/60">
+              <button onClick={() => setStep(1)} disabled={busy} data-track="setup_own"
+                      className="underline underline-offset-2 transition-colors hover:text-background">
+                use my own
+              </button>
+              <span>·</span>
+              <span>≈ 5 min setup</span>
+              <span>·</span>
+              <Link href="/home" data-track="setup_skip"
+                    className="underline underline-offset-2 transition-colors hover:text-background">
+                skip for now
+              </Link>
+            </p>
           </div>
           {error && (
-            <div className="mt-4 rounded-2xl border p-3 text-xs leading-relaxed text-left" style={{ borderColor: "color-mix(in oklab, var(--amber) 45%, transparent)" }}>
+            <div className="mt-4 rounded-2xl border p-3 text-xs leading-relaxed" style={{ borderColor: "color-mix(in oklab, var(--amber) 45%, transparent)" }}>
               <p className="font-medium" style={{ color: "var(--amber)" }}>That did not go through</p>
               <p className="mt-0.5 text-muted-foreground">{error}</p>
             </div>
@@ -263,10 +269,10 @@ export default function Setup() {
 
       {/* ── 3 · the dashboard: three doors, each saying what it is ────────── */}
       {step === 3 && (
-        <section className="mx-auto mt-8 max-w-md sm:mt-12">
+        <section className="mx-auto mt-8 max-w-3xl sm:mt-10">
           <div className="text-center">
             <CheckCircle2 className="mx-auto h-7 w-7 text-emerald-600" />
-            <h1 className="mt-2 font-display text-xl font-semibold">You&rsquo;re in</h1>
+            <h1 className="mt-2 font-display text-2xl font-semibold">You&rsquo;re in</h1>
             {result && (
               <p className="mt-1 text-xs text-muted-foreground">
                 {result.mode === "judge"
@@ -275,31 +281,89 @@ export default function Setup() {
               </p>
             )}
           </div>
-          <div className="mt-5 space-y-3">
+
+          <div className="mt-6 space-y-4">
+            {/* the planner: the featured door, on the dark */}
             <Link href="/start" data-track="setup_done_planner"
-                  className="card-lift block rounded-2xl border-2 border-foreground/20 bg-white p-4">
-              <p className="text-sm font-semibold">Planner</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Paste a job posting and get the degree that answers it: semesters, prerequisites,
-                every pick quoting the catalog line that earned it.
-              </p>
+                  className="card-lift group block overflow-hidden rounded-2xl bg-foreground text-background">
+              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
+                <div className="min-w-0 flex-1">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background/10">
+                    <CalendarRange className="h-4 w-4" />
+                  </span>
+                  <p className="mt-3 font-display text-lg font-semibold">Planner</p>
+                  <p className="mt-1 max-w-sm text-xs leading-relaxed opacity-75">
+                    Paste a job posting and get the degree that answers it: semesters,
+                    prerequisites, every pick quoting the catalog line that earned it.
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium">
+                    Open the planner
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+                <div className="shrink-0 sm:w-60">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/shots/s2.png" alt="A semester by semester plan built from a job posting"
+                       className="w-full rounded-xl border border-white/15 shadow-lg" loading="lazy" />
+                </div>
+              </div>
             </Link>
-            <Link href="/tracker" data-track="setup_done_tracker"
-                  className="card-lift block rounded-2xl border border-border bg-white p-4">
-              <p className="text-sm font-semibold">Tracker</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Your applications, maintained from your inbox: every status proven by the
-                email that announced it. Editable, exportable to Excel.
-              </p>
-            </Link>
-            <Link href="/home" data-track="setup_done_home"
-                  className="card-lift block rounded-2xl border border-border bg-white p-4">
-              <p className="text-sm font-semibold">Dashboard</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Everything in one place: your saved plans and the tracker summary,
-                one click into either.
-              </p>
-            </Link>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* the tracker, with its own screenshot */}
+              <Link href="/tracker" data-track="setup_done_tracker"
+                    className="card-lift group block overflow-hidden rounded-2xl border border-border bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/shots/s3.png" alt="The application tracker built from an inbox"
+                     className="aspect-[16/10] w-full border-b border-border object-cover object-top" loading="lazy" />
+                <div className="p-4">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-600/10">
+                    <Inbox className="h-4 w-4 text-sky-700" />
+                  </span>
+                  <p className="mt-2.5 text-sm font-semibold">Tracker</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Your applications, maintained from your inbox: every status proven by the
+                    email that announced it.
+                  </p>
+                  <span className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    Open the tracker
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+              </Link>
+
+              {/* the dashboard, drawn rather than captured */}
+              <Link href="/home" data-track="setup_done_home"
+                    className="card-lift group block overflow-hidden rounded-2xl border border-border bg-white">
+                <div className="flex aspect-[16/10] w-full items-end gap-2 border-b border-border bg-foreground/[0.03] p-4">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-2 w-2/3 rounded-full bg-foreground/15" />
+                    <div className="h-2 w-1/2 rounded-full bg-foreground/10" />
+                    <div className="h-2 w-3/5 rounded-full bg-foreground/10" />
+                  </div>
+                  <div className="flex flex-1 items-end gap-1">
+                    {[55, 80, 45, 95, 70].map((h, i) => (
+                      <span key={i} className="w-full rounded-t"
+                            style={{ height: `${h * 0.5}px`, background: i === 3 ? "var(--blue)" : "color-mix(in oklab, var(--blue) 25%, transparent)" }} />
+                    ))}
+                  </div>
+                </div>
+                <div className="p-4">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600/10">
+                    <LayoutGrid className="h-4 w-4 text-violet-700" />
+                  </span>
+                  <p className="mt-2.5 text-sm font-semibold">Dashboard</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Everything in one place: your saved plans and the tracker summary,
+                    one click into either.
+                  </p>
+                  <span className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    Go to my dashboard
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+              </Link>
+            </div>
           </div>
         </section>
       )}

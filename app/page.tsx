@@ -20,15 +20,15 @@ export default function Page() {
 
       {/* ── how it works, in the order a student lives it ─────────────────── */}
       <section className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">how it works</p>
+        <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/40"><span className="h-px w-8 bg-gradient-to-r from-[#3b6cff] to-transparent" />how it works</p>
         <div className="mt-6 grid gap-8 sm:grid-cols-3">
           {[
             ["01", "Paste the posting", "Every course in the catalog is read against the whole posting. What survives carries a quoted line from the catalog proving it teaches what the job asks."],
             ["02", "The solver builds the degree", "Prerequisites, terms offered, credit caps, every requirement bucket: a constraint solver places the winning courses inside your degree's real rules, and ranks every alternative it passed over."],
             ["03", "Connect your inbox once", "Confirmations, assessments, interviews, offers, rejections: the tracker reads them, proves each status with a sentence from the email, and keeps the spreadsheet you used to keep by hand."],
           ].map(([n, t, b]) => (
-            <div key={n} className="border-t border-white/15 pt-4">
-              <p className="font-display text-sm text-white/40">{n}</p>
+            <div key={n} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.05]">
+              <p className="font-display text-sm bg-gradient-to-r from-[#8ab4ff] to-[#a78bfa] bg-clip-text text-transparent">{n}</p>
               <h3 className="mt-1 font-display text-lg font-semibold">{t}</h3>
               <p className="mt-2 text-sm leading-relaxed text-white/55">{b}</p>
             </div>
@@ -38,7 +38,7 @@ export default function Page() {
 
       {/* ── the numbers, computed not claimed ─────────────────────────────── */}
       <section id="proof" className="mx-auto max-w-6xl px-5 py-14 sm:py-20 scroll-mt-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">measured, not promised</p>
+        <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/40"><span className="h-px w-8 bg-gradient-to-r from-[#3b6cff] to-transparent" />measured, not promised</p>
         <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
           {[
             [String(courses), "course pages read against every posting, whole catalog in one pass"],
@@ -46,8 +46,8 @@ export default function Page() {
             ["32/32", "regression checks green across 11 job types, controls score zero"],
             ["~$0.10", "of model spend per posting, on the smallest model Anthropic sells"],
           ].map(([n, d]) => (
-            <div key={d} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="font-display text-3xl font-semibold sm:text-4xl">{n}</p>
+            <div key={d} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-white/25">
+              <p className="font-display text-3xl font-semibold sm:text-4xl bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">{n}</p>
               <p className="mt-2 text-xs leading-relaxed text-white/55">{d}</p>
             </div>
           ))}
@@ -99,7 +99,7 @@ export default function Page() {
         </div>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link href="/start" data-track="cta_start_bottom"
-                className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition-transform hover:scale-[1.02]">
+                className="rounded-full bg-gradient-to-r from-[#3b6cff] to-[#8b5cf6] px-7 py-2.5 text-sm font-semibold text-white shadow-[0_10px_36px_-10px_rgba(99,102,241,0.75)] transition-transform hover:scale-[1.02]">
             Plan my degree
           </Link>
           <Link href="/home" data-track="cta_home_bottom"
@@ -141,7 +141,7 @@ function Feature({ flag, title, body, img, points, flip }: {
               configured wherever this is deployed. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={img} alt="Unedited product screenshot"
-               className="w-full rounded-2xl border border-white/10 shadow-2xl" loading="lazy" />
+               className="w-full rounded-2xl border border-white/10 shadow-[0_24px_90px_-28px_rgba(59,108,255,0.55)]" loading="lazy" />
         </div>
       </div>
     </section>
