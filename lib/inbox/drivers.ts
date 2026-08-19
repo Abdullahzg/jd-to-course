@@ -116,13 +116,14 @@ async function imapClient(email: string, appPassword: string) {
     // Google displays app passwords in groups of four with spaces, and every
     // second person pastes them that way. The spaces are cosmetic.
     auth: { user: email.trim(), pass: appPassword.replace(/\s+/g, "") },
+    connectionTimeout: 15_000,
     logger: false,
   });
   try {
     await client.connect();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/auth|credential|invalid|application-specific/i.test(msg)) {
+    if (/auth|credential|invalid|failed|denied|application-specific|app.?password/i.test(msg)) {
       throw new Error("Gmail rejected the sign in. Check the address, and that the app password is the 16 character one from Google's App passwords page, not the account password. Spaces do not matter.");
     }
     throw new Error("Could not reach Gmail's mail server. Check the connection and try again.");
@@ -136,8 +137,39 @@ async function imapClient(email: string, appPassword: string) {
   return client;
 }
 
-export async function fetchImapHeaders(email: string, appPassword: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {
+/**
+ * The answer to "is this app password even right", asked BEFORE a scan job
+ * starts rather than five minutes into one. Same friendly failure text the
+ * scanner itself would produce, with the address named so a typo is visible.
+ */
+export async function checkImapCreds(email: string, appPassword: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const client = await imapClient(email, appPassword);
+    await client.logout().catch(() => undefined);
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/rejected/i.test(msg)) {
+      return { ok: false, error: `Wrong app password for ${email.trim() || "this address"}. Use the 16-character password from myaccount.google.com/apppasswords — not the account password, and not a pasted login.` };
+    }
+    return { ok: false, error: msg };
+  }
+}
+
+/** How many messages the whole mailbox holds, for honest progress bars. */
+export async function fetchImapTotal(email: string, appPassword: string): Promise<number | null> {
   const client = await imapClient(email, appPassword);
+  try {
+    const mb = client.mailbox;
+    return mb ? mb.exists : null;
+  } catch {
+    return null;
+  } finally {
+    await client.logout().catch(() => undefined);
+  }
+}
+
+export async function fetchImapHeaders(email: string, appPassword: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {  const client = await imapClient(email, appPassword);
   const out: EmailHeader[] = [];
   try {
     // IMAP SINCE is day granular; the caller overlaps by two days and dedupes

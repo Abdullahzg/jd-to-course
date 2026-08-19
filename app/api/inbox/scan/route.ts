@@ -3,7 +3,8 @@ import { getToken } from "next-auth/jwt";
 import { auth } from "@/auth";
 import { getActiveKey } from "@/lib/ai/keystore";
 import { runScan } from "@/lib/inbox/run-scan";
-import { createScanJob, getScanJob, latestScanJob, updateScanJob, cloneJudgeRows, resetMailScan, SHARED_JUDGE_USER } from "@/lib/db";
+import { checkImapCreds } from "@/lib/inbox/drivers";
+import { createScanJob, getScanJob, latestScanJob, updateScanJob, cloneJudgeRows, resetMailScan, getMailCreds, SHARED_JUDGE_USER } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,6 +28,19 @@ export async function POST(req: Request) {
 
   const { key } = await getActiveKey();
   if (!key) return NextResponse.json({ ok: false, error: "Connect an API key first, the bar at the top of the page takes one." }, { status: 400 });
+
+  // A wrong app password is answered HERE, in seconds, not by a scan job that
+  // dies five minutes in. Whatever creds this scan will use get a real sign-in
+  // attempt first; Gmail's rejection comes back with the address named.
+  if (mode === "imap") {
+    const probe = body.email && body.appPassword
+      ? { email: body.email, appPassword: body.appPassword }
+      : await getMailCreds(userId);
+    if (probe) {
+      const check = await checkImapCreds(probe.email, probe.appPassword);
+      if (!check.ok) return NextResponse.json({ ok: false, error: check.error }, { status: 400 });
+    }
+  }
 
   // Full re-scan: forget the cursor and every seen id, so the walk starts at
   // the beginning of the mailbox again and rebuilds both the tracker and the
@@ -88,5 +102,17 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get("job");
   const job = id ? await getScanJob(userId, id) : await latestScanJob(userId);
   if (!job) return NextResponse.json({ ok: true, job: null });
+  // A job the platform killed mid-flight stays "running" forever. Stale
+  // means no progress write for four minutes: call it interrupted so every
+  // poller stops spinning and says so. Running it again resumes from the
+  // last checkpoint, so nothing is lost.
+  if (job.status === "running" && Date.now() - job.updatedAt > 240_000) {
+    await updateScanJob(job.id, {
+      status: "error", phase: "error",
+      error: "The scan stopped making progress and was interrupted. Run it again — it resumes where it left off.",
+    });
+    const fixed = id ? await getScanJob(userId, id) : await latestScanJob(userId);
+    return NextResponse.json({ ok: true, job: fixed });
+  }
   return NextResponse.json({ ok: true, job });
 }

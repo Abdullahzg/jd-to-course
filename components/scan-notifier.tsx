@@ -89,17 +89,20 @@ export function ScanNotifier() {
   }
 
   if (job) {
-    const pct = job.total > 0 ? Math.round((100 * job.done) / job.total) : 0;
+    const pct = job.total > 0 ? Math.min(100, Math.round((100 * job.done) / job.total)) : 0;
     const phase =
       job.phase === "connecting" ? "connecting to the mailbox" :
       job.phase === "triage" ? `sorting ${job.total.toLocaleString()} emails` :
       job.phase === "reading" ? `reading the ${job.total.toLocaleString()} that matter` :
       job.phase === "extracting" ? "extracting statuses with proof" : "working";
     return (
-      <div className="fixed bottom-4 right-4 z-50 w-72 rounded-xl border border-border bg-white p-3 shadow-lg">
-        <p className="text-xs font-medium">Reading your inbox: {phase}</p>
+      <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border bg-white p-3 shadow-lg">
+        <p className="flex items-baseline justify-between gap-2 text-xs font-medium">
+          <span>Reading your inbox: {phase}</span>
+          <span className="tabular shrink-0 text-muted-foreground">{job.done.toLocaleString()}/{job.total.toLocaleString()} · {pct}%</span>
+        </p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10">
-          <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${Math.max(4, pct)}%` }} />
+          <div className="h-full rounded-full bg-foreground transition-all duration-700" style={{ width: `${Math.max(4, pct)}%` }} />
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
           You can keep using Carpa; this corner will say when it is done.

@@ -82,7 +82,7 @@ export function BudgetBar() {
       onBlue ? "border-white/15 bg-[var(--blue-deep)] text-white"
              : "border-border bg-background/95 supports-[backdrop-filter]:bg-background/80"
     }`}>
-      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1.5 overflow-hidden px-3 py-2 sm:gap-x-5 sm:gap-y-2 sm:px-4 lg:px-8">
+      <div className="mx-auto flex max-w-[1600px] items-center gap-x-2 overflow-hidden whitespace-nowrap px-3 py-1.5 sm:gap-x-5 sm:gap-y-2 sm:px-4 lg:px-8">
         <span className={`hidden shrink-0 label text-[10px] sm:inline ${dim}`}>
           {budget?.providerName ?? "API key"}
         </span>
@@ -175,7 +175,7 @@ export function BudgetBar() {
           <span className={`hidden label text-[10px] lg:inline ${dim}`}>Haiku 4.5 only</span>
           <button
             onClick={() => void refresh()}
-            className={`hidden rounded-full p-1 transition-colors sm:block ${onBlue ? "text-white/60 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+            className={`no-tap hidden rounded-full p-1 transition-colors sm:block ${onBlue ? "text-white/60 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             aria-label="Refresh"
             title="Refresh"
           >
@@ -184,7 +184,7 @@ export function BudgetBar() {
           {(budget as { canEdit?: boolean } | null)?.canEdit !== false && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors sm:px-3 ${
+            className={`no-tap flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors sm:px-3 ${
               onBlue ? "border-white/30 hover:bg-white/10" : "border-border hover:bg-[var(--blue-soft)]"
             }`}
             aria-expanded={open}

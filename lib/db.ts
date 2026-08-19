@@ -352,9 +352,30 @@ export async function setSecret(key: string, value: string) {
 
 /** A person's own connection, remembered so "Scan again" never re-asks. */
 export async function saveMailCreds(userId: string, c: { source: string; email: string; appPassword: string }) {
+  // A changed address or password means a different mailbox (or the same one
+  // with new keys): forget everything the old one produced, so the next scan
+  // rebuilds rows, receipts and the reject pile from scratch. UIDs collide
+  // across mailboxes, so without this the new inbox would be half-silenced
+  // by the old one's seen list.
+  const existing = await getMailCreds(userId);
+  const changed = Boolean(existing) && (
+    existing.email.trim().toLowerCase() !== c.email.trim().toLowerCase() ||
+    existing.appPassword.replace(/\s+/g, "") !== c.appPassword.replace(/\s+/g, "")
+  );
+  if (changed) await resetInbox(userId);
   await q(`INSERT INTO carpa_mail_creds ("userId", source, email, "appPassword", "updatedAt") VALUES ($1,$2,$3,$4,$5)
            ON CONFLICT ("userId") DO UPDATE SET source=EXCLUDED.source, email=EXCLUDED.email, "appPassword"=EXCLUDED."appPassword", "updatedAt"=EXCLUDED."updatedAt"`,
     [userId, c.source, c.email, c.appPassword, now()]);
+}
+
+/** A different mailbox is a different tracker: wipe the machine's rows (rows
+ *  typed by hand survive) and all scan memory, so the next scan is a clean,
+ *  whole-mailbox rebuild. */
+export async function resetInbox(userId: string) {
+  await q(`DELETE FROM carpa_tracker_events WHERE "itemId" IN (SELECT id FROM carpa_tracker WHERE "userId" = $1 AND (origin IS NULL OR origin <> 'manual'))`, [userId]);
+  await q(`DELETE FROM carpa_tracker WHERE "userId" = $1 AND (origin IS NULL OR origin <> 'manual')`, [userId]);
+  await resetMailScan(userId, "imap");
+  await resetMailScan(userId, "gmail");
 }
 export async function getMailCreds(userId: string) {
   const rows = await q<{ source: string; email: string; appPassword: string }>(

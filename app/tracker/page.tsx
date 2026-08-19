@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ChevronDown, Download, ExternalLink, Loader2, Plus, RefreshCw, Search, Trash2, Wand2, X } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Inbox, Loader2, Plus, RefreshCw, Search, Trash2, Wand2, X } from "lucide-react";
 import { InboxActions } from "@/components/inbox-actions";
 
 /**
@@ -23,6 +23,28 @@ type Item = {
   updatedAt: number; origin?: string | null; events: Ev[];
 };
 type SkippedRow = { source: string; emailId: string; fromAddr: string | null; subject: string | null; emailDate: number | null; reason: string };
+
+/** How application-like a skipped email looks, so the pile sorts by it. */
+const SKIP_SIGNALS: [RegExp, number][] = [
+  [/\binterview\b/i, 40],
+  [/\b(assessment|online test|hackerrank|codility|codesignal|take.?home)\b/i, 40],
+  [/\b(application|applied|applying)\b/i, 30],
+  [/\b(offer|offered)\b/i, 25],
+  [/\b(reject|rejected|unfortunately|regret to)\b/i, 25],
+  [/\b(waitlist|waitlisted|deferred)\b/i, 20],
+  [/\b(congratulations|accepted|congrats)\b/i, 20],
+  [/\b(status|decision|update on your)\b/i, 15],
+  [/\b(intern|internship|co-?op|new grad|fellowship|scholarship)\b/i, 10],
+  [/\b(job alert|new jobs?|jobs matching|recommended for you|is hiring|we thought this job)\b/i, -30],
+];
+const skipScore = (s: SkippedRow) => {
+  const text = `${s.fromAddr ?? ""} ${s.subject ?? ""}`;
+  let score = s.reason === "triage" ? 60 : 0; // the reader almost kept it
+  for (const [re, w] of SKIP_SIGNALS) if (re.test(text)) score += w;
+  return score;
+};
+const sortSkipped = (xs: SkippedRow[]) =>
+  [...xs].sort((a, b) => skipScore(b) - skipScore(a) || (b.emailDate ?? 0) - (a.emailDate ?? 0));
 
 const KINDS = ["internship", "job", "research", "grad school", "scholarship", "hackathon", "program", "other"];
 const STATUSES = ["applied", "assessment", "interview", "offer", "accepted", "rejected", "waitlisted", "action needed", "update"];
@@ -56,6 +78,14 @@ export default function TrackerPage() {
   const [skippedOpen, setSkippedOpen] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
   const [moveNote, setMoveNote] = useState<string | null>(null);
+  // Which inbox these rows came from, shown so nobody mistakes whose mail it is.
+  const [mailSource, setMailSource] = useState<string | null>(null);
+
+  const refreshMailSource = async () => {
+    const st = await fetch("/api/inbox/status").then((r) => r.json()).catch(() => null);
+    if (!st?.ok) return;
+    setMailSource(st.savedImapFull ? `your inbox: ${st.savedImapFull}` : st.lastMode === "judge" ? "the owner's inbox" : "no inbox connected yet");
+  };
 
   const reloadSkipped = async () => {
     const j = await fetch("/api/tracker/skipped").then((r) => r.json()).catch(() => null);
@@ -287,8 +317,9 @@ export default function TrackerPage() {
         {skippedOpen && (
           <div className="border-t border-border">
             <p className="px-3.5 pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-              Bulk mail, and mail the reader judged not to be about applications. If one looks real to
-              you, move it over: it is read in full, and any status it proves lands as a row with its receipt.
+              Bulk mail, and mail the reader judged not to be about applications — closest matches
+              first. If one looks real to you, move it over: it is read in full, and any status it
+              proves lands as a row with its receipt.
             </p>
             {moveNote && <p className="px-3.5 pt-1 text-[11px] font-medium" style={{ color: "var(--teal)" }}>{moveNote}</p>}
             {skipped === null && (
@@ -304,7 +335,7 @@ export default function TrackerPage() {
             )}
             {skipped && skipped.length > 0 && (
               <ul className="pb-1.5">
-                {skipped.map((s) => {
+                {sortSkipped(skipped).slice(0, 60).map((s) => {
                   const key = `${s.source}:${s.emailId}`;
                   return (
                     <li key={key} className="flex flex-wrap items-center gap-2 border-t border-border px-3.5 py-2 first:border-t-0">
@@ -461,8 +492,16 @@ function Row({ t, open, onToggle, onPatch, onDelete }: {
   const inputCls = "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs transition-colors hover:border-border focus:border-[var(--blue)] focus:outline-none";
   return (
     <>
-      <tr className="border-t border-border transition-colors hover:bg-foreground/[0.02]"
-          style={t.status === "action needed" ? { boxShadow: "inset 3px 0 0 var(--amber)" } : undefined}>
+      <tr
+        className="cursor-pointer border-t border-border transition-colors hover:bg-foreground/[0.02]"
+        style={t.status === "action needed" ? { boxShadow: "inset 3px 0 0 var(--amber)" } : undefined}
+        title="Click to see the receipts"
+        onClick={(e) => {
+          // Editing a cell must not collapse the row: only blank space toggles.
+          if ((e.target as HTMLElement).closest("input, select, a, button")) return;
+          onToggle();
+        }}
+      >
         <td className={cell}>
           <input defaultValue={t.company} title={t.company}
                  onBlur={(e) => e.target.value.trim() && e.target.value !== t.company && onPatch({ company: e.target.value.trim() })}

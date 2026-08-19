@@ -19,6 +19,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     savedImap: creds ? creds.email.replace(/^(.{2})[^@]*@/, "$1***@") : null,
+    savedImapFull: creds ? creds.email : null,
     gmailConnected,
     lastMode: job?.mode ?? null,
   });

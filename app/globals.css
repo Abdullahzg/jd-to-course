@@ -506,7 +506,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 /* Better tap feedback on touch devices */
 @media (pointer: coarse) {
-  button, a, summary, input, select, [role="button"] {
+  button:not(.no-tap), a:not(.no-tap), summary, input, select, [role="button"] {
     min-height: 2.75rem;
     -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
   }
