@@ -295,7 +295,7 @@ export default function Setup() {
                 </div>
                 <div className="shrink-0 sm:w-60">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/shots/s2.png" alt="A semester by semester plan built from a job posting"
+                  <img src="/shots/planner.png" alt="A semester by semester plan built from a job posting"
                        className="w-full rounded-xl border border-white/15 shadow-lg" loading="lazy" />
                 </div>
               </div>

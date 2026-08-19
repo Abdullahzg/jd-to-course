@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SCHOOLS } from "@/data";
 import { CarpaMark } from "@/components/carpa-mark";
+import { VideoEmbed } from "@/components/landing/video-embed";
 
 /**
  * The front door, in the editorial style this product deserves: cream paper,
@@ -14,7 +15,7 @@ import { CarpaMark } from "@/components/carpa-mark";
 
 const SLIDES = [
   {
-    src: "/shots/s2.png",
+    src: "/shots/planner.png",
     title: "Plan the degree",
     desc: "Every course in the catalog is read against the posting, then a constraint solver places the winners inside your degree's real rules.",
   },
@@ -24,7 +25,7 @@ const SLIDES = [
     desc: "Connect your inbox once and the tracker maintains itself — each status carrying the sentence from the email that proved it.",
   },
   {
-    src: "/shots/s1.png",
+    src: "/shots/start.png",
     title: "Start from the job",
     desc: "Paste the posting, say which courses you've finished. The rest is receipts: every pick quotes where it came from.",
   },
@@ -36,6 +37,23 @@ export default function Page() {
 
   const [active, setActive] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [videoSeen, setVideoSeen] = useState(false);
+  const videoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !("IntersectionObserver" in window)) { setVideoSeen(true); return; }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) { setVideoSeen(true); io.disconnect(); }
+        }
+      },
+      { threshold: 0.18 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -125,9 +143,21 @@ export default function Page() {
             </div>
           </div>
 
+          {/* ── the demo, played above the product frame ─────────────────────── */}
+          <div
+            ref={videoRef}
+            className={`relative z-10 mx-auto mt-12 w-full max-w-[1040px] transition-all duration-700 ease-out ${
+              videoSeen ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
+            }`}
+          >
+            <div className="rounded-2xl bg-gradient-to-b from-[rgba(55,50,47,0.22)] to-[rgba(55,50,47,0.10)] p-px shadow-[0_32px_90px_-32px_rgba(55,50,47,0.45)]">
+              <VideoEmbed />
+            </div>
+          </div>
+
           {/* ── the product frame ──────────────────────────────────────────── */}
-          <div className="relative z-10 mx-auto mt-12 max-w-[960px]">
-            <div className="h-[240px] overflow-hidden rounded-lg bg-white shadow-[0px_0px_0px_0.9px_rgba(0,0,0,0.08)] sm:h-[380px] lg:h-[560px]">
+          <div className="relative z-10 mx-auto mt-12 w-full max-w-[960px]">
+            <div className="relative h-[240px] overflow-hidden rounded-lg bg-white shadow-[0px_0px_0px_0.9px_rgba(0,0,0,0.08)] sm:h-[380px] lg:h-[480px]">
               {SLIDES.map((s, i) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -135,22 +165,22 @@ export default function Page() {
                   src={s.src}
                   alt={`${s.title} — unedited screenshot from the product`}
                   loading={i === 0 ? undefined : "lazy"}
-                  className={`absolute inset-0 h-full w-full object-cover object-top transition-all duration-500 ease-in-out ${
+                  className={`absolute inset-0 h-full w-full object-contain transition-all duration-500 ease-in-out ${
                     active === i ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-95 blur-sm"
                   }`}
                 />
               ))}
             </div>
 
-            {/* tabs, one per slide */}
-            <div className="mt-6 grid gap-0 border-b border-t border-[#E0DEDB] sm:grid-cols-3">
+            {/* tabs, one per slide, on opaque paper so they never sit on the shot */}
+            <div className="mt-3 grid gap-0 border-b border-t border-[#E0DEDB] sm:grid-cols-3">
               {SLIDES.map((s, i) => (
                 <button
                   key={s.title}
                   onClick={() => pick(i)}
                   className={`relative flex cursor-pointer flex-col items-start gap-1 px-5 py-4 text-left transition-colors ${
                     i > 0 ? "border-t border-[#E0DEDB] sm:border-t-0 sm:border-l" : ""
-                  } ${active === i ? "bg-white" : "hover:bg-white/50"}`}
+                  } ${active === i ? "bg-white" : "bg-[#F1EEE9] hover:bg-white/80"}`}
                 >
                   {active === i && (
                     <span className="absolute inset-x-0 top-0 h-0.5 bg-[rgba(50,45,43,0.08)]">
@@ -219,7 +249,7 @@ export default function Page() {
               border
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/shots/s2.png" alt="A semester by semester plan built from a job posting"
+              <img src="/shots/planner.png" alt="A semester by semester plan built from a job posting"
                    className="w-full rounded-md border border-[#E0DEDB]" loading="lazy" />
             </Bento>
             <Bento
