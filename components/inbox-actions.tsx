@@ -113,10 +113,11 @@ export function InboxActions({ onDone }: { onDone?: () => void }) {
                  className="min-w-0 flex-1 rounded border border-border px-2 py-1 text-xs" inputMode="email" />
           <input value={pass} onChange={(e) => setPass(e.target.value)} placeholder="16 character app password"
                  className="min-w-0 flex-1 rounded border border-border px-2 py-1 text-xs" type="password" />
-          <button onClick={() => void run("imap")} disabled={busy || !email.includes("@") || pass.replace(/\s/g, "").length < 16}
+          <button onClick={() => void run("imap")} disabled={busy || !email.includes("@") || pass.replace(/\s/g, "").length < 12}
                   data-track="tracker_imap_run"
+                  title={!email.includes("@") ? "Type the Gmail address first" : pass.replace(/\s/g, "").length < 12 ? "Paste the full app password" : "Scan"}
                   className="rounded bg-foreground px-3 py-1 text-xs font-medium text-background disabled:opacity-40">
-            Scan
+            {busy ? "Checking" : "Scan"}
           </button>
         </div>
       )}

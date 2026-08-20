@@ -214,10 +214,11 @@ export default function Setup() {
                      className="min-w-0 flex-1 rounded-lg border border-border px-2.5 py-1.5 text-sm" inputMode="email" />
               <input value={imapPass} onChange={(e) => setImapPass(e.target.value)} placeholder="16 character app password"
                      className="min-w-0 flex-1 rounded-lg border border-border px-2.5 py-1.5 text-sm" type="password" />
-              <button onClick={() => void scan("imap")} disabled={busy || !imapEmail.includes("@") || imapPass.replace(/\s/g, "").length < 16}
+              <button onClick={() => void scan("imap")} disabled={busy || !imapEmail.includes("@") || imapPass.replace(/\s/g, "").length < 12}
                       data-track="setup_scan_imap"
+                      title={!imapEmail.includes("@") ? "Type the Gmail address first" : imapPass.replace(/\s/g, "").length < 12 ? "Paste the full app password" : "Connect and scan"}
                       className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background disabled:opacity-40">
-                Connect and scan
+                {busy ? "Checking the password" : "Connect and scan"}
               </button>
             </div>
           </div>

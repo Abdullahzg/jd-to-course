@@ -27,8 +27,12 @@ const strip = (html: string) =>
 const HARD_CAP = 60000;
 
 // ── Gmail over REST, bearer token from the OAuth session ────────────────────
-export async function fetchGmailHeaders(accessToken: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {
-  const q = [`after:${Math.floor(opts.sinceMs / 1000)}`, "-category:promotions", "-category:social"].join(" ");
+export async function fetchGmailHeaders(accessToken: string, opts: { sinceMs: number; beforeMs?: number; cap?: number }): Promise<EmailHeader[]> {
+  const q = [
+    `after:${Math.floor(opts.sinceMs / 1000)}`,
+    ...(opts.beforeMs ? [`before:${Math.floor(opts.beforeMs / 1000)}`] : []),
+    "-category:promotions", "-category:social",
+  ].join(" ");
   const base = "https://gmail.googleapis.com/gmail/v1/users/me";
   const headers = { Authorization: `Bearer ${accessToken}` };
 
@@ -168,13 +172,17 @@ export async function fetchImapTotal(email: string, appPassword: string): Promis
     await client.logout().catch(() => undefined);
   }
 }
-
-export async function fetchImapHeaders(email: string, appPassword: string, opts: { sinceMs: number; cap?: number }): Promise<EmailHeader[]> {  const client = await imapClient(email, appPassword);
+export async function fetchImapHeaders(email: string, appPassword: string, opts: { sinceMs: number; beforeMs?: number; cap?: number }): Promise<EmailHeader[]> {
+  const client = await imapClient(email, appPassword);
   const out: EmailHeader[] = [];
   try {
-    // IMAP SINCE is day granular; the caller overlaps by two days and dedupes
-    // by message id, so the coarseness cannot lose or double-count anything.
-    const uids = await client.search({ since: new Date(opts.sinceMs) }, { uid: true });
+    // IMAP SINCE/BEFORE are day granular; the caller overlaps by two days and
+    // dedupes by message id, so the coarseness cannot lose or double-count.
+    const search = {
+      since: new Date(opts.sinceMs),
+      ...(opts.beforeMs ? { before: new Date(opts.beforeMs) } : {}),
+    };
+    const uids = await client.search(search, { uid: true });
     if (uids === false) throw new Error("Gmail accepted the sign in but refused the mailbox search. Try again in a minute.");
     // UIDs come back oldest first; take the OLDEST chunk so a first scan
     // chews history from the beginning and a later scan picks up where the

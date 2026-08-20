@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS carpa_mail_state (
   "lastScanAt" BIGINT NOT NULL,
   PRIMARY KEY ("userId", source)
 );
+ALTER TABLE carpa_mail_state ADD COLUMN IF NOT EXISTS "backfillBefore" BIGINT;
 CREATE TABLE IF NOT EXISTS carpa_seen_emails (
   "userId" TEXT NOT NULL,
   source TEXT NOT NULL,
@@ -391,14 +392,19 @@ export async function getMailCreds(userId: string) {
  * every processed message id, so the overlap window cannot double-count.
  */
 export async function getMailState(userId: string, source: string) {
-  const rows = await q<{ lastDate: number; lastScanAt: number }>(
-    `SELECT "lastDate", "lastScanAt" FROM carpa_mail_state WHERE "userId" = $1 AND source = $2`, [userId, source]);
+  const rows = await q<{ lastDate: number; lastScanAt: number; backfillBefore: number | null }>(
+    `SELECT "lastDate", "lastScanAt", "backfillBefore" FROM carpa_mail_state WHERE "userId" = $1 AND source = $2`, [userId, source]);
   return rows[0];
 }
-export async function setMailState(userId: string, source: string, lastDate: number) {
-  await q(`INSERT INTO carpa_mail_state ("userId", source, "lastDate", "lastScanAt") VALUES ($1,$2,$3,$4)
-           ON CONFLICT ("userId", source) DO UPDATE SET "lastDate" = GREATEST(carpa_mail_state."lastDate", EXCLUDED."lastDate"), "lastScanAt" = EXCLUDED."lastScanAt"`,
-    [userId, source, lastDate, now()]);
+/** `lastDate`: newest message ever processed. `backfillBefore`: the frontier —
+ *  everything newer than it is processed, older years are walked below it. */
+export async function setMailState(userId: string, source: string, lastDate: number, backfillBefore?: number) {
+  await q(`INSERT INTO carpa_mail_state ("userId", source, "lastDate", "lastScanAt", "backfillBefore") VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT ("userId", source) DO UPDATE SET
+             "lastDate" = GREATEST(carpa_mail_state."lastDate", EXCLUDED."lastDate"),
+             "backfillBefore" = COALESCE(EXCLUDED."backfillBefore", carpa_mail_state."backfillBefore"),
+             "lastScanAt" = EXCLUDED."lastScanAt"`,
+    [userId, source, lastDate, now(), backfillBefore ?? null]);
 }
 export async function seenEmailIds(userId: string, source: string, ids: string[]): Promise<Set<string>> {
   const seen = new Set<string>();

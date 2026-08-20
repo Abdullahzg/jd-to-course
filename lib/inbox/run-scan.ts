@@ -11,21 +11,25 @@ import {
 import type { EmailHeader, RawEmail } from "./types";
 
 const DAY = 24 * 3600 * 1000;
-/** One pass through the pipeline, checkpointed, so giant mailboxes are chewed oldest-first. */
+const YEAR = 365 * DAY;
+/** How many emails flow through the pipeline in one go. */
 const CHUNK = 3000;
 /** Stop starting new chunks after this long; the rest is picked up by the next scan. */
-const TIME_BUDGET = 240_000;
+const TIME_BUDGET = Number(process.env.SCAN_TIME_BUDGET ?? 240_000);
+/** Older than this, the walk stops asking. */
+const FLOOR = Date.UTC(2000, 0, 1);
 
 /**
  * A whole scan, run behind a job row instead of behind an open HTTP request.
  *
- * A first connection covers the ENTIRE mailbox, not a year of it. Because
- * whole mailboxes can be huge (the owner's holds 38,000 messages), the scan
- * walks history in chunks, oldest first: each chunk is listed, triaged,
- * body-fetched, extracted and reconciled, then its progress is checkpointed
- * (seen ids + state cursor) BEFORE the next chunk starts. A platform that
- * kills a long job therefore loses nothing: the next scan resumes exactly
- * where the cursor left off, and the UI's sync button does that for free.
+ * The walk is yearly, newest year first: the current year answers in the
+ * first scan, older years in the scans after it, so a fresh connect shows
+ * this season's applications rather than a museum. Two passes:
+ *
+ *   1. sync — anything newer than the frontier (new mail since last time)
+ *   2. backfill — the next year below the frontier, oldest-first inside the
+ *      year, checkpointed per chunk (seen ids) so an interrupted walk loses
+ *      nothing and the next scan resumes exactly where it stopped.
  */
 export async function runScan(
   jobId: string,
@@ -36,25 +40,22 @@ export async function runScan(
 ): Promise<void> {
   const up = (patch: Parameters<typeof updateScanJob>[1]) => updateScanJob(jobId, patch).catch(() => undefined);
   try {
-    // Read once for early errors; re-read after credentials are saved, because
-    // a changed address or app password resets the scan state (new mailbox,
-    // clean rebuild) and the cursor must start from the beginning.
     let state = await getMailState(userId, mode);
     const startedAt = Date.now();
     let totHeaders = 0, totFresh = 0, totRead = 0, totSignals = 0, totSkipped = 0;
     let totCreated = 0, totUpdated = 0, totCost = 0;
+    let base = 0; // cumulative progress within this scan, across chunks
 
     // One connection-maker per mode, closed over the credentials.
-    let listHeaders: (sinceMs: number) => Promise<EmailHeader[]>;
+    let listHeaders: (sinceMs: number, beforeMs?: number) => Promise<EmailHeader[]>;
     let getBodies: (ids: string[], onChunk?: (done: number) => void) => Promise<RawEmail[]>;
-    // The whole-mailbox size when the driver can say it, so the progress bar
-    // has a real denominator instead of resetting per chunk.
     let totalBox: number | null = null;
+    let isDemo = false;
 
     if (mode === "gmail") {
       if (!opts.gmailToken) throw new Error("Google is not connected on this session. Sign in with Google, approving the Gmail permission.");
       const token = opts.gmailToken;
-      listHeaders = (sinceMs) => fetchGmailHeaders(token, { sinceMs, cap: CHUNK });
+      listHeaders = (sinceMs, beforeMs) => fetchGmailHeaders(token, { sinceMs, beforeMs });
       getBodies = (ids, onChunk) => fetchGmailBodies(token, ids, onChunk);
     } else if (mode === "imap") {
       let creds = opts.email && opts.appPassword
@@ -62,7 +63,7 @@ export async function runScan(
         : await getMailCreds(userId);
       if (!creds) throw new Error("The app password route needs your address and a 16 character Google app password.");
       const { email, appPassword } = creds;
-      listHeaders = (sinceMs) => fetchImapHeaders(email, appPassword, { sinceMs, cap: CHUNK });
+      listHeaders = (sinceMs, beforeMs) => fetchImapHeaders(email, appPassword, { sinceMs, beforeMs });
       getBodies = (ids, onChunk) => fetchImapBodies(email, appPassword, ids, onChunk);
       totalBox = await fetchImapTotal(email, appPassword);
       if (opts.email && opts.appPassword) {
@@ -72,10 +73,11 @@ export async function runScan(
       const jEmail = (await getSecret("judge_inbox_email")) ?? process.env.JUDGE_INBOX_EMAIL;
       const jPass = (await getSecret("judge_inbox_app_password")) ?? process.env.JUDGE_INBOX_APP_PASSWORD;
       if (!jEmail || !jPass) throw new Error("The judges' inbox is not connected yet. The owner adds an app password to enable it; meanwhile the demo inbox shows the same flow.");
-      listHeaders = (sinceMs) => fetchImapHeaders(jEmail, jPass, { sinceMs, cap: CHUNK });
+      listHeaders = (sinceMs, beforeMs) => fetchImapHeaders(jEmail, jPass, { sinceMs, beforeMs });
       getBodies = (ids, onChunk) => fetchImapBodies(jEmail, jPass, ids, onChunk);
       totalBox = await fetchImapTotal(jEmail, jPass);
     } else {
+      isDemo = true;
       const demo = demoInbox();
       listHeaders = async () => demo;
       getBodies = async (ids) => demo.filter((e) => ids.includes(e.id));
@@ -87,37 +89,23 @@ export async function runScan(
       await purgeJudgeRows(userId);
     }
 
-    // The cursor points at where history was last fully processed. A first
-    // scan starts at the beginning of time; later scans start two days
-    // before the newest processed message, and seen-ids remove the overlap.
-    // Read AFTER the credentials step: an updated app password resets state.
+    // Re-read after the credentials step: an updated app password resets
+    // state, and the walk must start from the beginning of time.
     state = await getMailState(userId, mode);
     const backfill = !state;
-    let cursor = state ? state.lastDate - 2 * DAY : 0;
+    let lastDate = state?.lastDate ?? 0;
+    let frontier = state?.backfillBefore ?? (backfill ? Date.now() : state?.lastDate ?? Date.now());
 
-    // ── the walk, oldest first, checkpointed per chunk ───────────────────
-    let pass = 0;
-    // Progress is cumulative across chunks so the bar fills once, end to
-    // end, instead of completing and restarting for every chunk.
-    let base = 0; // emails fully processed in finished chunks
-    for (;;) {
-      if (pass > 0 && Date.now() - startedAt > TIME_BUDGET) break; // the next scan keeps walking
-      const headers = await listHeaders(cursor);
-      if (!headers.length) break;
-      totHeaders += headers.length;
-
-      const seen = await seenEmailIds(userId, mode, headers.map((h) => h.id));
-      let fresh = headers.filter((h) => !seen.has(h.id));
+    /** The per-chunk pipeline: triage → bodies → extract → refute → reconcile. */
+    const processChunk = async (chunk: EmailHeader[]) => {
+      totHeaders += chunk.length;
+      const seen = await seenEmailIds(userId, mode, chunk.map((h) => h.id));
+      const fresh = chunk.filter((h) => !seen.has(h.id));
       totFresh += fresh.length;
+      if (!fresh.length) return;
 
-      // Bulk mail dies here, for free, before a single model call. What the
-      // triage says no to stays recorded too, so a person can overrule it.
       const { kept: nonBulk, bulk } = prefilterBulk(fresh);
-      // The bar's denominator: the whole mailbox when the driver knows it,
-      // otherwise what we have walked plus one more chunk's worth of hope.
-      const overallTotal = backfill
-        ? totalBox ?? Math.max(base + (headers.length >= CHUNK ? CHUNK * 2 : headers.length), 1)
-        : Math.max(base + headers.length, 1);
+      const overallTotal = totalBox ?? Math.max(base + CHUNK * 2, 1);
       const prog = (phase: string, done: number, extra: Record<string, unknown> = {}) =>
         up({ phase, done: base + done, total: overallTotal, ...extra });
 
@@ -134,11 +122,10 @@ export async function runScan(
       ]);
       totSkipped += bulk.length + (nonBulk.length - keepSet.size);
 
-      // ── bodies for the survivors only ──────────────────────────────────
       await prog("reading", nonBulk.length, { costUsd: triageCost });
       const bodies = await getBodies([...keep], (done) => void prog("reading", nonBulk.length + done, {}));
+      totRead += bodies.length;
 
-      // ── extract, verify quotes, reconcile ──────────────────────────────
       const extractBase = nonBulk.length + keep.size;
       await prog("extracting", extractBase, {});
       const { signals: rawSignals, costUsd: extractCost } = await extractSignals(key, bodies, (done) => void prog("extracting", extractBase + done, {}));
@@ -150,31 +137,77 @@ export async function runScan(
       totCreated += result.created;
       totUpdated += result.updated;
 
-      // ── checkpoint BEFORE the next chunk: nothing here can be lost ─────
+      // Checkpoint: seen before the next chunk, so a killed scan loses nothing.
       await markEmailsSeen(userId, mode, fresh.map((h) => h.id));
-      const chunkNewest = headers.reduce((m, h) => Math.max(m, h.date || 0), 0) || Date.now();
-      await setMailState(userId, mode, chunkNewest);
-      cursor = chunkNewest - 2 * DAY;
       base += fresh.length;
-      pass++;
+    };
 
-      // A full chunk means more history probably waits behind it; a short one
-      // means the mailbox is exhausted down to the cursor.
-      if (headers.length < CHUNK) break;
+    // ── demo: one pass, done ─────────────────────────────────────────────
+    if (isDemo) {
+      const demo = await listHeaders(0);
+      await processChunk([...demo].sort((a, b) => a.date - b.date));
+      const newest = demo.reduce((m, h) => Math.max(m, h.date || 0), 0) || Date.now();
+      await setMailState(userId, mode, newest, FLOOR);
+    } else {
+      // ── pass 1: sync — anything newer than the frontier ────────────────
+      const syncSince = Math.max(lastDate, frontier) - 2 * DAY;
+      const syncHeaders = await listHeaders(syncSince);
+      if (syncHeaders.length) {
+        await up({ phase: "connecting" });
+        await processChunk([...syncHeaders].sort((a, b) => a.date - b.date));
+        lastDate = Math.max(lastDate, ...syncHeaders.map((h) => h.date || 0));
+        await setMailState(userId, mode, lastDate, frontier);
+      }
+
+      // ── pass 2: backfill — the next year below the frontier ────────────
+      for (;;) {
+        if (Date.now() - startedAt > TIME_BUDGET) break;
+        const windowTop = frontier + 2 * DAY;
+        const windowBottom = frontier - YEAR;
+        if (windowBottom < FLOOR) { frontier = FLOOR; await setMailState(userId, mode, lastDate, frontier); break; }
+
+        await up({ phase: "connecting" });
+        const headers = await listHeaders(windowBottom - 2 * DAY, windowTop);
+        if (!headers.length) {
+          frontier = windowBottom;
+          await setMailState(userId, mode, lastDate, frontier);
+          continue;
+        }
+        const seenAll = await seenEmailIds(userId, mode, headers.map((h) => h.id));
+        const freshAll = headers.filter((h) => !seenAll.has(h.id));
+        if (!freshAll.length) {
+          // The year is fully read: step down to the year below it.
+          frontier = windowBottom;
+          await setMailState(userId, mode, lastDate, frontier);
+          continue;
+        }
+        // Oldest first inside the year, chunked, checkpointed per chunk.
+        const ordered = [...freshAll].sort((a, b) => a.date - b.date);
+        let processed = 0;
+        for (let i = 0; i < ordered.length; i += CHUNK) {
+          if (i > 0 && Date.now() - startedAt > TIME_BUDGET) break;
+          await processChunk(ordered.slice(i, i + CHUNK));
+          processed = i + Math.min(CHUNK, ordered.length - i);
+        }
+        if (processed >= ordered.length) {
+          frontier = windowBottom;
+        }
+        await setMailState(userId, mode, lastDate, frontier);
+        if (processed < ordered.length) break; // budget ran out; next scan resumes
+      }
     }
 
     state = await getMailState(userId, mode);
-    const finished = totalBox && backfill ? Math.min(base, totalBox) : base;
     await up({
       status: "done", phase: "done",
-      done: finished, total: finished,
+      done: base, total: base || 1,
       found: totSignals, created: totCreated, updated: totUpdated,
       costUsd: totCost,
     });
     await logEvent(userId, "inbox_scan", {
       mode, backfill, headers: totHeaders, fresh: totFresh,
       read: totRead, signals: totSignals, skipped: totSkipped,
-      created: totCreated, updated: totUpdated, cursor: state?.lastDate,
+      created: totCreated, updated: totUpdated, frontier: state?.backfillBefore, lastDate: state?.lastDate,
     });
   } catch (e) {
     await up({ status: "error", phase: "error", error: e instanceof Error ? e.message : String(e) });
