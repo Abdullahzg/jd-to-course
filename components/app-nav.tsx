@@ -30,8 +30,8 @@ export function AppNav() {
 
   return (
     <nav className="border-b border-border bg-white print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 overflow-x-auto px-3 py-2 sm:gap-3 sm:px-4">
+        <div className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-4">
           <Link href="/" data-track="nav_brand" className="flex shrink-0 items-center gap-1.5 font-display text-sm font-bold tracking-tight">
             <CarpaMark className="h-4.5 w-4.5 rounded-[4px]" /> Carpa
           </Link>

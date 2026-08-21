@@ -82,7 +82,7 @@ export function BudgetBar() {
       onBlue ? "border-white/15 bg-[var(--blue-deep)] text-white"
              : "border-border bg-background/95 supports-[backdrop-filter]:bg-background/80"
     }`}>
-      <div className="mx-auto flex max-w-[1600px] items-center gap-x-2 overflow-hidden whitespace-nowrap px-3 py-1.5 sm:gap-x-5 sm:gap-y-2 sm:px-4 lg:px-8">
+      <div className="mx-auto flex max-w-[1600px] items-center gap-x-2 overflow-x-auto whitespace-nowrap no-scrollbar px-3 py-1.5 sm:gap-x-5 sm:gap-y-2 sm:px-4 lg:px-8">
         <span className={`hidden shrink-0 label text-[10px] sm:inline ${dim}`}>
           {budget?.providerName ?? "API key"}
         </span>

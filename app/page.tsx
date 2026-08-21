@@ -79,23 +79,23 @@ export default function Page() {
 
         {/* ── nav pill ─────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-40 px-2 pt-3 sm:px-4">
-          <div className="mx-auto flex max-w-[760px] items-center justify-between rounded-full border border-[rgba(55,50,47,0.10)] bg-[#F7F5F3]/90 py-1.5 pl-4 pr-1.5 shadow-[0px_0px_0px_2px_white] backdrop-blur-sm">
-            <Link href="/" className="flex items-center gap-2">
-              <CarpaMark className="h-4.5 w-4.5 rounded-[4px]" />
-              <span className="font-display text-base font-bold tracking-tight">Carpa</span>
+          <div className="mx-auto flex max-w-[760px] items-center justify-between overflow-hidden rounded-full border border-[rgba(55,50,47,0.10)] bg-[#F7F5F3]/90 py-1.5 pl-3 pr-1.5 shadow-[0px_0px_0px_2px_white] backdrop-blur-sm sm:pl-4">
+            <Link href="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <CarpaMark className="h-4 w-4 rounded-[4px] sm:h-4.5 sm:w-4.5" />
+              <span className="font-display text-sm font-bold tracking-tight sm:text-base">Carpa</span>
             </Link>
             <nav className="hidden items-center gap-4 sm:flex">
               <a href="#how" className="text-xs font-medium text-[rgba(49,45,43,0.80)] transition-colors hover:text-[#37322F]">How it works</a>
               <a href="#numbers" className="text-xs font-medium text-[rgba(49,45,43,0.80)] transition-colors hover:text-[#37322F]">Numbers</a>
               <a href="#faq" className="text-xs font-medium text-[rgba(49,45,43,0.80)] transition-colors hover:text-[#37322F]">FAQ</a>
             </nav>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <Link href="/home" data-track="nav_signin"
-                    className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#37322F] shadow-[0px_1px_2px_rgba(55,50,47,0.12)]">
+                    className="rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-[#37322F] shadow-[0px_1px_2px_rgba(55,50,47,0.12)] sm:px-3">
                 Log in
               </Link>
               <Link href="/start" data-track="nav_start"
-                    className="rounded-full bg-[#37322F] px-4 py-1.5 text-xs font-medium text-white">
+                    className="rounded-full bg-[#37322F] px-3 py-1.5 text-xs font-medium text-white sm:px-4">
                 Start
               </Link>
             </div>

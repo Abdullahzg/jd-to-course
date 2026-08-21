@@ -518,6 +518,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 
 @layer utilities {
+  /* Hide scrollbar but keep scroll functionality */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
   /* The posting box. It is the one field in the product that people paste a
      screenful into, so it gets a focus state you can see from across a room. */
   .jd-box {
