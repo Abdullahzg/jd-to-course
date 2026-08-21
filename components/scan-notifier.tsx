@@ -1,84 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { X } from "lucide-react";
-
-type Job = {
-  id: string; status: "running" | "done" | "error"; phase: string;
-  done: number; total: number; created: number; updated: number; error: string | null;
-};
+import { CheckCircle2, Loader2, X } from "lucide-react";
+import { useScanJob } from "@/hooks/use-scan-job";
 
 /**
  * The site-wide answer to "connect and read it in the background".
  *
  * Any page can start a scan; this component, mounted once in the layout,
- * notices a running job (by event when this tab started it, by the newest-job
- * endpoint when another tab did), polls it, and when it finishes drops a
- * toast in the corner saying what the inbox produced, wherever the person
- * has wandered to by then.
+ * notices a running job, polls it, and when it finishes drops a toast in
+ * the corner saying what the inbox produced, wherever the person has
+ * wandered to by then.
  */
 export function ScanNotifier() {
   const { status } = useSession();
-  const [job, setJob] = useState<Job | null>(null);
-  const [toast, setToast] = useState<Job | null>(null);
-  const watching = useRef<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { job, steps, isRunning, isError } = useScanJob();
+  const [dismissed, setDismissed] = useState(false);
 
-  const poll = useCallback(async (id?: string) => {
-    try {
-      const r = await fetch(`/api/inbox/scan${id ? `?job=${id}` : ""}`).then((x) => x.json());
-      const j: Job | null = r?.job ?? null;
-      if (!j) return;
-      if (j.status === "running") {
-        watching.current = j.id;
-        setJob(j);
-        timer.current = setTimeout(() => void poll(j.id), 4000);
-      } else {
-        // Only announce a finish this tab actually watched start-to-end;
-        // surfacing last week's job as breaking news would be noise.
-        if (watching.current === j.id) {
-          setToast(j);
-          watching.current = null;
-        }
-        setJob(null);
-      }
-    } catch { /* a lost poll is retried by the next event */ }
-  }, []);
+  // Reset dismiss when scan finishes
+  useEffect(() => { if (!isRunning) setDismissed(false); }, [isRunning]);
 
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    void poll();
-    const onStart = () => { if (timer.current) clearTimeout(timer.current); void poll(); };
-    window.addEventListener("carpa-scan-started", onStart);
-    return () => {
-      window.removeEventListener("carpa-scan-started", onStart);
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [status, poll]);
+  if (status !== "authenticated") return null;
 
-  if (toast) {
+  // Finished toast (after scan completes)
+  if (!isRunning && job && !dismissed && job.status !== "running") {
     return (
       <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border bg-white p-3 shadow-xl">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium">
-            {toast.status === "error" ? "The inbox scan hit a wall" : "Your inbox scan finished"}
+            {job.status === "error" ? "The inbox scan hit a wall" : "Your inbox scan finished"}
           </p>
-          <button onClick={() => setToast(null)} aria-label="Dismiss"
+          <button onClick={() => setDismissed(true)} aria-label="Dismiss"
                   className="text-muted-foreground hover:text-foreground">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        {toast.status === "error" ? (
-          <p className="mt-1 text-xs text-muted-foreground">{toast.error}</p>
+        {job.status === "error" ? (
+          <p className="mt-1 text-xs text-muted-foreground">{job.error}</p>
         ) : (
           <>
             <p className="mt-1 text-xs text-muted-foreground">
-              {toast.created} new application{toast.created === 1 ? "" : "s"}, {toast.updated} updated,
+              {job.created} new application{job.created === 1 ? "" : "s"}, {job.updated} updated,
               every status carrying its proving sentence.
             </p>
-            <Link href="/tracker" onClick={() => setToast(null)}
+            <Link href="/tracker" onClick={() => setDismissed(true)}
                   className="mt-2 inline-block rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background">
               Open the tracker
             </Link>
@@ -88,23 +55,28 @@ export function ScanNotifier() {
     );
   }
 
-  if (job) {
-    const pct = job.total > 0 ? Math.min(100, Math.round((100 * job.done) / job.total)) : 0;
-    const phase =
-      job.phase === "connecting" ? "connecting to the mailbox" :
-      job.phase === "triage" ? `sorting ${job.total.toLocaleString()} emails` :
-      job.phase === "reading" ? `reading the ${job.total.toLocaleString()} that matter` :
-      job.phase === "extracting" ? "extracting statuses with proof" : "working";
+  // Running: step-by-step verbose log
+  if (isRunning && steps.length > 0) {
     return (
       <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border bg-white p-3 shadow-lg">
-        <p className="flex items-baseline justify-between gap-2 text-xs font-medium">
-          <span>Reading your inbox: {phase}</span>
-          <span className="tabular shrink-0 text-muted-foreground">{job.done.toLocaleString()}/{job.total.toLocaleString()} · {pct}%</span>
-        </p>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10">
-          <div className="h-full rounded-full bg-foreground transition-all duration-700" style={{ width: `${Math.max(4, pct)}%` }} />
-        </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">Reading your inbox</p>
+        <ul className="mt-2 space-y-1.5">
+          {steps.map((s, i) => (
+            <li key={i} className="flex items-center gap-2 text-xs">
+              {s.done ? (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              ) : s.active ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+              ) : (
+                <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-foreground/20" />
+              )}
+              <span className={s.done ? "text-muted-foreground" : s.active ? "" : "text-muted-foreground/50"}>
+                {s.label}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[11px] text-muted-foreground">
           You can keep using Carpa; this corner will say when it is done.
         </p>
       </div>

@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) return NextResponse.json({ ok: false, error: "Sign in first." }, { status: 401 });
 
-  let body: { mode?: string; email?: string; appPassword?: string; full?: boolean } = {};
+  let body: { mode?: string; email?: string; appPassword?: string; full?: boolean; validate?: boolean } = {};
   try { body = await req.json(); } catch { /* defaults */ }
   const mode = body.mode ?? "demo";
 
@@ -40,6 +40,8 @@ export async function POST(req: Request) {
       const check = await checkImapCreds(probe.email, probe.appPassword);
       if (!check.ok) return NextResponse.json({ ok: false, error: check.error }, { status: 400 });
     }
+    // validate-only: creds are good, return now without starting a scan.
+    if (body.validate) return NextResponse.json({ ok: true, validated: true });
   }
 
   // Full re-scan: forget the cursor and every seen id, so the walk starts at

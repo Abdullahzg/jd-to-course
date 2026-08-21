@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ChevronDown, Download, ExternalLink, Inbox, Loader2, Plus, RefreshCw, Search, Trash2, Wand2, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, ExternalLink, Inbox, Loader2, Plus, RefreshCw, Search, Trash2, Wand2, X } from "lucide-react";
 import { InboxActions } from "@/components/inbox-actions";
+import { useScanJob } from "@/hooks/use-scan-job";
 
 /**
  * The tracker as the spreadsheet it replaces, minus the typing.
@@ -80,6 +81,7 @@ export default function TrackerPage() {
   const [moveNote, setMoveNote] = useState<string | null>(null);
   // Which inbox these rows came from, shown so nobody mistakes whose mail it is.
   const [mailSource, setMailSource] = useState<string | null>(null);
+  const { steps: scanSteps, isRunning: scanRunning } = useScanJob();
 
   const refreshMailSource = async () => {
     const st = await fetch("/api/inbox/status").then((r) => r.json()).catch(() => null);
@@ -191,6 +193,16 @@ export default function TrackerPage() {
     void reloadSkipped();
   }, [status]);
 
+  // Reload tracker data when a background scan finishes
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (wasRunning.current && !scanRunning) {
+      void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); });
+      void reloadSkipped();
+    }
+    wasRunning.current = scanRunning;
+  }, [scanRunning]);
+
   const patch = (id: string, fields: Partial<Item>) => {
     // Optimistic: the cell changes under the cursor, the server catches up,
     // and a failure puts the truth back on the next load.
@@ -300,6 +312,32 @@ export default function TrackerPage() {
       <div className="mt-3">
         <InboxActions onDone={() => { void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setItems(j.items); }); void reloadSkipped(); }} />
       </div>
+
+      {/* scan in progress: verbose step-by-step log */}
+      {scanRunning && scanSteps.length > 0 && (
+        <div className="mt-4 rounded-xl border border-border bg-white p-4">
+          <p className="text-xs font-medium text-muted-foreground">Reading your inbox</p>
+          <ul className="mt-2.5 space-y-2">
+            {scanSteps.map((s, i) => (
+              <li key={i} className="flex items-center gap-2.5 text-xs">
+                {s.done ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                ) : s.active ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                ) : (
+                  <span className="h-4 w-4 shrink-0 rounded-full border border-foreground/20" />
+                )}
+                <span className={s.done ? "text-muted-foreground" : s.active ? "font-medium" : "text-muted-foreground/50"}>
+                  {s.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            You can keep using Carpa; the tracker will refresh when each step finishes.
+          </p>
+        </div>
+      )}
 
       {/* the reject pile, with a door back in */}
       <div className="mt-3 rounded-xl border border-border bg-white">

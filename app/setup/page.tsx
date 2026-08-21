@@ -34,6 +34,7 @@ export default function Setup() {
   const [result, setResult] = useState<ScanResult>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [validated, setValidated] = useState(false);
   const [imapEmail, setImapEmail] = useState("");
   const [imapPass, setImapPass] = useState("");
   const [loaderNote, setLoaderNote] = useState("Loading");
@@ -63,6 +64,41 @@ export default function Setup() {
         setLog((xs) => [...xs.map((x) => ({ ...x, done: true })), { line: l, done: false }]);
       }, 1400 * (i + 1)));
     });
+  };
+
+  /** Lightweight check: is the app password accepted by Gmail? */
+  const validate = async () => {
+    setBusy(true); setError(""); setValidated(false);
+    setLog([{ line: `Checking the password for ${imapEmail.trim()}`, done: false }]);
+    const r = await fetch("/api/inbox/scan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "imap", email: imapEmail, appPassword: imapPass, validate: true }),
+    }).then((x) => x.json()).catch(() => ({ ok: false, error: "The connection dropped." }));
+    setLog((xs) => xs.map((x) => ({ ...x, done: true })));
+    setBusy(false);
+    if (!r.ok) { setError(r.error ?? "That password was rejected."); return; }
+    setValidated(true);
+  };
+
+  /** Start the real scan in the background and route to the dashboard. */
+  const continueAfterValidation = async () => {
+    setBusy(true); setError("");
+    setLog([{ line: `Connecting to imap.gmail.com as ${imapEmail.trim()}, read only`, done: false }]);
+    const body: Record<string, unknown> = { mode: "imap", email: imapEmail, appPassword: imapPass };
+    const r = await fetch("/api/inbox/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then((x) => x.json()).catch(() => ({ ok: false, error: "The connection dropped." }));
+    if (!r.ok) { setBusy(false); setError(r.error ?? "That did not work."); return; }
+    if (r.done) {
+      setLog((xs) => xs.map((x) => ({ ...x, done: true })));
+      setResult({ created: r.created, updated: 0, emailsRead: 0, mode: "imap" });
+      setBusy(false);
+      await hold(800);
+      setStep(3);
+      return;
+    }
+    window.dispatchEvent(new Event("carpa-scan-started"));
+    setBusy(false);
+    setStep(3);
   };
 
   const scan = async (mode: "imap" | "gmail" | "demo" | "judge") => {
@@ -212,15 +248,26 @@ export default function Setup() {
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               <input value={imapEmail} onChange={(e) => setImapEmail(e.target.value)} placeholder="you@gmail.com"
                      className="min-w-0 flex-1 rounded-lg border border-border px-2.5 py-1.5 text-sm" inputMode="email" />
-              <input value={imapPass} onChange={(e) => setImapPass(e.target.value)} placeholder="16 character app password"
+              <input value={imapPass} onChange={(e) => { setImapPass(e.target.value); setValidated(false); }} placeholder="16 character app password"
                      className="min-w-0 flex-1 rounded-lg border border-border px-2.5 py-1.5 text-sm" type="password" />
-              <button onClick={() => void scan("imap")} disabled={busy || !imapEmail.includes("@") || imapPass.replace(/\s/g, "").length < 12}
-                      data-track="setup_scan_imap"
-                      title={!imapEmail.includes("@") ? "Type the Gmail address first" : imapPass.replace(/\s/g, "").length < 12 ? "Paste the full app password" : "Connect and scan"}
+              <button onClick={() => void validate()} disabled={busy || !imapEmail.includes("@") || imapPass.replace(/\s/g, "").length < 12}
+                      data-track="setup_check_pass"
+                      title={!imapEmail.includes("@") ? "Type the Gmail address first" : imapPass.replace(/\s/g, "").length < 12 ? "Paste the full app password" : "Check the password"}
                       className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background disabled:opacity-40">
-                {busy ? "Checking the password" : "Connect and scan"}
+                {busy ? "Checking" : "Check password"}
               </button>
             </div>
+            {validated && (
+              <div className="mt-3 flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-xs text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Password accepted
+                </span>
+                <button onClick={() => void continueAfterValidation()} disabled={busy} data-track="setup_continue"
+                        className="rounded-full bg-foreground px-5 py-1.5 text-sm font-medium text-background transition-transform hover:scale-[1.02] disabled:opacity-50">
+                  Continue
+                </button>
+              </div>
+            )}
           </div>
 
 {/* google oauth removed: the app-password route is the one that works
