@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, KeyRound, Loader2, CalendarRange, Inbox, LayoutGrid, ArrowRight } from "lucide-react";
+import { useScanJob } from "@/hooks/use-scan-job";
 
 /**
  * The new account door, reduced to four beats:
@@ -41,6 +42,7 @@ export default function Setup() {
   const [loaderSub, setLoaderSub] = useState("");
   const [trackerCount, setTrackerCount] = useState<number | null>(null);
   const timers = useRef<number[]>([]);
+  const { isRunning: scanRunning } = useScanJob();
 
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   useEffect(() => {
@@ -48,8 +50,10 @@ export default function Setup() {
   }, [status, router]);
   useEffect(() => {
     if (step !== 3) return;
-    void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setTrackerCount((j.items as unknown[]).length); }).catch(() => {});
-  }, [step]);
+    const load = () => void fetch("/api/tracker").then((r) => r.json()).then((j) => { if (j.ok) setTrackerCount((j.items as unknown[]).length); }).catch(() => {});
+    load();
+    if (scanRunning) { const id = window.setInterval(load, 4000); return () => window.clearInterval(id); }
+  }, [step, scanRunning]);
 
   const showLoader = (note: string, sub: string) => {
     setLoaderNote(note);
@@ -362,11 +366,15 @@ export default function Setup() {
                   </span>
                   <p className="mt-2.5 text-sm font-semibold">
                     Tracker
-                    {trackerCount !== null && (
+                    {scanRunning ? (
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" /> scanning
+                      </span>
+                    ) : trackerCount !== null && trackerCount > 0 ? (
                       <span className="ml-2 rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-medium text-sky-700">
                         {trackerCount} application{trackerCount === 1 ? "" : "s"} found
                       </span>
-                    )}
+                    ) : null}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                     Your applications, maintained from your inbox: every status proven by the
