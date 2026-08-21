@@ -74,6 +74,10 @@ export function BudgetBar() {
   const hasBalance = !budget?.balanceUnavailable && limit != null && left != null;
   const pct = hasBalance && limit! > 0 ? Math.min(100, Math.max(0, ((used ?? 0) / limit!) * 100)) : null;
   const low = hasBalance && left! < limit! * 0.1;
+  // For Anthropic (no balance endpoint), use the server-tracked total which
+  // includes planner + tracker AI calls, not the per-browser localStorage total.
+  const displaySpend = hasBalance ? totalSpend : (budget?.spentHere ?? totalSpend);
+  const displayCalls = hasBalance ? totalCalls : (budget?.callsHere ?? totalCalls);
 
   const dim = onBlue ? "text-white/55" : "text-muted-foreground";
 
@@ -127,9 +131,9 @@ export function BudgetBar() {
         ) : (
           /* ── no balance endpoint: show what this app has spent in total ─── */
           <div className="flex min-w-0 shrink items-center gap-x-2 sm:gap-x-3">
-            <span className="tabular shrink-0 text-sm font-medium">{usd(totalSpend, 4)}</span>
+            <span className="tabular shrink-0 text-sm font-medium">{usd(displaySpend, 4)}</span>
             <span className={`label text-[10px] ${dim}`}>
-              spent · {totalCalls} call{totalCalls === 1 ? "" : "s"}
+              spent · {displayCalls} call{displayCalls === 1 ? "" : "s"}
             </span>
             <span className={`hidden truncate text-xs lg:inline ${dim}`}>
               {budget.providerName} publishes no balance for this key
