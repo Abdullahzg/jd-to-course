@@ -37,13 +37,13 @@ export function AppNav() {
           </Link>
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} data-track={`nav_${l.label.toLowerCase()}`}
-                  className={`shrink-0 text-xs transition-colors ${active(l.href) ? "font-medium text-foreground underline underline-offset-4" : "text-muted-foreground hover:text-foreground"}`}>
+                  className={`inline-flex shrink-0 items-center text-xs transition-colors ${active(l.href) ? "font-medium text-foreground underline underline-offset-4" : "text-muted-foreground hover:text-foreground"}`}>
               {l.label}
             </Link>
           ))}
           {isAdmin && (
             <Link href="/admin" data-track="nav_admin"
-                  className={`shrink-0 text-xs transition-colors ${active("/admin") ? "font-medium text-foreground underline underline-offset-4" : "text-muted-foreground hover:text-foreground"}`}>
+                  className={`inline-flex shrink-0 items-center text-xs transition-colors ${active("/admin") ? "font-medium text-foreground underline underline-offset-4" : "text-muted-foreground hover:text-foreground"}`}>
               Admin
             </Link>
           )}
@@ -57,7 +57,7 @@ export function AppNav() {
             </button>
           </div>
         ) : (
-          <Link href="/home" className="shrink-0 text-xs text-muted-foreground hover:text-foreground">Sign in</Link>
+          <Link href="/home" className="inline-flex shrink-0 items-center text-xs text-muted-foreground hover:text-foreground">Sign in</Link>
         )}
       </div>
     </nav>

@@ -91,11 +91,11 @@ export default function Page() {
             </nav>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <Link href="/home" data-track="nav_signin"
-                    className="rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-[#37322F] shadow-[0px_1px_2px_rgba(55,50,47,0.12)] sm:px-3">
+                    className="inline-flex items-center justify-center rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-[#37322F] shadow-[0px_1px_2px_rgba(55,50,47,0.12)] sm:px-3">
                 Log in
               </Link>
               <Link href="/start" data-track="nav_start"
-                    className="rounded-full bg-[#37322F] px-3 py-1.5 text-xs font-medium text-white sm:px-4">
+                    className="inline-flex items-center justify-center rounded-full bg-[#37322F] px-3 py-1.5 text-xs font-medium text-white sm:px-4">
                 Start
               </Link>
             </div>
