@@ -248,36 +248,36 @@ export default function TrackerPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-xl font-semibold">Applications</h1>
           <p className="text-xs text-muted-foreground">
             {(items ?? []).length} tracked. Click a cell to change it; expand a row for the receipts.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button onClick={() => setPrompting(true)} data-track="tracker_prompt_open"
                   title="Describe several fixes in a sentence and see exactly what would change"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium">
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium sm:px-4">
             <Wand2 className="h-3.5 w-3.5" /> Fix with a prompt
           </button>
           <button onClick={() => void sync()} disabled={syncing} data-track="tracker_sync"
                   title="Read anything that arrived since the last scan, then refresh this table"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-50">
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-50 sm:px-4">
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Syncing" : "Sync"}
           </button>
           <button onClick={() => void sync(true)} disabled={syncing} data-track="tracker_full_sync"
                   title="Forget the cursor and read the entire mailbox again from the beginning, rebuilding rows and the reject pile"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-50">
-            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> Re-scan everything
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-50 sm:px-4">
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> Re-scan
           </button>
           <button onClick={() => setAdding(true)} data-track="tracker_add_open"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background">
-            <Plus className="h-3.5 w-3.5" /> Add an application
+                  className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background sm:px-4">
+            <Plus className="h-3.5 w-3.5" /> Add
           </button>
           <button onClick={exportCsv} disabled={!items?.length} data-track="tracker_export"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium disabled:opacity-40">
-            <Download className="h-3.5 w-3.5" /> Export for Excel (CSV)
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-40 sm:px-4">
+            <Download className="h-3.5 w-3.5" /> Export
           </button>
           <Link href="/home" className="text-xs text-muted-foreground underline underline-offset-2">home</Link>
         </div>
@@ -390,10 +390,10 @@ export default function TrackerPage() {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, role, notes"
-                 className="w-64 rounded-full border border-border bg-white py-1.5 pl-8 pr-3 text-xs focus:border-[var(--blue)] focus:outline-none" />
+                 className="w-full rounded-full border border-border bg-white py-1.5 pl-8 pr-3 text-xs focus:border-[var(--blue)] focus:outline-none sm:w-64" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status"
                 className="rounded-full border border-border bg-white px-2.5 py-1.5 text-xs focus:border-[var(--blue)] focus:outline-none">

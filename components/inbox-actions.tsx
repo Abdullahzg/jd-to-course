@@ -63,10 +63,10 @@ export function InboxActions({ onDone }: { onDone?: () => void }) {
     void tick();
   };
 
-  const pill = "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs disabled:opacity-40";
+  const pill = "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs disabled:opacity-40 sm:px-3.5";
   return (
     <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         {st?.savedImap || gmailConnected ? (
           <>
             <button onClick={() => void run(st?.savedImap ? "imap" : "gmail")} disabled={busy} data-track="tracker_scan_now"
