@@ -592,3 +592,18 @@ export async function recordHit(bucket: string) {
 export async function clearAiLedger(fp: string) {
   await q(`DELETE FROM carpa_ai_calls WHERE fp = $1`, [fp]);
 }
+
+/** Delete a user and all their data across every carpa_ table. */
+export async function deleteUser(userId: string) {
+  await q(`DELETE FROM carpa_tracker_events WHERE "itemId" IN (SELECT id FROM carpa_tracker WHERE "userId" = $1)`, [userId]);
+  await q(`DELETE FROM carpa_tracker WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_searches WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_events WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_secrets WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_mail_creds WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_mail_state WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_seen_emails WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_scan_jobs WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_skipped_emails WHERE "userId" = $1`, [userId]);
+  await q(`DELETE FROM carpa_users WHERE id = $1`, [userId]);
+}

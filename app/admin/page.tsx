@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Search, Table2 } from "lucide-react";
+import { ExternalLink, Loader2, Search, Table2, Trash2 } from "lucide-react";
 import { usePlanner } from "@/components/planner/planner-store";
 
 type Stats = {
@@ -93,6 +93,7 @@ export default function Admin() {
   const [trackerItems, setTrackerItems] = useState<TrackerItem[] | null>(null);
   const [trackerLoading, setTrackerLoading] = useState(false);
   const [catalog, setCatalog] = useState<Map<string, string> | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -141,6 +142,18 @@ export default function Admin() {
     if (j?.ok) setTrackerItems(j.items);
   };
 
+  const deleteUserAccount = async (userId: string, name: string | null, email: string) => {
+    const who = name ?? email;
+    if (!window.confirm(`Delete ${who}'s account and all their data? This cannot be undone.`)) return;
+    setDeleting(userId);
+    const r = await fetch("/api/admin", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    }).then((x) => x.json()).catch(() => ({ ok: false }));
+    setDeleting(null);
+    if (r.ok) setStats((s) => s ? { ...s, users: s.users.filter((u) => u.id !== userId) } : s);
+  };
+
   useEffect(() => {
     if (status !== "authenticated") return;
     void fetch("/api/admin").then((r) => r.json()).then((j) => (j.ok ? setStats(j) : setErr(j.error ?? "no")));
@@ -159,7 +172,7 @@ export default function Admin() {
       <div className="mt-4 overflow-x-auto rounded-xl border border-border">
         <table className="table-mobile w-full min-w-[640px] text-left text-xs">
           <thead className="bg-foreground/[0.03] text-muted-foreground">
-            <tr>{["Who", "Joined", "Last seen", "Events", "Searches", "Applications"].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr>
+            <tr>{["Who", "Joined", "Last seen", "Events", "Searches", "Applications", ""].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr>
           </thead>
           <tbody>
             {stats.users.map((u) => (
@@ -172,10 +185,18 @@ export default function Admin() {
                 <td className="px-3 py-2 tabular-nums">{u.events}</td>
                 <td className="px-3 py-2 tabular-nums">{u.searches}</td>
                 <td className="px-3 py-2 tabular-nums">{u.applications}</td>
+                <td className="px-3 py-2">
+                  <button onClick={(e) => { e.stopPropagation(); void deleteUserAccount(u.id, u.name, u.email); }}
+                          disabled={deleting === u.id}
+                          title={`Delete ${u.name ?? u.email}`}
+                          className="inline-flex items-center text-muted-foreground transition-colors hover:text-red-600 disabled:opacity-40">
+                    {deleting === u.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </button>
+                </td>
               </tr>
               {openUser === u.id && (
                 <tr className="border-t border-border bg-foreground/[0.02]">
-                  <td colSpan={6} className="px-4 py-3">
+                  <td colSpan={7} className="px-4 py-3">
                     {!trail ? (
                       <div className="h-16 animate-pulse rounded-lg bg-foreground/5" />
                     ) : (

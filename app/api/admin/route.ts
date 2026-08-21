@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { adminStats, userTrail, adminSearchDetail, adminTrackerItems } from "@/lib/db";
+import { adminStats, userTrail, adminSearchDetail, adminTrackerItems, deleteUser } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -38,4 +38,18 @@ export async function GET(req: Request) {
 
   // ?user=<id>  —  full trail
   return NextResponse.json({ ok: true, ...(await userTrail(userId)) });
+}
+
+export async function DELETE(req: Request) {
+  const session = await auth();
+  const email = session?.user?.email ?? "";
+  if (!email || !isAdmin(email)) {
+    return NextResponse.json({ ok: false, error: "Not yours to see." }, { status: 403 });
+  }
+  const body = await req.json().catch(() => ({}));
+  const userId = body.userId as string | undefined;
+  if (!userId) return NextResponse.json({ ok: false, error: "Missing userId." }, { status: 400 });
+  if (userId === "judge-shared") return NextResponse.json({ ok: false, error: "Cannot delete the shared judge account." }, { status: 400 });
+  await deleteUser(userId);
+  return NextResponse.json({ ok: true });
 }
