@@ -278,6 +278,82 @@ export default function Page() {
           </div>
         </section>
 
+        {/* ── features deep-dive ──────────────────────────────────────────────── */}
+        <section className="border-b border-[rgba(55,50,47,0.12)]">
+          <div className="mx-auto flex max-w-[720px] flex-col items-center gap-4 px-6 pt-14 sm:pt-16">
+            <span className="rounded-full border border-[rgba(2,6,23,0.08)] bg-white px-3.5 py-1.5 text-xs font-medium shadow-[0px_0px_0px_4px_rgba(55,50,47,0.05)]">
+              everything underneath
+            </span>
+            <h2 className="text-center font-serif text-3xl leading-tight sm:text-4xl">
+              Two products, each fully built
+            </h2>
+            <p className="max-w-[480px] text-center text-sm leading-6 text-[#605A57] sm:text-base sm:leading-7">
+              The planner and the tracker are separate tools that share one rule: every claim carries a receipt.
+            </p>
+          </div>
+
+          <div className="grid border-y border-[rgba(55,50,47,0.12)] md:grid-cols-2">
+            {/* ── planner column ──────────────────────────────────────────────── */}
+            <div className="flex flex-col border-b border-[rgba(55,50,47,0.12)] md:border-b-0 md:border-r">
+              <div className="px-6 py-6 sm:px-8 sm:py-8">
+                <h3 className="text-lg font-semibold leading-tight sm:text-xl">The planner</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#605A57]">
+                  Paste a posting and get a semester-by-semester plan. Every course quotes the catalog; every rule quotes the bulletin.
+                </p>
+              </div>
+              <div className="flex flex-col gap-0 border-t border-[rgba(55,50,47,0.12)]">
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+                  title="Alumni network"
+                  desc="See graduates who completed the same degree. Their LinkedIn profiles are one click away — reach out for advice on electives, electives, or the job market."
+                />
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  title="Course swap engine"
+                  desc="Drop any course and the planner instantly shows ranked replacements — elective or core, whichever fits. Every alternative is scored against the same posting."
+                />
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+                  title="Live requirement errors"
+                  desc="The moment you drop something, the planner flags which degree rules are now broken — prerequisites, credit caps, bucket requirements — so you fix it before it snowballs."
+                />
+              </div>
+            </div>
+
+            {/* ── tracker column ──────────────────────────────────────────────── */}
+            <div className="flex flex-col">
+              <div className="px-6 py-6 sm:px-8 sm:py-8">
+                <h3 className="text-lg font-semibold leading-tight sm:text-xl">The tracker</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#605A57]">
+                  Connect your inbox once and every application sorts itself — confirmations, assessments, interviews, offers, rejections.
+                </p>
+              </div>
+              <div className="flex flex-col gap-0 border-t border-[rgba(55,50,47,0.12)]">
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  title="Full auto-detection"
+                  desc="The tracker reads every incoming email and classifies it — no labels, no rules. Each status is backed by a sentence pulled from the email that proved it."
+                />
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  title="AI editor"
+                  desc="Tell the editor what to change — rename a company, fix a date, reclassify a status — and it applies every edit in one pass. No manual clicking through rows."
+                />
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+                  title="Individual management"
+                  desc="Add applications manually, delete stale entries, edit any field. You stay in control of every row."
+                />
+                <FeatureRow
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  title="Excel export"
+                  desc="Download your entire tracker as a spreadsheet — ready for advisors, spreadsheets, or your own analysis."
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── faq ──────────────────────────────────────────────────────────── */}
         <FAQ />
 
@@ -339,6 +415,20 @@ function Bento({ title, desc, border, children }: { title: string; desc: string;
         <p className="text-sm leading-relaxed text-[#605A57]">{desc}</p>
       </div>
       <div className="w-full">{children}</div>
+    </div>
+  );
+}
+
+function FeatureRow({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <div className="flex items-start gap-4 border-b border-[rgba(55,50,47,0.12)] px-6 py-5 last:border-b-0 sm:px-8">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(55,50,47,0.06)] text-[#49423D]">
+        {icon}
+      </div>
+      <div className="flex flex-col gap-1">
+        <h4 className="text-sm font-semibold leading-snug text-[#37322F]">{title}</h4>
+        <p className="text-[13px] leading-[22px] text-[#605A57]">{desc}</p>
+      </div>
     </div>
   );
 }
